@@ -4,7 +4,10 @@
 
 TraderPro AgriSuite is an Android-first agricultural trading and operations product. Its foundation combines a Flutter mobile application with a .NET 10 modular-monolith backend, PostgreSQL 18, one deployable API, and one background worker. Business data is cloud-authoritative; the mobile architecture will preserve locally captured physical facts before synchronisation.
 
-This repository currently contains a buildable foundation only. It establishes project, module, dependency, test, and local-infrastructure boundaries without implementing production business workflows.
+This repository contains a buildable foundation with the first Platform
+database migration. It establishes project, module, dependency, test, and
+local-infrastructure boundaries without implementing production business
+workflows.
 
 ## Repository map
 
@@ -89,6 +92,7 @@ Run these commands from the repository root:
 
 ```powershell
 Copy-Item .\infrastructure\docker\.env.example .\infrastructure\docker\.env
+dotnet tool restore
 dotnet restore .\TraderPro.sln
 
 Push-Location .\apps\mobile
@@ -96,7 +100,12 @@ flutter pub get
 Pop-Location
 ```
 
-The copied `.env` is for local development only and is ignored by Git. Replace its placeholder password on any shared or long-lived environment.
+The copied `.env` is for local development only and is ignored by Git. Replace
+its placeholder password on any shared or long-lived environment. Backend and
+migration commands read the PostgreSQL connection only from
+`ConnectionStrings:TraderPro` or the
+`ConnectionStrings__TraderPro` environment variable. No connection string or
+password is committed.
 
 ## Build commands
 
@@ -119,7 +128,10 @@ flutter test
 Pop-Location
 ```
 
-The .NET test command runs unit, integration, and architecture test projects. Integration tests remain scaffold-level until database-backed behaviour is introduced.
+The .NET test command runs unit, PostgreSQL integration, and architecture test
+projects. Database integration tests start a disposable PostgreSQL 18
+Testcontainer and create a fresh migrated database for every test. Docker must
+be available; the tests do not use the long-lived Compose database.
 
 ## Docker Compose commands
 
@@ -137,17 +149,64 @@ docker compose --env-file .\infrastructure\docker\.env -f .\infrastructure\docke
 docker compose --env-file .\infrastructure\docker\.env -f .\infrastructure\docker\compose.yml down
 ```
 
+Do not remove the `postgres-data` volume as part of routine development.
+
 The optional `future-apps` Compose profile documents future API and Worker runtime configuration. Its image names are deliberate placeholders and the profile must not be started until deployable application images exist.
+
+## Database connection and migrations
+
+Start PostgreSQL as shown above, then set a local development connection string
+in the current shell without committing or printing it:
+
+```powershell
+$env:ConnectionStrings__TraderPro = '<local PostgreSQL connection string>'
+```
+
+Restore the repository-local EF Core tool, list the migration, generate an
+ignored idempotent SQL script, and apply it to the explicitly configured local
+database:
+
+```powershell
+.\scripts\migration\restore-tools.ps1
+.\scripts\migration\list.ps1
+.\scripts\migration\generate-script.ps1 `
+    -Output .\artifacts\migrations\traderpro.sql
+.\scripts\migration\apply-local.ps1
+```
+
+Create a future reviewed migration with:
+
+```powershell
+.\scripts\migration\new.ps1 -Name DescriptiveMigrationName
+```
+
+The API and Worker register persistence but never call
+`Database.Migrate()` during startup. The API exposes `/health/live` and
+database-backed `/health/ready`.
+
+Run either backend only after setting the local connection variable:
+
+```powershell
+dotnet run --project .\services\backend\src\TraderPro.Api
+dotnet run --project .\services\backend\src\TraderPro.Worker
+```
 
 ## Current scaffold status
 
 - The .NET solution establishes Domain, Application, Infrastructure, API, and Worker projects.
-- Empty module-registration boundaries establish the planned modular-monolith seams.
+- Module-registration boundaries establish the planned modular-monolith seams.
+- EF Core and Npgsql map eight Platform tables in the `platform` schema.
+- `InitialPlatformFoundation` is the first reviewed migration.
+- Workspace query filters and write validation provide application-level
+  tenant scoping; PostgreSQL Row-Level Security remains a mandatory
+  pre-production gate.
+- Audit records are protected from UPDATE and DELETE by a PostgreSQL trigger.
 - Architecture, unit, and integration test projects establish test locations.
 - The Flutter app provides only a minimal foundation startup experience and placeholder feature folders.
-- PostgreSQL 18 can run locally through Docker Compose.
+- PostgreSQL 18 can run locally through Docker Compose and disposable
+  Testcontainers.
 - Contract, documentation, infrastructure, script, and cross-system test directories are tracked with placeholders.
-- No production database migration or detailed domain entity exists.
+- No production deployment credential or automatic startup migration exists.
 
 ## Explicitly unimplemented capabilities
 
@@ -162,7 +221,12 @@ The following capabilities are intentionally outside this scaffold:
 - Full authentication and authorisation
 - Cloud synchronisation
 - PDF generation
-- Production database migrations and detailed domain entities
+- Business-module database migrations and domain entities
 - Drift/SQLite persistence and SignalR integration
+
+The implemented database foundation is documented in
+`docs/technical-specs/TPTECH-001.12-Foundation-Database.md`. Workspace
+isolation decisions and the remaining RLS security gate are documented in
+`docs/decisions/ADR-0001-workspace-isolation-foundation.md`.
 
 These omissions are intentional. Future work should introduce each capability through reviewed specifications and tests while preserving the rules in `AGENTS.md`.

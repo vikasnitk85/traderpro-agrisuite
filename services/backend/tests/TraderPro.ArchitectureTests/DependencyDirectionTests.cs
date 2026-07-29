@@ -154,6 +154,77 @@ public sealed class DependencyDirectionTests
         Assert.Empty(forbiddenReferences);
     }
 
+    [Fact]
+    public void Application_does_not_reference_infrastructure()
+    {
+        var references = typeof(ApplicationAssemblyMarker)
+            .Assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name)
+            .Where(reference => reference is not null)
+            .Cast<string>();
+
+        Assert.DoesNotContain("TraderPro.Infrastructure", references);
+    }
+
+    [Fact]
+    public void Persistence_implementation_lives_only_in_infrastructure()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var sourceRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src");
+        var persistenceMarkers = new[]
+        {
+            "DbContext",
+            "IEntityTypeConfiguration<",
+            "Microsoft.EntityFrameworkCore.Migrations",
+        };
+        var misplacedFiles = EnumerateSourceFiles(sourceRoot)
+            .Where(path => persistenceMarkers.Any(
+                marker => File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Where(path => !path.StartsWith(
+                Path.Combine(sourceRoot, "TraderPro.Infrastructure"),
+                StringComparison.OrdinalIgnoreCase))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(misplacedFiles);
+    }
+
+    [Fact]
+    public void Api_contains_no_entity_configuration_or_migration_classes()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var apiRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Api");
+        var forbiddenMarkers = new[]
+        {
+            "IEntityTypeConfiguration<",
+            ": Migration",
+            "MigrationBuilder",
+        };
+        var offendingFiles = EnumerateSourceFiles(apiRoot)
+            .Where(path => forbiddenMarkers.Any(
+                marker => File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -234,6 +305,16 @@ public sealed class DependencyDirectionTests
             .Cast<string>()
             .OrderBy(reference => reference, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static IEnumerable<string> EnumerateSourceFiles(string root)
+    {
+        return Directory
+            .EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Split(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar)
+                .Any(segment => segment is "bin" or "obj"));
     }
 
     private static bool IsForbiddenDomainReference(string reference)
