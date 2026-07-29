@@ -1,4 +1,3 @@
-/// Placeholder namespace for the future receiving feature.
-///
-/// Receiving workflows and business rules are intentionally not implemented.
-abstract final class ReceivingFeature {}
+export 'application/application.dart';
+export 'domain/domain.dart';
+export 'infrastructure/infrastructure.dart';

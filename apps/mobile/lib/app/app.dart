@@ -30,10 +30,7 @@ class FoundationScreen extends StatelessWidget {
         child: Center(
           child: Padding(
             padding: EdgeInsets.all(24),
-            child: Text(
-              foundationMessage,
-              textAlign: TextAlign.center,
-            ),
+            child: Text(foundationMessage, textAlign: TextAlign.center),
           ),
         ),
       ),

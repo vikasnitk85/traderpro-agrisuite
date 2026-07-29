@@ -5,9 +5,9 @@
 TraderPro AgriSuite is an Android-first agricultural trading and operations product. Its foundation combines a Flutter mobile application with a .NET 10 modular-monolith backend, PostgreSQL 18, one deployable API, and one background worker. Business data is cloud-authoritative; the mobile architecture will preserve locally captured physical facts before synchronisation.
 
 This repository contains a buildable foundation with the first Platform
-database migration. It establishes project, module, dependency, test, and
-local-infrastructure boundaries without implementing production business
-workflows.
+database migration and a focused mobile offline-store proof of concept. It
+establishes project, module, dependency, test, and local-infrastructure
+boundaries without implementing complete production business workflows.
 
 ## Repository map
 
@@ -117,6 +117,14 @@ flutter build apk --debug
 Pop-Location
 ```
 
+Generate the checked-in Drift source after changing the local schema:
+
+```powershell
+Push-Location .\apps\mobile
+dart run build_runner build
+Pop-Location
+```
+
 ## Test commands
 
 ```powershell
@@ -129,6 +137,9 @@ Pop-Location
 
 powershell -ExecutionPolicy Bypass `
   -File .\scripts\test\test-weight-processing-parity.ps1
+
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-mobile-offline-store.ps1
 ```
 
 The .NET test command runs unit, PostgreSQL integration, and architecture test
@@ -138,6 +149,18 @@ be available; the tests do not use the long-lived Compose database.
 
 The parity script runs the targeted C# and Dart weight-processing suites
 against the same repository-level JSON golden vectors.
+
+The offline-store script regenerates Drift source, runs the real-SQLite schema,
+transaction, restart, projection, ordering, duplicate, and outbox-transition
+tests, and then runs the weight-processing parity script. The targeted mobile
+tests can also be run directly:
+
+```powershell
+Push-Location .\apps\mobile
+flutter test .\test\core\database
+flutter test .\test\features\receiving
+Pop-Location
+```
 
 ## Docker Compose commands
 
@@ -210,9 +233,15 @@ dotnet run --project .\services\backend\src\TraderPro.Worker
 - Architecture, unit, and integration test projects establish test locations.
 - The pure weight-processing contract is shared across .NET and Flutter through
   versioned JSON golden vectors and exact scaled-integer implementations.
+- The focused Flutter/Drift offline-store spike persists local Receiving
+  Sessions, immutable processed-weight facts, rebuildable exact projections,
+  and future-sync outbox operations in atomic SQLite transactions.
+- File-backed tests prove restart recovery, deterministic duplicate handling,
+  independent session ordering, projection rebuilding, and explicit outbox
+  transitions without network transmission.
 - The Flutter UI provides only a minimal foundation startup experience and
-  placeholder feature folders; the core layer includes the pure
-  weight-processing contract.
+  does not access Drift; the core layer includes the pure weight-processing
+  contract and local database foundation.
 - PostgreSQL 18 can run locally through Docker Compose and disposable
   Testcontainers.
 - Contract, documentation, infrastructure, script, and cross-system test directories are tracked with placeholders.
@@ -222,7 +251,7 @@ dotnet run --project .\services\backend\src\TraderPro.Worker
 
 The following capabilities are intentionally outside this scaffold:
 
-- Receiving Session business logic
+- Complete Receiving Session workflows and UI
 - Inventory movements
 - Financial posting
 - Sales workflows
@@ -232,11 +261,17 @@ The following capabilities are intentionally outside this scaffold:
 - Cloud synchronisation
 - PDF generation
 - Business-module database migrations and domain entities
-- Drift/SQLite persistence and SignalR integration
+- SignalR integration and cloud synchronisation
 
 The implemented database foundation is documented in
 `docs/technical-specs/TPTECH-001.12-Foundation-Database.md`. Workspace
 isolation decisions and the remaining RLS security gate are documented in
 `docs/decisions/ADR-0001-workspace-isolation-foundation.md`.
+
+The focused mobile store is documented in
+`docs/technical-specs/TPTECH-001.14-Mobile-Offline-Store-Spike.md`.
+It currently uses ordinary, unencrypted SQLite and is **not production-ready
+for sensitive customer data**. Encrypted local storage selection, key
+management, and migration remain mandatory pre-pilot security work.
 
 These omissions are intentional. Future work should introduce each capability through reviewed specifications and tests while preserving the rules in `AGENTS.md`.
