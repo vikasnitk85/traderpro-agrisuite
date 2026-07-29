@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\TraderPro.Application\TraderPro.Application.csproj" />
+    <ProjectReference Include="..\TraderPro.Infrastructure\TraderPro.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

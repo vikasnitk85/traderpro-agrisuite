@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TraderPro.Api\TraderPro.Api.csproj" />
+    <ProjectReference Include="..\..\src\TraderPro.Application\TraderPro.Application.csproj" />
+    <ProjectReference Include="..\..\src\TraderPro.Domain\TraderPro.Domain.csproj" />
+    <ProjectReference Include="..\..\src\TraderPro.Infrastructure\TraderPro.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\TraderPro.Worker\TraderPro.Worker.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TraderPro.Application\TraderPro.Application.csproj" />
+    <ProjectReference Include="..\TraderPro.Infrastructure\TraderPro.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

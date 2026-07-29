@@ -1,0 +1,50 @@
+name: ${COMPOSE_PROJECT_NAME:-traderpro-agrisuite}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:18}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-traderpro_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-traderpro_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infrastructure/docker/.env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  api:
+    profiles:
+      - future-apps
+    image: ${TRADERPRO_API_IMAGE:-traderpro-api:scaffold-placeholder}
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__TraderPro: Host=postgres;Port=5432;Database=${POSTGRES_DB:-traderpro_dev};Username=${POSTGRES_USER:-traderpro_dev};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infrastructure/docker/.env}
+    ports:
+      - "${TRADERPRO_API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    profiles:
+      - future-apps
+    image: ${TRADERPRO_WORKER_IMAGE:-traderpro-worker:scaffold-placeholder}
+    environment:
+      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Development}
+      ConnectionStrings__TraderPro: Host=postgres;Port=5432;Database=${POSTGRES_DB:-traderpro_dev};Username=${POSTGRES_USER:-traderpro_dev};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infrastructure/docker/.env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

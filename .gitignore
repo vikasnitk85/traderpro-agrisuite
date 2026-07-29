@@ -1,0 +1,63 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.local
+*.secrets.json
+
+# .NET
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+
+# Flutter and Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/apps/mobile/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+*.jks
+*.keystore
+
+# IDEs and editors
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+~$*
+
+# Local PostgreSQL/Docker data
+/infrastructure/docker/data/
+/infrastructure/docker/postgres-data/
