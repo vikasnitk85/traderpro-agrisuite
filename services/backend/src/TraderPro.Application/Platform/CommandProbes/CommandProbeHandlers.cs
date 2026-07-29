@@ -1,3 +1,5 @@
+using TraderPro.Application.Common.Commands;
+
 namespace TraderPro.Application.Platform.CommandProbes;
 
 public sealed class CreateCommandProbeHandler(

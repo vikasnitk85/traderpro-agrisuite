@@ -259,6 +259,56 @@ The reviewed migrations are `AddCloudCommandAndEventCursorSpike` followed by
 `HardenCloudCommandAndEventCursorSpike`. API and Worker startup still never
 apply migrations automatically.
 
+## Two-device Procurement backend POC (non-production)
+
+Task 6A adds a development/testing-only backend proof of concept. It is not a
+commercial Procurement workflow and creates no Purchase Bill, Inventory,
+supplier payable, Sales, or Finance effects. Both spike flags must be enabled;
+committed configuration keeps them false and Production never maps the routes:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = 'Development'
+$env:TraderPro__Spikes__Enabled = 'true'
+$env:TraderPro__Spikes__ProcurementPoc__Enabled = 'true'
+$env:TraderPro__Spikes__ProcurementPoc__LeaseMinutes = '5'
+dotnet run --project .\services\backend\src\TraderPro.Api
+```
+
+Create the stable insecure local POC setup (IDs only, no credentials) with:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://localhost:5000/api/v1/spikes/procurement-poc/bootstrap'
+```
+
+POC requests require both `X-TraderPro-Workspace-ID` and
+`X-TraderPro-Device-ID`. These temporary headers are **not authentication**.
+The primary routes are:
+
+- `POST /api/v1/mobile/sync/operations`
+- `GET /api/v1/mobile/sync/events`
+- `GET /api/v1/spikes/procurement-poc/receiving-sessions`
+- `GET /api/v1/spikes/procurement-poc/receiving-sessions/{id}/live-view`
+- `POST /api/v1/spikes/procurement-poc/receiving-sessions/{id}/heartbeat`
+- `POST /api/v1/spikes/procurement-poc/receiving-sessions/{id}/approve`
+- `POST /api/v1/spikes/procurement-poc/receiving-sessions/{id}/finalize`
+
+Run the focused unit, PostgreSQL 18/API, concurrency, rollback, architecture,
+and Task 5 regression suite with:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-two-device-procurement-backend-poc.ps1
+```
+
+The reviewed migrations are `AddTwoDeviceProcurementPocFoundation` followed by
+`HardenTwoDeviceProcurementPocContracts`. Task 6B will connect the Flutter Drift
+outbox and enrich its network envelope with the current lease without rewriting
+immutable payloads. Task 6A does not modify the mobile schema or implement
+Flutter HTTP sync, SignalR, authentication, RLS, subscriptions, or production
+posting.
+
 ## Current scaffold status
 
 - The .NET solution establishes Domain, Application, Infrastructure, API, and Worker projects.
@@ -270,6 +320,12 @@ apply migrations automatically.
   the database event sequence.
 - `HardenCloudCommandAndEventCursorSpike` adds controlled event streams,
   immutable outbox event facts, and conservative legacy replay repair.
+- `AddTwoDeviceProcurementPocFoundation` adds the disabled-by-default
+  Procurement POC aggregate, immutable weight facts/completion record, leased
+  two-device API workflow, and development bootstrap.
+- `HardenTwoDeviceProcurementPocContracts` preserves immutable Task 4 payloads,
+  binds POC idempotency to device and operation scope, and hardens session
+  identity, lifecycle shape, and deletion rules.
 - Workspace query filters and write validation provide application-level
   tenant scoping; PostgreSQL Row-Level Security remains a mandatory
   pre-production gate.

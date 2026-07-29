@@ -30,6 +30,9 @@ public static class PersistenceRegistration
         services.AddScoped<CurrentWorkspaceAccessor>();
         services.AddScoped<ICurrentWorkspaceAccessor>(
             provider => provider.GetRequiredService<CurrentWorkspaceAccessor>());
+        services.AddScoped<CurrentDeviceAccessor>();
+        services.AddScoped<ICurrentDeviceAccessor>(
+            provider => provider.GetRequiredService<CurrentDeviceAccessor>());
         services.AddScoped<WorkspaceOwnershipInterceptor>();
         services.AddScoped<UtcTimestampInterceptor>();
         services.AddScoped<VersioningInterceptor>();

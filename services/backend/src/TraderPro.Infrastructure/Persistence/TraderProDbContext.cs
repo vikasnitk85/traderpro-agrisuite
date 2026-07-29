@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TraderPro.Application.Common.Tenancy;
 using TraderPro.Domain.Platform;
+using TraderPro.Domain.Procurement.Poc;
 
 namespace TraderPro.Infrastructure.Persistence;
 
@@ -26,6 +27,15 @@ public sealed class TraderProDbContext(
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<CommandProbe> CommandProbes => Set<CommandProbe>();
+
+    public DbSet<ReceivingSessionPoc> ReceivingSessionPocs =>
+        Set<ReceivingSessionPoc>();
+
+    public DbSet<ReceivingEntryPoc> ReceivingEntryPocs =>
+        Set<ReceivingEntryPoc>();
+
+    public DbSet<ReceivingFinalizationPoc> ReceivingFinalizationPocs =>
+        Set<ReceivingFinalizationPoc>();
 
     internal Guid? ActiveWorkspaceId => currentWorkspace.WorkspaceId;
 
@@ -59,6 +69,15 @@ public sealed class TraderProDbContext(
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<CommandProbe>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<ReceivingSessionPoc>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<ReceivingEntryPoc>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<ReceivingFinalizationPoc>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
     }

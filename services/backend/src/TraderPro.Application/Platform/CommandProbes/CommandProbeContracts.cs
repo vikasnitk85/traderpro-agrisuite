@@ -21,18 +21,6 @@ public sealed record CommandProbeResult(
     long Counter,
     long Version);
 
-public enum IdempotencyExecutionStatus
-{
-    Processed,
-    PreviouslyProcessed,
-}
-
-public sealed record IdempotentCommandResult<T>(
-    T Result,
-    string CorrelationId,
-    IdempotencyExecutionStatus IdempotencyStatus,
-    int StatusCode);
-
 public sealed record CloudEventCursorItem(
     long Sequence,
     Guid EventId,

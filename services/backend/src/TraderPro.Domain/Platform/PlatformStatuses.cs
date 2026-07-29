@@ -29,7 +29,8 @@ public enum PlatformUserStatus : short
 
 public enum DeviceStatus : short
 {
-    Registered = 1,
+    Active = 1,
+    Registered = Active,
     Disabled = 2,
 }
 

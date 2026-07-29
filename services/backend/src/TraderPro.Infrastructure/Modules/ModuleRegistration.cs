@@ -8,6 +8,7 @@ using TraderPro.Infrastructure.Modules.Procurement;
 using TraderPro.Infrastructure.Modules.Production;
 using TraderPro.Infrastructure.Modules.Reporting;
 using TraderPro.Infrastructure.Modules.Sales;
+using TraderPro.Infrastructure.Modules.Shared;
 
 namespace TraderPro.Infrastructure;
 
@@ -19,6 +20,8 @@ public static class ModuleRegistration
     public static IServiceCollection AddTraderProModules(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        services.AddScoped<PostgreSqlIdempotentCommandExecutor>();
 
         return services
             .AddPlatformModule()

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260729141935_AddTwoDeviceProcurementPocFoundation")]
+    partial class AddTwoDeviceProcurementPocFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -915,17 +918,13 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
 
                     b.ToTable("receiving_session_pocs", "procurement", t =>
                         {
-                            t.HasTrigger("tr_receiving_session_pocs_delete_immutable");
-
-                            t.HasTrigger("tr_receiving_session_pocs_identity_immutable");
-
                             t.HasCheckConstraint("ck_receiving_session_pocs_entry_count", "entry_count >= 0");
+
+                            t.HasCheckConstraint("ck_receiving_session_pocs_lease_shape", "(status = 1\n    AND lease_id IS NOT NULL\n    AND lease_expires_at_utc IS NOT NULL\n    AND last_lease_heartbeat_at_utc IS NOT NULL)\nOR (status <> 1\n    AND lease_id IS NULL\n    AND lease_expires_at_utc IS NULL\n    AND last_lease_heartbeat_at_utc IS NULL)");
 
                             t.HasCheckConstraint("ck_receiving_session_pocs_next_sequence", "next_expected_local_sequence > 0");
 
                             t.HasCheckConstraint("ck_receiving_session_pocs_reference_sequence", "cloud_reference_sequence > 0");
-
-                            t.HasCheckConstraint("ck_receiving_session_pocs_state_shape", "(status = 1\n    AND lease_id IS NOT NULL\n    AND lease_expires_at_utc IS NOT NULL\n    AND last_lease_heartbeat_at_utc IS NOT NULL\n    AND submitted_at_utc IS NULL\n    AND approved_at_utc IS NULL\n    AND approved_by_device_id IS NULL)\nOR (status = 2\n    AND lease_id IS NULL\n    AND lease_expires_at_utc IS NULL\n    AND last_lease_heartbeat_at_utc IS NULL\n    AND submitted_at_utc IS NOT NULL\n    AND approved_at_utc IS NULL\n    AND approved_by_device_id IS NULL)\nOR (status IN (3, 4)\n    AND lease_id IS NULL\n    AND lease_expires_at_utc IS NULL\n    AND last_lease_heartbeat_at_utc IS NULL\n    AND submitted_at_utc IS NOT NULL\n    AND approved_at_utc IS NOT NULL\n    AND approved_by_device_id IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_receiving_session_pocs_status", "status IN (1, 2, 3, 4)");
 

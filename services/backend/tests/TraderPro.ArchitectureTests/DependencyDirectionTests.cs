@@ -311,7 +311,67 @@ public sealed class DependencyDirectionTests
                         StringComparison.Ordinal) &&
                     !line.TrimStart().StartsWith(
                         "using TraderPro.Infrastructure.Modules.Platform",
+                        StringComparison.Ordinal) &&
+                    !line.TrimStart().StartsWith(
+                        "using TraderPro.Infrastructure.Modules.Shared",
                         StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
+    [Fact]
+    public void Procurement_poc_infrastructure_does_not_depend_on_inventory_sales_or_finance()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var procurementPocRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Infrastructure",
+            "Modules",
+            "Procurement",
+            "Poc");
+        var forbidden = new[]
+        {
+            "TraderPro.Infrastructure.Modules.Inventory",
+            "TraderPro.Infrastructure.Modules.Sales",
+            "TraderPro.Infrastructure.Modules.Finance",
+            "TraderPro.Domain.Inventory",
+            "TraderPro.Domain.Sales",
+            "TraderPro.Domain.Finance",
+            "PurchaseBill",
+            "BillingRepository",
+        };
+        var offendingFiles = EnumerateSourceFiles(procurementPocRoot)
+            .Where(path => forbidden.Any(
+                marker => File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
+    [Fact]
+    public void Procurement_poc_application_does_not_reference_platform_command_probe()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var procurementPocRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Application",
+            "Procurement",
+            "Poc");
+        var offendingFiles = EnumerateSourceFiles(procurementPocRoot)
+            .Where(path => File.ReadAllText(path).Contains(
+                "TraderPro.Application.Platform.CommandProbes",
+                StringComparison.Ordinal))
             .Select(path => Path.GetRelativePath(repositoryRoot, path))
             .ToArray();
 

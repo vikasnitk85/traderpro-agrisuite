@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using TraderPro.Application.Common.Commands;
 using TraderPro.Application.Common.Errors;
 using TraderPro.Application.Platform.CommandProbes;
 

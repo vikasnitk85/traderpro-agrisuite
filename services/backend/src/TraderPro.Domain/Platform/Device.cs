@@ -27,7 +27,7 @@ public sealed class Device :
             nameof(installationId));
         Name = PlatformEntityGuard.Required(name, 200, nameof(name));
         Platform = PlatformEntityGuard.Required(platform, 50, nameof(platform));
-        Status = DeviceStatus.Registered;
+        Status = DeviceStatus.Active;
         CreatedAtUtc = PlatformEntityGuard.Utc(createdAtUtc, nameof(createdAtUtc));
         UpdatedAtUtc = CreatedAtUtc;
         Version = 1;
