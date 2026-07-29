@@ -19,7 +19,8 @@ public sealed class OutboxMessage :
         long aggregateVersion,
         string payloadJson,
         string correlationId,
-        DateTimeOffset occurredAtUtc)
+        DateTimeOffset occurredAtUtc,
+        OutboxEventStream eventStream)
     {
         if (eventVersion <= 0)
         {
@@ -39,6 +40,9 @@ public sealed class OutboxMessage :
 
         Id = Uuid7.NewGuid();
         WorkspaceId = workspaceId;
+        EventStream = PlatformEntityGuard.Defined(
+            eventStream,
+            nameof(eventStream));
         EventType = PlatformEntityGuard.Required(
             eventType,
             200,
@@ -65,7 +69,11 @@ public sealed class OutboxMessage :
 
     public Guid Id { get; private set; }
 
+    public long Sequence { get; private set; }
+
     public Guid WorkspaceId { get; private set; }
+
+    public OutboxEventStream EventStream { get; private set; }
 
     public string EventType { get; private set; } = string.Empty;
 
@@ -102,7 +110,8 @@ public sealed class OutboxMessage :
         long aggregateVersion,
         string payloadJson,
         string correlationId,
-        DateTimeOffset occurredAtUtc)
+        DateTimeOffset occurredAtUtc,
+        OutboxEventStream eventStream = OutboxEventStream.Internal)
     {
         return new OutboxMessage(
             workspaceId,
@@ -113,7 +122,8 @@ public sealed class OutboxMessage :
             aggregateVersion,
             payloadJson,
             correlationId,
-            occurredAtUtc);
+            occurredAtUtc,
+            eventStream);
     }
 
     public void StartProcessing()

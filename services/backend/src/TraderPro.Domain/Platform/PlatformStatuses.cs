@@ -47,3 +47,9 @@ public enum OutboxMessageStatus : short
     Processed = 3,
     Failed = 4,
 }
+
+public enum OutboxEventStream : short
+{
+    Internal = 1,
+    MobileSync = 2,
+}

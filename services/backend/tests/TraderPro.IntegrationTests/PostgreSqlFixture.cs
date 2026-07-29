@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using TraderPro.Application.Common.Tenancy;
@@ -28,7 +30,8 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
         await _container.DisposeAsync();
     }
 
-    public async Task<IsolatedPostgreSqlDatabase> CreateDatabaseAsync()
+    public async Task<IsolatedPostgreSqlDatabase> CreateDatabaseAsync(
+        string? targetMigration = null)
     {
         var databaseName = $"traderpro_{Guid.NewGuid():N}";
         await using (var connection = new NpgsqlConnection(
@@ -51,7 +54,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
             _container.GetConnectionString(),
             connectionBuilder.ConnectionString,
             databaseName);
-        await database.ApplyMigrationsAsync();
+        await database.ApplyMigrationsAsync(targetMigration);
         return database;
     }
 }
@@ -72,6 +75,7 @@ public sealed class IsolatedPostgreSqlDatabase(
     [
         "audit_events",
         "branches",
+        "command_probes",
         "companies",
         "devices",
         "idempotency_records",
@@ -123,10 +127,12 @@ public sealed class IsolatedPostgreSqlDatabase(
             TestContext.Current.CancellationToken);
     }
 
-    internal async Task ApplyMigrationsAsync()
+    internal async Task ApplyMigrationsAsync(string? targetMigration = null)
     {
         await using var context = CreateContext(null);
-        await context.Database.MigrateAsync(
+        var migrator = context.GetService<IMigrator>();
+        await migrator.MigrateAsync(
+            targetMigration,
             TestContext.Current.CancellationToken);
     }
 

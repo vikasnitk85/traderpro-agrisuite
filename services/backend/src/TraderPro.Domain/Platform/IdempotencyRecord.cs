@@ -53,6 +53,8 @@ public sealed class IdempotencyRecord :
 
     public string? ResultPayloadJson { get; private set; }
 
+    public int? ResultStatusCode { get; private set; }
+
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
     public DateTimeOffset? CompletedAtUtc { get; private set; }
@@ -77,13 +79,23 @@ public sealed class IdempotencyRecord :
     }
 
     public void Complete(
-        string? resultPayloadJson,
+        string resultPayloadJson,
+        int resultStatusCode,
         DateTimeOffset completedAtUtc)
     {
         EnsurePending();
-        ResultPayloadJson = PlatformEntityGuard.OptionalJson(
+        if (resultStatusCode is < 100 or > 599)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(resultStatusCode),
+                resultStatusCode,
+                "The result status code must be a valid HTTP status code.");
+        }
+
+        ResultPayloadJson = PlatformEntityGuard.Json(
             resultPayloadJson,
             nameof(resultPayloadJson));
+        ResultStatusCode = resultStatusCode;
         CompletedAtUtc = PlatformEntityGuard.Utc(
             completedAtUtc,
             nameof(completedAtUtc));
@@ -98,6 +110,7 @@ public sealed class IdempotencyRecord :
         ResultPayloadJson = PlatformEntityGuard.OptionalJson(
             resultPayloadJson,
             nameof(resultPayloadJson));
+        ResultStatusCode = null;
         CompletedAtUtc = PlatformEntityGuard.Utc(
             completedAtUtc,
             nameof(completedAtUtc));

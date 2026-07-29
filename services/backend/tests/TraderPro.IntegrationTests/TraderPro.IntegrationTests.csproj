@@ -7,6 +7,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.13.0" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
@@ -16,6 +17,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\TraderPro.Api\TraderPro.Api.csproj" />
     <ProjectReference Include="..\..\src\TraderPro.Infrastructure\TraderPro.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

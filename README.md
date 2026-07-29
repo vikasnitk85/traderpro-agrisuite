@@ -162,6 +162,14 @@ flutter test .\test\features\receiving
 Pop-Location
 ```
 
+Run the focused cloud-command, PostgreSQL 18 API, concurrency, rollback,
+cursor, and architecture suite with:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-cloud-command-spike.ps1
+```
+
 ## Docker Compose commands
 
 Validate the Compose model without creating a local `.env`:
@@ -220,12 +228,48 @@ dotnet run --project .\services\backend\src\TraderPro.Api
 dotnet run --project .\services\backend\src\TraderPro.Worker
 ```
 
+## Cloud-command spike (non-production)
+
+The Task 5 `CommandProbe` endpoints are a Platform proof of concept, not
+production business APIs. They are disabled in committed configuration and
+are mapped only in Development or Testing when explicitly enabled:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = 'Development'
+$env:TraderPro__Spikes__Enabled = 'true'
+dotnet run --project .\services\backend\src\TraderPro.Api
+```
+
+Spike and temporary event-cursor requests require
+`X-TraderPro-Workspace-ID` containing an existing workspace UUID. This header
+is temporary development/testing context and **is not authentication**.
+`X-Correlation-ID` is optional but must be a canonical UUID when supplied.
+Commands require `Idempotency-Key`; increments also require positive
+`X-Expected-Version`.
+
+Apply the reviewed schema through the ordinary migration workflow:
+
+```powershell
+dotnet ef database update `
+  --project .\services\backend\src\TraderPro.Infrastructure `
+  --startup-project .\services\backend\src\TraderPro.Api
+```
+
+The reviewed migrations are `AddCloudCommandAndEventCursorSpike` followed by
+`HardenCloudCommandAndEventCursorSpike`. API and Worker startup still never
+apply migrations automatically.
+
 ## Current scaffold status
 
 - The .NET solution establishes Domain, Application, Infrastructure, API, and Worker projects.
 - Module-registration boundaries establish the planned modular-monolith seams.
-- EF Core and Npgsql map eight Platform tables in the `platform` schema.
+- EF Core and Npgsql map the Platform schema, including the temporary
+  `command_probes` spike table.
 - `InitialPlatformFoundation` is the first reviewed migration.
+- `AddCloudCommandAndEventCursorSpike` adds stored idempotent HTTP outcomes and
+  the database event sequence.
+- `HardenCloudCommandAndEventCursorSpike` adds controlled event streams,
+  immutable outbox event facts, and conservative legacy replay repair.
 - Workspace query filters and write validation provide application-level
   tenant scoping; PostgreSQL Row-Level Security remains a mandatory
   pre-production gate.

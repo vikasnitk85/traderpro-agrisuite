@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Text.Json;
 using TraderPro.Domain.Common;
 using TraderPro.Domain.Platform;
 
@@ -61,6 +62,62 @@ public sealed class PlatformDatabaseTests(PostgreSqlFixture fixture)
 
         Assert.Equal(7, workspace.Id.Version);
         Assert.Equal(7, company.Id.Version);
+    }
+
+    [Fact]
+    public async Task Cloud_command_migration_has_generated_sequence_cursor_and_result_status()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        await using var connection = await database.OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT
+                EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'platform'
+                      AND table_name = 'outbox_messages'
+                      AND column_name = 'sequence'
+                      AND is_identity = 'YES'),
+                EXISTS (
+                    SELECT 1
+                    FROM pg_indexes
+                    WHERE schemaname = 'platform'
+                      AND indexname =
+                          'ix_outbox_messages_workspace_id_event_stream_sequence'),
+                EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'platform'
+                      AND table_name = 'idempotency_records'
+                      AND column_name = 'result_status_code'),
+                EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'platform'
+                      AND table_name = 'outbox_messages'
+                      AND column_name = 'event_stream'),
+                EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'ck_outbox_messages_event_stream'),
+                EXISTS (
+                    SELECT 1
+                    FROM pg_trigger
+                    WHERE tgname =
+                        'tr_outbox_messages_immutable_event_facts'
+                      AND NOT tgisinternal);
+            """;
+        await using var reader = await command.ExecuteReaderAsync(
+            CancellationToken);
+        Assert.True(await reader.ReadAsync(CancellationToken));
+        Assert.True(reader.GetBoolean(0));
+        Assert.True(reader.GetBoolean(1));
+        Assert.True(reader.GetBoolean(2));
+        Assert.True(reader.GetBoolean(3));
+        Assert.True(reader.GetBoolean(4));
+        Assert.True(reader.GetBoolean(5));
     }
 
     [Fact]
@@ -614,6 +671,94 @@ public sealed class PlatformDatabaseTests(PostgreSqlFixture fixture)
     }
 
     [Fact]
+    public async Task Outbox_event_facts_are_immutable_through_ef_and_sql()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        var workspace = await CreateWorkspaceAsync(
+            database,
+            "outbox-immutable");
+        var otherWorkspace = await CreateWorkspaceAsync(
+            database,
+            "outbox-immutable-other");
+        var message = OutboxMessage.Create(
+            workspace.Id,
+            "ImmutableEvent",
+            1,
+            "ImmutableAggregate",
+            Uuid7.NewGuid(),
+            1,
+            """{"value":1}""",
+            Uuid7.NewGuid().ToString("D"),
+            UtcNow);
+
+        await using (var context = database.CreateContext(workspace.Id))
+        {
+            context.OutboxMessages.Add(message);
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        var efMutations = new (string Property, object Value)[]
+        {
+            (nameof(OutboxMessage.Sequence), message.Sequence + 100),
+            (nameof(OutboxMessage.WorkspaceId), otherWorkspace.Id),
+            (nameof(OutboxMessage.EventStream), OutboxEventStream.MobileSync),
+            (nameof(OutboxMessage.EventType), "ChangedEvent"),
+            (nameof(OutboxMessage.EventVersion), 2),
+            (nameof(OutboxMessage.AggregateType), "ChangedAggregate"),
+            (nameof(OutboxMessage.AggregateId), Uuid7.NewGuid()),
+            (nameof(OutboxMessage.AggregateVersion), 2L),
+            (nameof(OutboxMessage.PayloadJson), """{"value":2}"""),
+            (nameof(OutboxMessage.CorrelationId), Uuid7.NewGuid().ToString("D")),
+            (nameof(OutboxMessage.OccurredAtUtc), UtcNow.AddMinutes(1)),
+        };
+        foreach (var mutation in efMutations)
+        {
+            await using var context = database.CreateContext(workspace.Id);
+            var tracked = await context.OutboxMessages.SingleAsync(
+                candidate => candidate.Id == message.Id,
+                CancellationToken);
+            context.Entry(tracked)
+                .Property(mutation.Property)
+                .CurrentValue = mutation.Value;
+
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => context.SaveChangesAsync(CancellationToken));
+        }
+
+        var sqlMutations = new[]
+        {
+            "SET payload_json = '{\"value\":2}'::jsonb",
+            "SET event_type = 'ChangedEvent'",
+            "SET aggregate_type = 'ChangedAggregate'",
+            "SET workspace_id = @other_workspace_id",
+            "SET event_stream = 2",
+        };
+        foreach (var mutation in sqlMutations)
+        {
+            await AssertOutboxMutationRejectedAsync(
+                database,
+                mutation,
+                message.Id,
+                otherWorkspace.Id);
+        }
+
+        await using var verification = database.CreateContext(workspace.Id);
+        var persisted = await verification.OutboxMessages
+            .AsNoTracking()
+            .SingleAsync(
+                candidate => candidate.Id == message.Id,
+                CancellationToken);
+        Assert.Equal("ImmutableEvent", persisted.EventType);
+        Assert.Equal("ImmutableAggregate", persisted.AggregateType);
+        using var payload = JsonDocument.Parse(persisted.PayloadJson);
+        Assert.Equal(
+            1,
+            payload.RootElement.GetProperty("value").GetInt32());
+        Assert.Equal(OutboxEventStream.Internal, persisted.EventStream);
+        Assert.Equal(workspace.Id, persisted.WorkspaceId);
+    }
+
+    [Fact]
     public async Task Utc_timestamp_and_version_interceptors_apply_exactly_once()
     {
         await using var database = await fixture.CreateDatabaseAsync();
@@ -795,6 +940,10 @@ public sealed class PlatformDatabaseTests(PostgreSqlFixture fixture)
                 workspace.Id,
                 $"Command{suffix}",
                 $"key-{suffix}"),
+            CommandProbe.Create(
+                workspace.Id,
+                $"Probe {suffix}",
+                UtcNow),
             OutboxMessage.Create(
                 workspace.Id,
                 $"Event{suffix}",
@@ -833,6 +982,7 @@ public sealed class PlatformDatabaseTests(PostgreSqlFixture fixture)
             await context.Users.CountAsync(CancellationToken),
             await context.Devices.CountAsync(CancellationToken),
             await context.IdempotencyRecords.CountAsync(CancellationToken),
+            await context.CommandProbes.CountAsync(CancellationToken),
             await context.OutboxMessages.CountAsync(CancellationToken),
             await context.AuditEvents.CountAsync(CancellationToken),
         ];
@@ -884,6 +1034,31 @@ public sealed class PlatformDatabaseTests(PostgreSqlFixture fixture)
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.Parameters.AddWithValue("id", auditEventId);
+
+        var exception = await Assert.ThrowsAsync<PostgresException>(
+            () => command.ExecuteNonQueryAsync(CancellationToken));
+
+        Assert.Equal("55000", exception.SqlState);
+    }
+
+    private static async Task AssertOutboxMutationRejectedAsync(
+        IsolatedPostgreSqlDatabase database,
+        string mutation,
+        Guid outboxMessageId,
+        Guid otherWorkspaceId)
+    {
+        await using var connection = await database.OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            $"""
+            UPDATE platform.outbox_messages
+            {mutation}
+            WHERE id = @id
+            """;
+        command.Parameters.AddWithValue("id", outboxMessageId);
+        command.Parameters.AddWithValue(
+            "other_workspace_id",
+            otherWorkspaceId);
 
         var exception = await Assert.ThrowsAsync<PostgresException>(
             () => command.ExecuteNonQueryAsync(CancellationToken));

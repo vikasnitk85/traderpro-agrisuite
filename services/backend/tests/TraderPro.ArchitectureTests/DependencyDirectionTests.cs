@@ -168,6 +168,43 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
+    public void Application_has_no_http_entity_framework_or_infrastructure_dependencies()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var projectPath = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Application",
+            "TraderPro.Application.csproj");
+        var declared = GetProjectBuildFiles(repositoryRoot, projectPath)
+            .SelectMany(path => XDocument.Load(path).Descendants())
+            .Where(element =>
+                element.Name.LocalName is
+                    "FrameworkReference" or
+                    "PackageReference" or
+                    "ProjectReference")
+            .Select(element => element.Attribute("Include")?.Value)
+            .Where(reference => reference is not null)
+            .Cast<string>()
+            .Select(GetDependencyName)
+            .Where(IsForbiddenApplicationReference)
+            .ToArray();
+        var runtime = typeof(ApplicationAssemblyMarker)
+            .Assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name)
+            .Where(reference => reference is not null)
+            .Cast<string>()
+            .Where(IsForbiddenApplicationReference)
+            .ToArray();
+
+        Assert.Empty(declared);
+        Assert.Empty(runtime);
+    }
+
+    [Fact]
     public void Persistence_implementation_lives_only_in_infrastructure()
     {
         var repositoryRoot = FindRepositoryRoot();
@@ -220,6 +257,62 @@ public sealed class DependencyDirectionTests
                     StringComparison.Ordinal)))
             .Select(path => Path.GetRelativePath(repositoryRoot, path))
             .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
+    [Fact]
+    public void Api_endpoints_do_not_mutate_the_database_context()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var endpointRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Api",
+            "Http");
+        var forbiddenPersistenceMarkers = new[]
+        {
+            "TraderProDbContext",
+            "Microsoft.EntityFrameworkCore",
+            "SaveChanges",
+            "DbSet<",
+        };
+        var offendingFiles = EnumerateSourceFiles(endpointRoot)
+            .Where(path => forbiddenPersistenceMarkers.Any(
+                marker => File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
+    [Fact]
+    public void Platform_spike_infrastructure_does_not_depend_on_other_modules()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var platformRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Infrastructure",
+            "Modules",
+            "Platform");
+        var offendingFiles = EnumerateSourceFiles(platformRoot)
+            .Where(path => File.ReadLines(path).Any(
+                line =>
+                    line.TrimStart().StartsWith(
+                        "using TraderPro.Infrastructure.Modules.",
+                        StringComparison.Ordinal) &&
+                    !line.TrimStart().StartsWith(
+                        "using TraderPro.Infrastructure.Modules.Platform",
+                        StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
             .ToArray();
 
         Assert.Empty(offendingFiles);
@@ -332,6 +425,22 @@ public sealed class DependencyDirectionTests
                reference.Contains("SignalR", StringComparison.OrdinalIgnoreCase) ||
                reference.Equals(
                    "TraderPro.Api",
+                   StringComparison.OrdinalIgnoreCase) ||
+               reference.Equals(
+                   "TraderPro.Infrastructure",
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsForbiddenApplicationReference(string reference)
+    {
+        return reference.Contains(
+                   "AspNetCore",
+                   StringComparison.OrdinalIgnoreCase) ||
+               reference.Contains(
+                   "EntityFrameworkCore",
+                   StringComparison.OrdinalIgnoreCase) ||
+               reference.StartsWith(
+                   "Npgsql",
                    StringComparison.OrdinalIgnoreCase) ||
                reference.Equals(
                    "TraderPro.Infrastructure",

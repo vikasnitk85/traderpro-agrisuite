@@ -25,6 +25,8 @@ public sealed class TraderProDbContext(
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    public DbSet<CommandProbe> CommandProbes => Set<CommandProbe>();
+
     internal Guid? ActiveWorkspaceId => currentWorkspace.WorkspaceId;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -54,6 +56,9 @@ public sealed class TraderProDbContext(
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<AuditEvent>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommandProbe>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
     }

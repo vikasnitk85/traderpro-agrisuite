@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260729112435_AddCloudCommandAndEventCursorSpike")]
+    partial class AddCloudCommandAndEventCursorSpike
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -465,12 +468,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("correlation_id");
 
-                    b.Property<short>("EventStream")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("smallint")
-                        .HasDefaultValue((short)1)
-                        .HasColumnName("event_stream");
-
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -525,8 +522,8 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_outbox_messages_sequence");
 
-                    b.HasIndex("WorkspaceId", "EventStream", "Sequence")
-                        .HasDatabaseName("ix_outbox_messages_workspace_id_event_stream_sequence");
+                    b.HasIndex("WorkspaceId", "Sequence")
+                        .HasDatabaseName("ix_outbox_messages_workspace_id_sequence");
 
                     b.HasIndex("WorkspaceId", "Status", "NextAttemptAtUtc")
                         .HasDatabaseName("ix_outbox_messages_workspace_status_next_attempt");
@@ -536,8 +533,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_outbox_messages_aggregate_version", "aggregate_version > 0");
 
                             t.HasCheckConstraint("ck_outbox_messages_attempt_count", "attempt_count >= 0");
-
-                            t.HasCheckConstraint("ck_outbox_messages_event_stream", "event_stream IN (1, 2)");
 
                             t.HasCheckConstraint("ck_outbox_messages_event_version", "event_version > 0");
 

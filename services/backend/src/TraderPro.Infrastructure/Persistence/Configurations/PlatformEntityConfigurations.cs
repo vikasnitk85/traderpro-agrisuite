@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TraderPro.Domain.Platform;
 
@@ -390,9 +391,20 @@ internal sealed class IdempotencyRecordConfiguration :
         builder.ToTable(
             "idempotency_records",
             "platform",
-            table => table.HasCheckConstraint(
-                "ck_idempotency_records_status",
-                "status IN (1, 2, 3)"));
+            table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_idempotency_records_status",
+                    "status IN (1, 2, 3)");
+                table.HasCheckConstraint(
+                    "ck_idempotency_records_result_status_code",
+                    """
+                    (status = 2
+                        AND result_payload_json IS NOT NULL
+                        AND result_status_code BETWEEN 100 AND 599)
+                    OR (status <> 2 AND result_status_code IS NULL)
+                    """);
+            });
         builder.HasKey(entity => entity.Id)
             .HasName("pk_idempotency_records");
         builder.Property(entity => entity.Id)
@@ -420,6 +432,8 @@ internal sealed class IdempotencyRecordConfiguration :
         builder.Property(entity => entity.ResultPayloadJson)
             .HasColumnName("result_payload_json")
             .HasColumnType("jsonb");
+        builder.Property(entity => entity.ResultStatusCode)
+            .HasColumnName("result_status_code");
         builder.Property(entity => entity.CreatedAtUtc)
             .HasColumnName("created_at_utc")
             .HasColumnType("timestamp with time zone")
@@ -462,6 +476,9 @@ internal sealed class OutboxMessageConfiguration :
                     "ck_outbox_messages_status",
                     "status IN (1, 2, 3, 4)");
                 table.HasCheckConstraint(
+                    "ck_outbox_messages_event_stream",
+                    "event_stream IN (1, 2)");
+                table.HasCheckConstraint(
                     "ck_outbox_messages_event_version",
                     "event_version > 0");
                 table.HasCheckConstraint(
@@ -476,8 +493,18 @@ internal sealed class OutboxMessageConfiguration :
         builder.Property(entity => entity.Id)
             .HasColumnName("id")
             .ValueGeneratedNever();
+        builder.Property(entity => entity.Sequence)
+            .HasColumnName("sequence")
+            .UseIdentityAlwaysColumn()
+            .ValueGeneratedOnAdd()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(entity => entity.WorkspaceId)
             .HasColumnName("workspace_id")
+            .IsRequired();
+        builder.Property(entity => entity.EventStream)
+            .HasColumnName("event_stream")
+            .HasConversion<short>()
+            .HasDefaultValue(OutboxEventStream.Internal)
             .IsRequired();
         builder.Property(entity => entity.EventType)
             .HasColumnName("event_type")
@@ -508,6 +535,17 @@ internal sealed class OutboxMessageConfiguration :
             .HasColumnName("occurred_at_utc")
             .HasColumnType("timestamp with time zone")
             .IsRequired();
+        ProtectAfterSave(builder.Property(entity => entity.Sequence));
+        ProtectAfterSave(builder.Property(entity => entity.WorkspaceId));
+        ProtectAfterSave(builder.Property(entity => entity.EventStream));
+        ProtectAfterSave(builder.Property(entity => entity.EventType));
+        ProtectAfterSave(builder.Property(entity => entity.EventVersion));
+        ProtectAfterSave(builder.Property(entity => entity.AggregateType));
+        ProtectAfterSave(builder.Property(entity => entity.AggregateId));
+        ProtectAfterSave(builder.Property(entity => entity.AggregateVersion));
+        ProtectAfterSave(builder.Property(entity => entity.PayloadJson));
+        ProtectAfterSave(builder.Property(entity => entity.CorrelationId));
+        ProtectAfterSave(builder.Property(entity => entity.OccurredAtUtc));
         builder.Property(entity => entity.Status)
             .HasColumnName("status")
             .HasConversion<short>()
@@ -538,6 +576,90 @@ internal sealed class OutboxMessageConfiguration :
         })
             .HasDatabaseName(
                 "ix_outbox_messages_workspace_status_next_attempt");
+        builder.HasIndex(entity => entity.Sequence)
+            .IsUnique()
+            .HasDatabaseName("ux_outbox_messages_sequence");
+        builder.HasIndex(entity => new
+        {
+            entity.WorkspaceId,
+            entity.EventStream,
+            entity.Sequence,
+        })
+            .HasDatabaseName(
+                "ix_outbox_messages_workspace_id_event_stream_sequence");
+    }
+
+    private static void ProtectAfterSave<TProperty>(
+        PropertyBuilder<TProperty> property)
+    {
+        property.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+    }
+}
+
+internal sealed class CommandProbeConfiguration :
+    IEntityTypeConfiguration<CommandProbe>
+{
+    public void Configure(EntityTypeBuilder<CommandProbe> builder)
+    {
+        builder.ToTable(
+            "command_probes",
+            "platform",
+            table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_command_probes_counter",
+                    "counter >= 0");
+                table.HasCheckConstraint(
+                    "ck_command_probes_version",
+                    "version > 0");
+            });
+        builder.HasKey(entity => entity.Id)
+            .HasName("pk_command_probes");
+        builder.HasAlternateKey(entity => new
+        {
+            entity.WorkspaceId,
+            entity.Id,
+        })
+            .HasName("ak_command_probes_workspace_id_id");
+        builder.Property(entity => entity.Id)
+            .HasColumnName("id")
+            .ValueGeneratedNever();
+        builder.Property(entity => entity.WorkspaceId)
+            .HasColumnName("workspace_id")
+            .IsRequired();
+        builder.Property(entity => entity.Name)
+            .HasColumnName("name")
+            .HasMaxLength(CommandProbe.MaximumNameLength)
+            .IsRequired();
+        builder.Property(entity => entity.Counter)
+            .HasColumnName("counter")
+            .IsRequired();
+        builder.Property(entity => entity.CreatedAtUtc)
+            .HasColumnName("created_at_utc")
+            .HasColumnType("timestamp with time zone")
+            .IsRequired();
+        builder.Property(entity => entity.UpdatedAtUtc)
+            .HasColumnName("updated_at_utc")
+            .HasColumnType("timestamp with time zone")
+            .IsRequired();
+        builder.Property(entity => entity.Version)
+            .HasColumnName("version")
+            .IsConcurrencyToken()
+            .IsRequired();
+        builder.HasOne<Workspace>()
+            .WithMany()
+            .HasForeignKey(entity => entity.WorkspaceId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName(
+                "fk_command_probes_workspaces_workspace_id");
+        builder.HasIndex(entity => new
+        {
+            entity.WorkspaceId,
+            entity.Name,
+        })
+            .IsUnique()
+            .HasDatabaseName(
+                "ux_command_probes_workspace_id_name");
     }
 }
 

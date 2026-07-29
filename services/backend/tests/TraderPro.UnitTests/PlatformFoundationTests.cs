@@ -122,9 +122,10 @@ public sealed class PlatformFoundationTests
             UtcNow);
         var completedAt = UtcNow.AddMinutes(1);
 
-        record.Complete("""{"result":"ok"}""", completedAt);
+        record.Complete("""{"result":"ok"}""", 201, completedAt);
 
         Assert.Equal(IdempotencyRecordStatus.Completed, record.Status);
+        Assert.Equal(201, record.ResultStatusCode);
         Assert.Equal(completedAt, record.CompletedAtUtc);
         Assert.Throws<InvalidOperationException>(
             () => record.Fail(null, completedAt.AddMinutes(1)));
