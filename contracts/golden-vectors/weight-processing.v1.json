@@ -1,0 +1,480 @@
+{
+  "contract": "TraderPro.WeightProcessing",
+  "version": 1,
+  "storageDecimalPlaces": 6,
+  "validCases": [
+    {
+      "name": "standard_one_decimal_midpoint",
+      "rawWeightKg": "50.25",
+      "decimalPlaces": 1,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.300000",
+      "expectedDisplayWeightKg": "50.3"
+    },
+    {
+      "name": "standard_one_decimal_just_below_midpoint",
+      "rawWeightKg": "50.249999",
+      "decimalPlaces": 1,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.200000",
+      "expectedDisplayWeightKg": "50.2"
+    },
+    {
+      "name": "standard_one_decimal_just_above_midpoint",
+      "rawWeightKg": "50.250001",
+      "decimalPlaces": 1,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.300000",
+      "expectedDisplayWeightKg": "50.3"
+    },
+    {
+      "name": "standard_one_decimal_exact",
+      "rawWeightKg": "50.2",
+      "decimalPlaces": 1,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.200000",
+      "expectedDisplayWeightKg": "50.2"
+    },
+    {
+      "name": "standard_one_decimal_carry",
+      "rawWeightKg": "99.95",
+      "decimalPlaces": 1,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "100.000000",
+      "expectedDisplayWeightKg": "100.0"
+    },
+    {
+      "name": "floor_one_decimal",
+      "rawWeightKg": "50.29",
+      "decimalPlaces": 1,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "50.200000",
+      "expectedDisplayWeightKg": "50.2"
+    },
+    {
+      "name": "floor_one_decimal_exact",
+      "rawWeightKg": "50.20",
+      "decimalPlaces": 1,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "50.200000",
+      "expectedDisplayWeightKg": "50.2"
+    },
+    {
+      "name": "floor_one_decimal_below_one",
+      "rawWeightKg": "0.09",
+      "decimalPlaces": 1,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "0.000000",
+      "expectedDisplayWeightKg": "0.0"
+    },
+    {
+      "name": "floor_one_decimal_six_fractional_digits",
+      "rawWeightKg": "12.999999",
+      "decimalPlaces": 1,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "12.900000",
+      "expectedDisplayWeightKg": "12.9"
+    },
+    {
+      "name": "ceiling_one_decimal",
+      "rawWeightKg": "50.21",
+      "decimalPlaces": 1,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "50.300000",
+      "expectedDisplayWeightKg": "50.3"
+    },
+    {
+      "name": "ceiling_one_decimal_exact",
+      "rawWeightKg": "50.20",
+      "decimalPlaces": 1,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "50.200000",
+      "expectedDisplayWeightKg": "50.2"
+    },
+    {
+      "name": "ceiling_one_decimal_smallest_positive",
+      "rawWeightKg": "0.000001",
+      "decimalPlaces": 1,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "0.100000",
+      "expectedDisplayWeightKg": "0.1"
+    },
+    {
+      "name": "ceiling_one_decimal_zero",
+      "rawWeightKg": "0",
+      "decimalPlaces": 1,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "0.000000",
+      "expectedDisplayWeightKg": "0.0"
+    },
+    {
+      "name": "standard_two_decimals_midpoint",
+      "rawWeightKg": "50.235",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.240000",
+      "expectedDisplayWeightKg": "50.24"
+    },
+    {
+      "name": "standard_two_decimals_just_below_midpoint",
+      "rawWeightKg": "50.234999",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.230000",
+      "expectedDisplayWeightKg": "50.23"
+    },
+    {
+      "name": "standard_two_decimals_just_above_midpoint",
+      "rawWeightKg": "50.235001",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.240000",
+      "expectedDisplayWeightKg": "50.24"
+    },
+    {
+      "name": "standard_two_decimals_exact",
+      "rawWeightKg": "50.23",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.230000",
+      "expectedDisplayWeightKg": "50.23"
+    },
+    {
+      "name": "standard_two_decimals_carry",
+      "rawWeightKg": "99.999",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "100.000000",
+      "expectedDisplayWeightKg": "100.00"
+    },
+    {
+      "name": "standard_two_decimals_below_one",
+      "rawWeightKg": "0.004999",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "0.000000",
+      "expectedDisplayWeightKg": "0.00"
+    },
+    {
+      "name": "standard_two_decimals_small_midpoint",
+      "rawWeightKg": "0.005",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "0.010000",
+      "expectedDisplayWeightKg": "0.01"
+    },
+    {
+      "name": "standard_two_decimals_integer_input",
+      "rawWeightKg": "50",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "50.000000",
+      "expectedDisplayWeightKg": "50.00"
+    },
+    {
+      "name": "floor_two_decimals",
+      "rawWeightKg": "50.239",
+      "decimalPlaces": 2,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "50.230000",
+      "expectedDisplayWeightKg": "50.23"
+    },
+    {
+      "name": "floor_two_decimals_exact",
+      "rawWeightKg": "50.230",
+      "decimalPlaces": 2,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "50.230000",
+      "expectedDisplayWeightKg": "50.23"
+    },
+    {
+      "name": "floor_two_decimals_leading_zeros",
+      "rawWeightKg": "00050.237000",
+      "decimalPlaces": 2,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "50.230000",
+      "expectedDisplayWeightKg": "50.23"
+    },
+    {
+      "name": "floor_two_decimals_large_weight",
+      "rawWeightKg": "99999999999999.999999",
+      "decimalPlaces": 2,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "99999999999999.990000",
+      "expectedDisplayWeightKg": "99999999999999.99"
+    },
+    {
+      "name": "ceiling_two_decimals",
+      "rawWeightKg": "50.231",
+      "decimalPlaces": 2,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "50.240000",
+      "expectedDisplayWeightKg": "50.24"
+    },
+    {
+      "name": "ceiling_two_decimals_exact_with_trailing_zeros",
+      "rawWeightKg": "50.2300",
+      "decimalPlaces": 2,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "50.230000",
+      "expectedDisplayWeightKg": "50.23"
+    },
+    {
+      "name": "ceiling_two_decimals_six_fractional_digits",
+      "rawWeightKg": "1.000001",
+      "decimalPlaces": 2,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "1.010000",
+      "expectedDisplayWeightKg": "1.01"
+    },
+    {
+      "name": "ceiling_two_decimals_large_weight_carry",
+      "rawWeightKg": "99999999999999.999999",
+      "decimalPlaces": 2,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "100000000000000.000000",
+      "expectedDisplayWeightKg": "100000000000000.00"
+    },
+    {
+      "name": "standard_three_decimals_midpoint",
+      "rawWeightKg": "1.2345",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "1.235000",
+      "expectedDisplayWeightKg": "1.235"
+    },
+    {
+      "name": "standard_three_decimals_just_below_midpoint",
+      "rawWeightKg": "1.234499",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "1.234000",
+      "expectedDisplayWeightKg": "1.234"
+    },
+    {
+      "name": "standard_three_decimals_just_above_midpoint",
+      "rawWeightKg": "1.234501",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "1.235000",
+      "expectedDisplayWeightKg": "1.235"
+    },
+    {
+      "name": "standard_three_decimals_exact",
+      "rawWeightKg": "1.234",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "1.234000",
+      "expectedDisplayWeightKg": "1.234"
+    },
+    {
+      "name": "standard_three_decimals_carry",
+      "rawWeightKg": "99.9995",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "100.000000",
+      "expectedDisplayWeightKg": "100.000"
+    },
+    {
+      "name": "standard_three_decimals_below_one",
+      "rawWeightKg": "0.000499",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "0.000000",
+      "expectedDisplayWeightKg": "0.000"
+    },
+    {
+      "name": "standard_three_decimals_small_midpoint",
+      "rawWeightKg": "0.0005",
+      "decimalPlaces": 3,
+      "method": "Standard",
+      "expectedProcessedWeightKg": "0.001000",
+      "expectedDisplayWeightKg": "0.001"
+    },
+    {
+      "name": "floor_three_decimals",
+      "rawWeightKg": "1.2349",
+      "decimalPlaces": 3,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "1.234000",
+      "expectedDisplayWeightKg": "1.234"
+    },
+    {
+      "name": "floor_three_decimals_exact",
+      "rawWeightKg": "1.234000",
+      "decimalPlaces": 3,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "1.234000",
+      "expectedDisplayWeightKg": "1.234"
+    },
+    {
+      "name": "floor_three_decimals_trailing_zeros",
+      "rawWeightKg": "50.237000",
+      "decimalPlaces": 3,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "50.237000",
+      "expectedDisplayWeightKg": "50.237"
+    },
+    {
+      "name": "floor_three_decimals_large_weight",
+      "rawWeightKg": "99999999999999.999999",
+      "decimalPlaces": 3,
+      "method": "Floor",
+      "expectedProcessedWeightKg": "99999999999999.999000",
+      "expectedDisplayWeightKg": "99999999999999.999"
+    },
+    {
+      "name": "ceiling_three_decimals",
+      "rawWeightKg": "1.2341",
+      "decimalPlaces": 3,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "1.235000",
+      "expectedDisplayWeightKg": "1.235"
+    },
+    {
+      "name": "ceiling_three_decimals_exact",
+      "rawWeightKg": "1.234000",
+      "decimalPlaces": 3,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "1.234000",
+      "expectedDisplayWeightKg": "1.234"
+    },
+    {
+      "name": "ceiling_three_decimals_smallest_positive",
+      "rawWeightKg": "0.000001",
+      "decimalPlaces": 3,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "0.001000",
+      "expectedDisplayWeightKg": "0.001"
+    },
+    {
+      "name": "ceiling_three_decimals_large_weight_carry",
+      "rawWeightKg": "99999999999999.999999",
+      "decimalPlaces": 3,
+      "method": "Ceiling",
+      "expectedProcessedWeightKg": "100000000000000.000000",
+      "expectedDisplayWeightKg": "100000000000000.000"
+    }
+  ],
+  "invalidCases": [
+    {
+      "name": "empty_input",
+      "rawWeightKg": "",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_REQUIRED"
+    },
+    {
+      "name": "whitespace_only_input",
+      "rawWeightKg": "   ",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_REQUIRED"
+    },
+    {
+      "name": "negative_weight",
+      "rawWeightKg": "-1",
+      "decimalPlaces": 2,
+      "method": "Floor",
+      "expectedErrorCode": "WEIGHT_RAW_NEGATIVE"
+    },
+    {
+      "name": "leading_plus",
+      "rawWeightKg": "+50.2",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "comma_decimal_separator",
+      "rawWeightKg": "50,2",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "scientific_notation",
+      "rawWeightKg": "5e1",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "alphabetic_input",
+      "rawWeightKg": "weight",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "nan_input",
+      "rawWeightKg": "NaN",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "infinity_input",
+      "rawWeightKg": "Infinity",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "integer_digits_exceeded",
+      "rawWeightKg": "100000000000000",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INTEGER_DIGITS_EXCEEDED"
+    },
+    {
+      "name": "fraction_digits_exceeded",
+      "rawWeightKg": "1.0000000",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_FRACTION_DIGITS_EXCEEDED"
+    },
+    {
+      "name": "decimal_places_zero",
+      "rawWeightKg": "50.2",
+      "decimalPlaces": 0,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_DECIMAL_PLACES_INVALID"
+    },
+    {
+      "name": "decimal_places_four",
+      "rawWeightKg": "50.2",
+      "decimalPlaces": 4,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_DECIMAL_PLACES_INVALID"
+    },
+    {
+      "name": "invalid_method",
+      "rawWeightKg": "50.2",
+      "decimalPlaces": 2,
+      "method": "Bankers",
+      "expectedErrorCode": "WEIGHT_PROCESSING_METHOD_INVALID"
+    },
+    {
+      "name": "surrounding_whitespace",
+      "rawWeightKg": " 50.2 ",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "missing_integer_digits",
+      "rawWeightKg": ".5",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    },
+    {
+      "name": "missing_fractional_digits",
+      "rawWeightKg": "50.",
+      "decimalPlaces": 2,
+      "method": "Standard",
+      "expectedErrorCode": "WEIGHT_RAW_INVALID"
+    }
+  ]
+}

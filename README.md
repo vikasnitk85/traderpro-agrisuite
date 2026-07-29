@@ -126,12 +126,18 @@ Push-Location .\apps\mobile
 flutter analyze
 flutter test
 Pop-Location
+
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-weight-processing-parity.ps1
 ```
 
 The .NET test command runs unit, PostgreSQL integration, and architecture test
 projects. Database integration tests start a disposable PostgreSQL 18
 Testcontainer and create a fresh migrated database for every test. Docker must
 be available; the tests do not use the long-lived Compose database.
+
+The parity script runs the targeted C# and Dart weight-processing suites
+against the same repository-level JSON golden vectors.
 
 ## Docker Compose commands
 
@@ -202,7 +208,11 @@ dotnet run --project .\services\backend\src\TraderPro.Worker
   pre-production gate.
 - Audit records are protected from UPDATE and DELETE by a PostgreSQL trigger.
 - Architecture, unit, and integration test projects establish test locations.
-- The Flutter app provides only a minimal foundation startup experience and placeholder feature folders.
+- The pure weight-processing contract is shared across .NET and Flutter through
+  versioned JSON golden vectors and exact scaled-integer implementations.
+- The Flutter UI provides only a minimal foundation startup experience and
+  placeholder feature folders; the core layer includes the pure
+  weight-processing contract.
 - PostgreSQL 18 can run locally through Docker Compose and disposable
   Testcontainers.
 - Contract, documentation, infrastructure, script, and cross-system test directories are tracked with placeholders.
