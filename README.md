@@ -303,11 +303,76 @@ powershell -ExecutionPolicy Bypass `
 ```
 
 The reviewed migrations are `AddTwoDeviceProcurementPocFoundation` followed by
-`HardenTwoDeviceProcurementPocContracts`. Task 6B will connect the Flutter Drift
-outbox and enrich its network envelope with the current lease without rewriting
-immutable payloads. Task 6A does not modify the mobile schema or implement
-Flutter HTTP sync, SignalR, authentication, RLS, subscriptions, or production
-posting.
+`HardenTwoDeviceProcurementPocContracts`. Task 6B connects the Flutter Drift
+outbox and enriches its network envelope with the current lease without
+rewriting immutable payloads. Task 6A itself does not modify the mobile schema
+or implement Flutter HTTP sync, SignalR, authentication, RLS, subscriptions,
+or production posting.
+
+## Flutter two-device Procurement POC (non-production)
+
+Task 6B adds a **Development Only** foreground Flutter sync client for the
+frozen Task 6A backend. It preserves Task 4 payload JSON/hashes, stores leases
+outside immutable physical payloads, resumes the MobileSync cursor, and gives
+an independent owner device a read-only approval/finalization view. It creates
+no Purchase Bill, Inventory, supplier payable, Sales, or Finance effect.
+
+One app-level runtime owns the Task 6B database, repository, guarded API
+factories, engines, coordinator, controller, timer, and lifecycle observer.
+Only `resumed` permits foreground work, and one gate serializes automatic and
+manual cycles before any asynchronous lookup. Completed or safely failed
+cycles reload all Drift-backed operator/owner/controller state, so Start,
+entry, event, and heartbeat results appear without a manual refresh.
+
+Drift schema version 3 binds cloud lease state and control commands immutably
+to their source/device. Direct schema `1 -> 3` and follow-up `2 -> 3`
+migrations preserve Task 4 bytes and existing POC rows; ambiguous context
+backfill fails explicitly. The POC engine filters only its three
+ReceivingSession operation types and validates successful operation/command
+responses semantically. Finalization replay requires this active
+source/device's completed command, and manual capture requires explicit valid
+UTC text.
+
+The Flutter route is disabled by default and is unavailable in release mode
+even if a define is supplied. Build the debug POC explicitly:
+
+```powershell
+Push-Location .\apps\mobile
+flutter pub get
+flutter build apk `
+  --debug `
+  --dart-define=TRADERPRO_PROCUREMENT_POC=true
+Pop-Location
+```
+
+Start the backend with process-scoped development flags and a configurable LAN
+binding:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\poc\start-two-device-procurement-backend.ps1 `
+  -BindAddress 0.0.0.0 `
+  -Port 5000
+```
+
+The launcher does not create or print a database credential, reset PostgreSQL,
+or create a Windows Firewall rule. Temporary Workspace/Device headers and
+debug HTTP are insecure development mechanisms and **are not
+authentication**.
+
+Run the focused mobile/client suite and regressions:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-two-device-procurement-mobile-poc.ps1
+```
+
+Follow the physical Android procedure in
+[`TPRUN-001-Two-Device-Procurement-Poc.md`](docs/runbooks/TPRUN-001-Two-Device-Procurement-Poc.md).
+The local design is documented in
+[`TPTECH-001.17-Flutter-Sync-Two-Device-Field-Poc.md`](docs/technical-specs/TPTECH-001.17-Flutter-Sync-Two-Device-Field-Poc.md)
+and
+[`ADR-0004-mobile-sync-envelope-and-projection-poc.md`](docs/decisions/ADR-0004-mobile-sync-envelope-and-projection-poc.md).
 
 ## Current scaffold status
 
@@ -339,9 +404,21 @@ posting.
 - File-backed tests prove restart recovery, deterministic duplicate handling,
   independent session ordering, projection rebuilding, and explicit outbox
   transitions without network transmission.
-- The Flutter UI provides only a minimal foundation startup experience and
-  does not access Drift; the core layer includes the pure weight-processing
-  contract and local database foundation.
+- The production Flutter entry remains a minimal foundation startup
+  experience. An explicitly compiled debug-only route provides the Task 6B
+  two-device POC through injected services; widgets do not access Drift or
+  construct HTTP requests.
+- Drift schema version 3 provides non-destructive `1 -> 3` and `2 -> 3`
+  migration paths, source/device-bound cloud state and commands, and preserves
+  every Task 4 immutable fact, payload, and operation.
+- The Task 6B client uses `dart:io` without a new dependency, synchronizes
+  Start before leased dependent operations, filters only POC receiving rows,
+  rejects semantically invalid successful responses, replays ambiguous
+  responses with stable context-bound keys, and polls the durable event cursor
+  in the foreground.
+- The app-level Task 6B runtime owns lifecycle and resources; shared
+  orchestration gates prevent overlaps, while automatic cycles refresh visible
+  Drift state and disposal prevents later notifications or API starts.
 - PostgreSQL 18 can run locally through Docker Compose and disposable
   Testcontainers.
 - Contract, documentation, infrastructure, script, and cross-system test directories are tracked with placeholders.
@@ -358,7 +435,7 @@ The following capabilities are intentionally outside this scaffold:
 - Production workflows
 - Subscription billing
 - Full authentication and authorisation
-- Cloud synchronisation
+- Production cloud synchronisation (Task 6B is a debug-only POC)
 - PDF generation
 - Business-module database migrations and domain entities
 - SignalR integration and cloud synchronisation

@@ -43,6 +43,7 @@ final class LocalReceivingStore {
   static const _aggregateType = 'ReceivingSession';
   static const _startOperationType = 'StartReceivingSession';
   static const _recordOperationType = 'RecordReceivingEntry';
+  static const _submitOperationType = 'SubmitReceivingSession';
 
   final TraderProLocalDatabase _database;
   final String _installReference;
@@ -249,6 +250,139 @@ final class LocalReceivingStore {
         );
       });
     });
+  }
+
+  Future<SubmitLocalReceivingSessionResult> submitSessionLocally({
+    required String sessionId,
+    String? operationId,
+  }) async {
+    _requireNonEmpty(sessionId, 'sessionId');
+    if (operationId != null) {
+      _requireNonEmpty(operationId, 'operationId');
+    }
+    final resolvedOperationId = operationId ?? _idGenerator.newUuidV7();
+
+    return _guardStorage(() {
+      return _database.transaction(() async {
+        final existing = await _findOutboxRow(resolvedOperationId);
+        if (existing != null) {
+          if (existing.aggregateId != sessionId ||
+              existing.operationType != _submitOperationType) {
+            throw const LocalStoreException(
+              LocalStoreException.operationPayloadConflict,
+              'The operation ID is already used by another local operation.',
+            );
+          }
+          final candidate = ReceivingOutboxPayload.submitSession(
+            operationId: resolvedOperationId,
+            localSessionId: sessionId,
+          );
+          if (ReceivingOutboxPayload.hash(candidate) != existing.payloadHash) {
+            throw const LocalStoreException(
+              LocalStoreException.operationPayloadConflict,
+              'The operation ID exists with a different immutable payload.',
+            );
+          }
+          final duplicateSession = await _findSessionRow(sessionId);
+          if (duplicateSession == null) {
+            throw const LocalStoreException(
+              LocalStoreException.sessionNotFound,
+              'The local Receiving Session does not exist.',
+            );
+          }
+          return SubmitLocalReceivingSessionResult(
+            session: _mapSession(duplicateSession),
+            outboxOperation: _mapOutbox(existing),
+            wasDuplicate: true,
+          );
+        }
+
+        final session = await _findSessionRow(sessionId);
+        if (session == null) {
+          throw const LocalStoreException(
+            LocalStoreException.sessionNotFound,
+            'The local Receiving Session does not exist.',
+          );
+        }
+        if (session.localStatus != LocalReceivingStatus.open.storageValue) {
+          throw const LocalStoreException(
+            LocalStoreException.sessionNotEditable,
+            'The local Receiving Session is not editable.',
+          );
+        }
+        if (session.activeEntryCount == 0) {
+          throw const LocalStoreException(
+            LocalStoreException.invalidInput,
+            'At least one immutable receiving entry is required.',
+          );
+        }
+
+        final now = _utcText(_clock.nowUtc());
+        final payloadJson = ReceivingOutboxPayload.submitSession(
+          operationId: resolvedOperationId,
+          localSessionId: sessionId,
+        );
+        final localSequence = session.nextLocalSequence;
+        await _database
+            .into(_database.localOutboxOperations)
+            .insert(
+              LocalOutboxOperationsCompanion.insert(
+                operationId: resolvedOperationId,
+                aggregateId: sessionId,
+                aggregateType: _aggregateType,
+                operationType: _submitOperationType,
+                localSequence: localSequence,
+                expectedCloudVersion: Value(session.cloudVersion),
+                payloadJson: payloadJson,
+                payloadHash: ReceivingOutboxPayload.hash(payloadJson),
+                status: OutboxOperationStatus.pending.storageValue,
+                attemptCount: 0,
+                createdAtDeviceUtc: now,
+              ),
+            );
+
+        final updated =
+            await (_database.update(_database.localReceivingSessions)..where(
+                  (table) =>
+                      table.id.equals(sessionId) &
+                      table.nextLocalSequence.equals(localSequence) &
+                      table.localStatus.equals(
+                        LocalReceivingStatus.open.storageValue,
+                      ),
+                ))
+                .write(
+                  LocalReceivingSessionsCompanion(
+                    localStatus: Value(
+                      LocalReceivingStatus.closed.storageValue,
+                    ),
+                    localVersion: Value(session.localVersion + 1),
+                    nextLocalSequence: Value(localSequence + 1),
+                    updatedAtDeviceUtc: Value(now),
+                  ),
+                );
+        if (updated != 1) {
+          throw const LocalStoreException(
+            LocalStoreException.sequenceConflict,
+            'The local Receiving Session changed before submission.',
+          );
+        }
+
+        return SubmitLocalReceivingSessionResult(
+          session: _mapSession((await _findSessionRow(sessionId))!),
+          outboxOperation: _mapOutbox(
+            (await _findOutboxRow(resolvedOperationId))!,
+          ),
+          wasDuplicate: false,
+        );
+      });
+    });
+  }
+
+  Future<List<LocalReceivingSessionRecord>> listSessions() async {
+    final rows = await (_database.select(
+      _database.localReceivingSessions,
+    )..orderBy([(table) => OrderingTerm.desc(table.updatedAtDeviceUtc)])).get();
+    return rows.map(_mapSession).toList(growable: false);
   }
 
   Future<LocalReceivingSessionRecord?> getSession(String sessionId) async {

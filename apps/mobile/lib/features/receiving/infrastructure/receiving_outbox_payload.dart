@@ -51,6 +51,16 @@ abstract final class ReceivingOutboxPayload {
     });
   }
 
+  static String submitSession({
+    required String operationId,
+    required String localSessionId,
+  }) {
+    return jsonEncode(<String, Object?>{
+      'operationId': operationId,
+      'localSessionId': localSessionId,
+    });
+  }
+
   static String hash(String payloadJson) {
     return sha256.convert(utf8.encode(payloadJson)).toString();
   }

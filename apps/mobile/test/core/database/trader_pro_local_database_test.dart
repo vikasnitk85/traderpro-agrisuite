@@ -18,7 +18,7 @@ void main() {
     await harness.database.close();
   });
 
-  test('schema version one contains only the required local tables', () async {
+  test('schema version three preserves Task 4 and binds POC context', () async {
     final versionRows = await harness.database
         .customSelect('PRAGMA user_version')
         .get();
@@ -43,13 +43,20 @@ void main() {
         .map((row) => row.read<String>('name'))
         .toSet();
 
-    expect(harness.database.schemaVersion, 1);
-    expect(versionRows.single.read<int>('user_version'), 1);
+    expect(harness.database.schemaVersion, 3);
+    expect(versionRows.single.read<int>('user_version'), 3);
     expect(tables, {
       'local_receiving_sessions',
       'local_receiving_entries',
       'local_outbox_operations',
       'local_sync_state',
+      'poc_device_profiles',
+      'receiving_session_cloud_states',
+      'poc_sync_sources',
+      'mobile_sync_event_inbox',
+      'remote_receiving_session_projections',
+      'remote_receiving_entry_summaries',
+      'poc_control_commands',
     });
     expect(indexes, contains('idx_local_receiving_entries_session'));
     expect(indexes, contains('idx_local_outbox_operations_pending'));
@@ -61,6 +68,11 @@ void main() {
         'local_receiving_entry_fact_is_immutable',
         'local_receiving_entries_cannot_be_deleted',
         'local_receiving_sessions_cannot_be_deleted',
+        'mobile_sync_event_facts_are_immutable',
+        'poc_control_command_identity_is_immutable',
+        'poc_control_commands_cannot_be_deleted',
+        'receiving_cloud_state_context_is_immutable',
+        'receiving_cloud_version_cannot_regress',
       }),
     );
   });
@@ -105,6 +117,117 @@ void main() {
       );
     },
   );
+
+  test('POC cloud and control context and contract shape are enforced', () async {
+    final created = await harness.store.createLocalReceivingSession();
+    const source =
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const device = '019fad0f-2d6a-7000-8000-00000000fc01';
+    const lease = '019fad0f-2d6a-7000-8000-00000000fc02';
+    const command = '019fad0f-2d6a-7000-8000-00000000fc03';
+    await harness.database.customStatement(
+      'INSERT INTO poc_sync_sources '
+      '(source_key, backend_base_url, workspace_id, event_cursor, '
+      'updated_at_utc) VALUES (?, ?, ?, 0, ?)',
+      [
+        source,
+        'http://192.168.1.50:5000',
+        '019fad0f-2d6a-7000-8000-00000000fc00',
+        '2026-07-30T10:00:00.000Z',
+      ],
+    );
+    await harness.database.customStatement(
+      'INSERT INTO receiving_session_cloud_states '
+      '(source_key, bound_device_id, local_session_id, cloud_session_id, '
+      'cloud_reference, cloud_status, cloud_version, lease_id, '
+      'lease_expires_at_utc, editor_device_id, '
+      'last_successful_sync_at_utc, last_cloud_update_at_utc) VALUES '
+      "(?, ?, ?, ?, 'RS-CONTRACT', 'ReceivingInProgress', 5, ?, ?, ?, ?, ?)",
+      [
+        source,
+        device,
+        created.session.id,
+        created.session.id,
+        lease,
+        '2026-07-30T10:05:00.000Z',
+        device,
+        '2026-07-30T10:00:00.000Z',
+        '2026-07-30T10:00:00.000Z',
+      ],
+    );
+    await harness.database.customStatement(
+      'INSERT INTO poc_control_commands '
+      '(command_id, source_key, acting_device_id, command_type, session_id, '
+      'expected_cloud_version, lease_id, status, attempt_count, '
+      'created_at_utc, updated_at_utc) VALUES '
+      "(?, ?, ?, 'Approve', ?, 5, NULL, 'Pending', 0, ?, ?)",
+      [
+        command,
+        source,
+        device,
+        created.session.id,
+        '2026-07-30T10:00:00.000Z',
+        '2026-07-30T10:00:00.000Z',
+      ],
+    );
+
+    for (final update in [
+      (table: 'receiving_session_cloud_states', column: 'source_key'),
+      (table: 'receiving_session_cloud_states', column: 'bound_device_id'),
+      (table: 'poc_control_commands', column: 'source_key'),
+      (table: 'poc_control_commands', column: 'acting_device_id'),
+    ]) {
+      final idColumn = update.table == 'poc_control_commands'
+          ? 'command_id'
+          : 'local_session_id';
+      final id = update.table == 'poc_control_commands'
+          ? command
+          : created.session.id;
+      await expectLater(
+        harness.database.customStatement(
+          'UPDATE ${update.table} SET ${update.column} = ? '
+          'WHERE $idColumn = ?',
+          ['changed-context', id],
+        ),
+        throwsA(isA<SqliteException>()),
+      );
+    }
+    await expectLater(
+      harness.database.customStatement(
+        'UPDATE receiving_session_cloud_states SET cloud_version = 4 '
+        'WHERE local_session_id = ?',
+        [created.session.id],
+      ),
+      throwsA(_sqliteFailure('RECEIVING_CLOUD_VERSION_REGRESSION')),
+    );
+
+    await expectLater(
+      harness.database.customStatement(
+        'INSERT INTO poc_control_commands '
+        '(command_id, source_key, acting_device_id, command_type, session_id, '
+        'expected_cloud_version, lease_id, status, attempt_count, '
+        'created_at_utc, updated_at_utc) VALUES '
+        "('bad-heartbeat', ?, ?, 'Heartbeat', ?, 1, NULL, 'Pending', 0, ?, ?)",
+        [
+          source,
+          device,
+          created.session.id,
+          '2026-07-30T10:00:00.000Z',
+          '2026-07-30T10:00:00.000Z',
+        ],
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+    await expectLater(
+      harness.database.customStatement(
+        'UPDATE receiving_session_cloud_states '
+        "SET cloud_status = 'SubmittedForReview' "
+        'WHERE local_session_id = ?',
+        [created.session.id],
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+  });
 
   test('outbox identity fields cannot be changed after insertion', () async {
     final created = await harness.store.createLocalReceivingSession();

@@ -50,3 +50,15 @@ final class AcceptedLocalReceivingEntry {
   final LocalOutboxOperation outboxOperation;
   final bool wasDuplicate;
 }
+
+final class SubmitLocalReceivingSessionResult {
+  const SubmitLocalReceivingSessionResult({
+    required this.session,
+    required this.outboxOperation,
+    required this.wasDuplicate,
+  });
+
+  final LocalReceivingSessionRecord session;
+  final LocalOutboxOperation outboxOperation;
+  final bool wasDuplicate;
+}
