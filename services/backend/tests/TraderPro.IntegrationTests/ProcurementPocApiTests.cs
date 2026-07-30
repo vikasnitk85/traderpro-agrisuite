@@ -79,7 +79,24 @@ public sealed class ProcurementPocApiTests(PostgreSqlFixture fixture)
             "20260729125244_HardenCloudCommandAndEventCursorSpike";
         await using var database = await fixture.CreateDatabaseAsync(
             task5Migration);
-        var workspace = await CreateWorkspaceAsync(database, "task6-upgrade");
+        var workspaceId = Uuid7.NewGuid();
+        await using (var upgradeConnection =
+                         await database.OpenConnectionAsync())
+        await using (var command = upgradeConnection.CreateCommand())
+        {
+            command.CommandText =
+                """
+                INSERT INTO platform.workspaces (
+                    id, code, display_name, status,
+                    created_at_utc, updated_at_utc, version)
+                VALUES (
+                    @id, 'task6-upgrade', 'Task 6 Upgrade Workspace', 1,
+                    @now, @now, 1)
+                """;
+            command.Parameters.AddWithValue("id", workspaceId);
+            command.Parameters.AddWithValue("now", UtcNow);
+            await command.ExecuteNonQueryAsync(CancellationToken);
+        }
 
         await using (var context = database.CreateContext(null))
         {
@@ -90,7 +107,7 @@ public sealed class ProcurementPocApiTests(PostgreSqlFixture fixture)
         await using var verification = database.CreateContext(null);
         Assert.True(
             await verification.Workspaces.AnyAsync(
-                candidate => candidate.Id == workspace.Id,
+                candidate => candidate.Id == workspaceId,
                 CancellationToken));
         await using var connection = await database.OpenConnectionAsync();
         Assert.Equal(

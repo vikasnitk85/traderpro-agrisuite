@@ -13,9 +13,21 @@ internal sealed class WorkspaceConfiguration :
         builder.ToTable(
             "workspaces",
             "platform",
-            table => table.HasCheckConstraint(
-                "ck_workspaces_status",
-                "status IN (1, 2, 3)"));
+            table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_workspaces_status",
+                    "status IN (1, 2, 3)");
+                table.HasCheckConstraint(
+                    "ck_workspaces_commercial_code",
+                    """
+                    workspace_code = normalized_workspace_code
+                    AND normalized_workspace_code ~
+                        '^[A-Z0-9]+(-[A-Z0-9]+)*$'
+                    AND char_length(normalized_workspace_code)
+                        BETWEEN 3 AND 64
+                    """);
+            });
         builder.HasKey(entity => entity.Id).HasName("pk_workspaces");
         builder.Property(entity => entity.Id)
             .HasColumnName("id")
@@ -24,6 +36,16 @@ internal sealed class WorkspaceConfiguration :
             .HasColumnName("code")
             .HasMaxLength(64)
             .IsRequired();
+        builder.Property(entity => entity.WorkspaceCode)
+            .HasColumnName("workspace_code")
+            .HasMaxLength(64)
+            .IsRequired()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+        builder.Property(entity => entity.NormalizedWorkspaceCode)
+            .HasColumnName("normalized_workspace_code")
+            .HasMaxLength(64)
+            .IsRequired()
+            .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(entity => entity.DisplayName)
             .HasColumnName("display_name")
             .HasMaxLength(200)
@@ -36,6 +58,9 @@ internal sealed class WorkspaceConfiguration :
         builder.HasIndex(entity => entity.Code)
             .IsUnique()
             .HasDatabaseName("ux_workspaces_code");
+        builder.HasIndex(entity => entity.NormalizedWorkspaceCode)
+            .IsUnique()
+            .HasDatabaseName("ux_workspaces_normalized_workspace_code");
     }
 
     private static void ConfigureVersionedTimestamps(
@@ -245,9 +270,15 @@ internal sealed class PlatformUserConfiguration :
         builder.ToTable(
             "users",
             "platform",
-            table => table.HasCheckConstraint(
-                "ck_users_status",
-                "status IN (1, 2)"));
+            table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_users_status",
+                    "status IN (1, 2)");
+                table.HasCheckConstraint(
+                    "ck_users_role",
+                    "role IN (1, 2)");
+            });
         builder.HasKey(entity => entity.Id).HasName("pk_users");
         builder.HasAlternateKey(entity => new
         {
@@ -268,6 +299,10 @@ internal sealed class PlatformUserConfiguration :
         builder.Property(entity => entity.DisplayName)
             .HasColumnName("display_name")
             .HasMaxLength(200)
+            .IsRequired();
+        builder.Property(entity => entity.Role)
+            .HasColumnName("role")
+            .HasConversion<short>()
             .IsRequired();
         builder.Property(entity => entity.Status)
             .HasColumnName("status")

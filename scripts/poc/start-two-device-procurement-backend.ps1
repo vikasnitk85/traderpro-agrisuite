@@ -18,6 +18,11 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $apiProject = Join-Path `
     $repositoryRoot `
     'services\backend\src\TraderPro.Api'
+$keyRingPath = Join-Path `
+    $repositoryRoot `
+    'artifacts\development-procurement-poc-key-ring'
+$signingKey = [Convert]::ToBase64String(
+    [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 
 Write-Warning 'Development Only: temporary workspace/device IDs and HTTP are not authentication.'
 Write-Host "Binding the development API to http://${BindAddress}:$Port"
@@ -28,6 +33,12 @@ $environmentChanges = [ordered]@{
     DOTNET_ENVIRONMENT = 'Development'
     TraderPro__Spikes__Enabled = 'true'
     TraderPro__Spikes__ProcurementPoc__Enabled = 'true'
+    TraderPro__Spikes__IdentityBootstrap__Enabled = 'false'
+    TraderPro__Authentication__Issuer = 'TraderPro.Development.Poc'
+    TraderPro__Authentication__Audience = 'TraderPro.Development.Poc.Client'
+    TraderPro__Authentication__SigningKey = $signingKey
+    TraderPro__Authentication__DataProtectionKeyRingPath = $keyRingPath
+    TraderPro__Authentication__RequireHttps = 'false'
     ASPNETCORE_URLS = "http://${BindAddress}:$Port"
 }
 $previousEnvironment = @{}
@@ -53,6 +64,7 @@ try {
     }
 }
 finally {
+    $signingKey = $null
     if ($locationPushed) {
         Pop-Location
     }

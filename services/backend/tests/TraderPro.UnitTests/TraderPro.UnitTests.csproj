@@ -17,5 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TraderPro.Application\TraderPro.Application.csproj" />
     <ProjectReference Include="..\..\src\TraderPro.Domain\TraderPro.Domain.csproj" />
+    <ProjectReference Include="..\..\src\TraderPro.Infrastructure\TraderPro.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

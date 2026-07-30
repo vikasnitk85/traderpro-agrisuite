@@ -1,4 +1,5 @@
 using TraderPro.Domain.Common;
+using TraderPro.Domain.Platform.Identity;
 
 namespace TraderPro.Domain.Platform;
 
@@ -16,6 +17,7 @@ public sealed class PlatformUser :
         Guid workspaceId,
         string username,
         string displayName,
+        TraderProRole role,
         DateTimeOffset createdAtUtc)
     {
         Id = Uuid7.NewGuid();
@@ -25,6 +27,7 @@ public sealed class PlatformUser :
             displayName,
             200,
             nameof(displayName));
+        Role = PlatformEntityGuard.Defined(role, nameof(role));
         Status = PlatformUserStatus.Active;
         CreatedAtUtc = PlatformEntityGuard.Utc(createdAtUtc, nameof(createdAtUtc));
         UpdatedAtUtc = CreatedAtUtc;
@@ -38,6 +41,8 @@ public sealed class PlatformUser :
     public string Username { get; private set; } = string.Empty;
 
     public string DisplayName { get; private set; } = string.Empty;
+
+    public TraderProRole Role { get; private set; }
 
     public PlatformUserStatus Status { get; private set; }
 
@@ -57,6 +62,22 @@ public sealed class PlatformUser :
             workspaceId,
             username,
             displayName,
+            TraderProRole.Operator,
+            createdAtUtc);
+    }
+
+    public static PlatformUser Create(
+        Guid workspaceId,
+        string username,
+        string displayName,
+        TraderProRole role,
+        DateTimeOffset createdAtUtc)
+    {
+        return new PlatformUser(
+            workspaceId,
+            username,
+            displayName,
+            role,
             createdAtUtc);
     }
 
@@ -71,5 +92,10 @@ public sealed class PlatformUser :
     public void SetStatus(PlatformUserStatus status)
     {
         Status = PlatformEntityGuard.Defined(status, nameof(status));
+    }
+
+    public void SetRole(TraderProRole role)
+    {
+        Role = PlatformEntityGuard.Defined(role, nameof(role));
     }
 }

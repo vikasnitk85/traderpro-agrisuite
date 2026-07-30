@@ -378,6 +378,140 @@ public sealed class DependencyDirectionTests
         Assert.Empty(offendingFiles);
     }
 
+    [Fact]
+    public void Authenticated_commercial_context_is_an_application_abstraction()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var abstraction = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Application",
+            "Platform",
+            "Identity",
+            "AuthenticatedTraderProContext.cs");
+        var implementation = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src",
+            "TraderPro.Infrastructure",
+            "Modules",
+            "Platform",
+            "Identity",
+            "CurrentAuthenticatedTraderProContext.cs");
+
+        Assert.True(File.Exists(abstraction));
+        Assert.Contains(
+            "interface IAuthenticatedTraderProContext",
+            File.ReadAllText(abstraction),
+            StringComparison.Ordinal);
+        Assert.True(File.Exists(implementation));
+    }
+
+    [Fact]
+    public void Commercial_identity_does_not_depend_on_temporary_spike_context()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Platform",
+                "Identity"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Platform",
+                "Identity"),
+        };
+        var forbidden = new[]
+        {
+            "ITemporaryWorkspaceContextResolver",
+            "ITemporaryDeviceContextResolver",
+            "ICurrentDeviceAccessor",
+            "CurrentDeviceAccessor",
+            "SpikeRequestContext",
+            "X-TraderPro-Workspace-ID",
+            "X-TraderPro-Device-ID",
+        };
+        var offendingFiles = roots
+            .SelectMany(EnumerateSourceFiles)
+            .Where(path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
+    [Fact]
+    public void Identity_secret_hashing_is_implemented_only_in_infrastructure()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var sourceRoot = Path.Combine(
+            repositoryRoot,
+            "services",
+            "backend",
+            "src");
+        var offendingFiles = EnumerateSourceFiles(sourceRoot)
+            .Where(path => File.ReadAllText(path).Contains(
+                "IdentitySecretCryptography",
+                StringComparison.Ordinal))
+            .Where(path => !path.StartsWith(
+                Path.Combine(sourceRoot, "TraderPro.Infrastructure"),
+                StringComparison.OrdinalIgnoreCase))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
+    [Fact]
+    public void Identity_boundary_does_not_implement_business_modules()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var identityRoots = Directory
+            .EnumerateDirectories(
+                Path.Combine(
+                    repositoryRoot,
+                    "services",
+                    "backend",
+                    "src"),
+                "Identity",
+                SearchOption.AllDirectories);
+        var forbidden = new[]
+        {
+            "TraderPro.Domain.Procurement",
+            "TraderPro.Domain.Inventory",
+            "TraderPro.Domain.Sales",
+            "TraderPro.Domain.Finance",
+            "PurchaseBill",
+            "BillingRepository",
+        };
+        var offendingFiles = identityRoots
+            .SelectMany(EnumerateSourceFiles)
+            .Where(path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offendingFiles);
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

@@ -3,8 +3,11 @@ namespace TraderPro.Application.Common.Errors;
 public enum ApplicationErrorCategory
 {
     Validation,
+    Authentication,
+    Authorization,
     NotFound,
     Conflict,
+    TooManyRequests,
     Unavailable,
 }
 

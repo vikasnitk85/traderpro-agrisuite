@@ -36,6 +36,14 @@ public sealed class ApiProblemMiddleware(
     private static string GetOrCreateCorrelationId(HttpContext context)
     {
         if (context.Items.TryGetValue(
+                CommercialIdentityRequestMiddleware.CorrelationItemKey,
+                out var commercialValue) &&
+            commercialValue is string commercialCorrelationId)
+        {
+            return commercialCorrelationId;
+        }
+
+        if (context.Items.TryGetValue(
                 SpikeRequestContextMiddleware.CorrelationItemKey,
                 out var value) &&
             value is string correlationId)
@@ -62,10 +70,16 @@ internal static class ApiProblemWriter
         {
             ApplicationErrorCategory.Validation =>
                 StatusCodes.Status400BadRequest,
+            ApplicationErrorCategory.Authentication =>
+                StatusCodes.Status401Unauthorized,
+            ApplicationErrorCategory.Authorization =>
+                StatusCodes.Status403Forbidden,
             ApplicationErrorCategory.NotFound =>
                 StatusCodes.Status404NotFound,
             ApplicationErrorCategory.Conflict =>
                 StatusCodes.Status409Conflict,
+            ApplicationErrorCategory.TooManyRequests =>
+                StatusCodes.Status429TooManyRequests,
             ApplicationErrorCategory.Unavailable =>
                 StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status500InternalServerError,

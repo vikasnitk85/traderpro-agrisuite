@@ -73,6 +73,15 @@ public sealed class Device :
         Name = PlatformEntityGuard.Required(name, 200, nameof(name));
     }
 
+    public void UpdateActivationMetadata(string name, string platform)
+    {
+        Name = PlatformEntityGuard.Required(name, 200, nameof(name));
+        Platform = PlatformEntityGuard.Required(
+            platform,
+            50,
+            nameof(platform));
+    }
+
     public void MarkSeen(DateTimeOffset seenAtUtc)
     {
         LastSeenAtUtc = PlatformEntityGuard.Utc(seenAtUtc, nameof(seenAtUtc));

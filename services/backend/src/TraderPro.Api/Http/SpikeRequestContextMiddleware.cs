@@ -19,6 +19,17 @@ public sealed class SpikeRequestContextMiddleware(RequestDelegate next)
         ITemporaryDeviceContextResolver deviceResolver,
         IConfiguration configuration)
     {
+        if (context.Request.Path.Equals(
+                "/api/v1/spikes/identity/bootstrap",
+                StringComparison.OrdinalIgnoreCase) ||
+            context.Request.Path.Equals(
+                "/api/v1/spikes/identity/bootstrap/",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+
         if (!context.Request.Path.StartsWithSegments(
                 "/api/v1/spikes",
                 StringComparison.OrdinalIgnoreCase) &&

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260730005603_AddProductionIdentityAndDeviceSessions")]
+    partial class AddProductionIdentityAndDeviceSessions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -487,11 +490,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_device_activation_codes_code_hash");
 
-                    b.HasIndex("WorkspaceId", "DeviceId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_device_activation_codes_workspace_device_active")
-                        .HasFilter("used_at_utc IS NULL AND revoked_at_utc IS NULL");
-
                     b.HasIndex("WorkspaceId", "IssuedByUserId");
 
                     b.HasIndex("WorkspaceId", "DeviceId", "ExpiresAtUtc")
@@ -502,8 +500,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_device_activation_codes_expiry", "expires_at_utc > created_at_utc");
 
                             t.HasCheckConstraint("ck_device_activation_codes_one_time_state", "used_at_utc IS NULL OR revoked_at_utc IS NULL");
-
-                            t.HasCheckConstraint("ck_device_activation_codes_terminal_timing", "(used_at_utc IS NULL OR (\n    used_at_utc >= created_at_utc\n    AND used_at_utc <= expires_at_utc\n))\nAND (revoked_at_utc IS NULL OR\n    revoked_at_utc >= created_at_utc)");
 
                             t.HasCheckConstraint("ck_device_activation_codes_version", "version > 0");
                         });
@@ -637,28 +633,20 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("WorkspaceId", "Id")
                         .HasName("ak_refresh_tokens_workspace_id_id");
 
-                    b.HasAlternateKey("WorkspaceId", "FamilyId", "Id")
-                        .HasName("ak_refresh_tokens_workspace_family_id");
-
                     b.HasIndex("TokenHash")
                         .IsUnique()
                         .HasDatabaseName("ux_refresh_tokens_token_hash");
 
+                    b.HasIndex("WorkspaceId", "RotatedToTokenId");
+
                     b.HasIndex("WorkspaceId", "FamilyId", "CreatedAtUtc")
                         .HasDatabaseName("ix_refresh_tokens_workspace_family_created");
-
-                    b.HasIndex("WorkspaceId", "FamilyId", "RotatedToTokenId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_refresh_tokens_workspace_family_replacement")
-                        .HasFilter("rotated_to_token_id IS NOT NULL");
 
                     b.ToTable("refresh_tokens", "platform", t =>
                         {
                             t.HasCheckConstraint("ck_refresh_tokens_expiry", "expires_at_utc > created_at_utc");
 
-                            t.HasCheckConstraint("ck_refresh_tokens_no_self_rotation", "rotated_to_token_id IS NULL OR rotated_to_token_id <> id");
-
-                            t.HasCheckConstraint("ck_refresh_tokens_rotation_state", "(\n    consumed_at_utc IS NULL\n    AND rotated_to_token_id IS NULL\n    AND replay_protected_token IS NULL\n    AND replay_allowed_until_utc IS NULL\n)\nOR\n(\n    consumed_at_utc IS NOT NULL\n    AND rotated_to_token_id IS NOT NULL\n    AND consumed_at_utc >= created_at_utc\n    AND consumed_at_utc <= expires_at_utc\n    AND (\n        (\n            replay_protected_token IS NOT NULL\n            AND replay_allowed_until_utc >\n                consumed_at_utc\n            AND replay_allowed_until_utc <=\n                expires_at_utc\n        )\n        OR\n        (\n            replay_protected_token IS NULL\n            AND replay_allowed_until_utc IS NULL\n        )\n    )\n)");
+                            t.HasCheckConstraint("ck_refresh_tokens_rotation_state", "(\n    consumed_at_utc IS NULL\n    AND rotated_to_token_id IS NULL\n    AND replay_protected_token IS NULL\n    AND replay_allowed_until_utc IS NULL\n)\nOR\n(\n    consumed_at_utc IS NOT NULL\n    AND rotated_to_token_id IS NOT NULL\n    AND replay_protected_token IS NOT NULL\n    AND replay_allowed_until_utc > consumed_at_utc\n    AND replay_allowed_until_utc <= expires_at_utc\n)");
 
                             t.HasCheckConstraint("ck_refresh_tokens_version", "version > 0");
                         });
@@ -1469,10 +1457,10 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
 
                     b.HasOne("TraderPro.Domain.Platform.Identity.RefreshToken", null)
                         .WithMany()
-                        .HasForeignKey("WorkspaceId", "FamilyId", "RotatedToTokenId")
-                        .HasPrincipalKey("WorkspaceId", "FamilyId", "Id")
+                        .HasForeignKey("WorkspaceId", "RotatedToTokenId")
+                        .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_refresh_tokens_rotated_to_workspace_family_token");
+                        .HasConstraintName("fk_refresh_tokens_rotated_to_workspace_id_token_id");
                 });
 
             modelBuilder.Entity("TraderPro.Domain.Platform.Identity.RefreshTokenFamily", b =>

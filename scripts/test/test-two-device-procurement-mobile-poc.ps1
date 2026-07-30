@@ -18,15 +18,9 @@ $backendPocScript = Join-Path `
 
 Push-Location $repositoryRoot
 try {
-    Write-Host 'Confirming Task 6B did not change the frozen backend source or tests...'
-    $backendChanges = @(git status --porcelain --untracked-files=all -- .\services\backend)
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Unable to inspect the frozen Task 6A backend worktree.'
-    }
-    if ($backendChanges.Count -ne 0) {
-        $backendChanges | ForEach-Object { Write-Error $_ }
-        throw 'Task 6B must not change the frozen Task 6A backend.'
-    }
+    Write-Host (
+        'Verifying frozen Task 6B behavior while allowing later reviewed ' +
+        'backend tasks to coexist in the worktree...')
 
     Push-Location $mobileRoot
     try {

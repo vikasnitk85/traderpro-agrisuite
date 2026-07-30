@@ -27,14 +27,22 @@ public sealed class CloudCommandMigrationUpgradeTests(
     {
         await using var database = await fixture.CreateDatabaseAsync(
             FoundationMigration);
-        var workspace = Workspace.Create(
-            "upgrade-data",
-            "Upgrade Data Workspace",
-            UtcNow);
-        await using (var context = database.CreateContext(null))
+        var workspaceId = Uuid7.NewGuid();
+        await using (var connection = await database.OpenConnectionAsync())
+        await using (var command = connection.CreateCommand())
         {
-            context.Workspaces.Add(workspace);
-            await context.SaveChangesAsync(CancellationToken);
+            command.CommandText =
+                """
+                INSERT INTO platform.workspaces (
+                    id, code, display_name, status,
+                    created_at_utc, updated_at_utc, version)
+                VALUES (
+                    @id, 'upgrade-data', 'Upgrade Data Workspace', 1,
+                    @now, @now, 1)
+                """;
+            command.Parameters.AddWithValue("id", workspaceId);
+            command.Parameters.AddWithValue("now", UtcNow);
+            await command.ExecuteNonQueryAsync(CancellationToken);
         }
 
         var firstOutboxId = Uuid7.NewGuid();
@@ -44,7 +52,7 @@ public sealed class CloudCommandMigrationUpgradeTests(
         var legacyIdempotencyId = Uuid7.NewGuid();
         await InsertPreTaskFiveRowsAsync(
             database,
-            workspace.Id,
+            workspaceId,
             firstOutboxId,
             secondOutboxId,
             legacyIdempotencyId,
@@ -55,7 +63,7 @@ public sealed class CloudCommandMigrationUpgradeTests(
 
         await AssertUpgradedSchemaAndDataAsync(
             database,
-            workspace.Id,
+            workspaceId,
             legacyIdempotencyId);
 
         await using var factory = new TraderProApiFactory(
@@ -69,7 +77,7 @@ public sealed class CloudCommandMigrationUpgradeTests(
         };
         request.Headers.Add(
             "X-TraderPro-Workspace-ID",
-            workspace.Id.ToString("D"));
+            workspaceId.ToString("D"));
         request.Headers.Add("Idempotency-Key", legacyKey);
         using var response = await client.SendAsync(
             request,
@@ -89,7 +97,7 @@ public sealed class CloudCommandMigrationUpgradeTests(
                 .GetProperty("retryable")
                 .GetBoolean());
 
-        await using var verification = database.CreateContext(workspace.Id);
+        await using var verification = database.CreateContext(workspaceId);
         Assert.Equal(
             0,
             await verification.CommandProbes.CountAsync(CancellationToken));

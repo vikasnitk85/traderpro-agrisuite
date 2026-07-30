@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TraderPro.Application.Common.Tenancy;
 using TraderPro.Domain.Platform;
+using TraderPro.Domain.Platform.Identity;
 using TraderPro.Domain.Procurement.Poc;
 
 namespace TraderPro.Infrastructure.Persistence;
@@ -18,6 +19,18 @@ public sealed class TraderProDbContext(
     public DbSet<PlatformUser> Users => Set<PlatformUser>();
 
     public DbSet<Device> Devices => Set<Device>();
+
+    public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
+
+    public DbSet<DeviceCredential> DeviceCredentials => Set<DeviceCredential>();
+
+    public DbSet<DeviceActivationCode> DeviceActivationCodes =>
+        Set<DeviceActivationCode>();
+
+    public DbSet<RefreshTokenFamily> RefreshTokenFamilies =>
+        Set<RefreshTokenFamily>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<IdempotencyRecord> IdempotencyRecords =>
         Set<IdempotencyRecord>();
@@ -57,6 +70,21 @@ public sealed class TraderProDbContext(
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<Device>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<UserCredential>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<DeviceCredential>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<DeviceActivationCode>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<RefreshTokenFamily>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<RefreshToken>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<IdempotencyRecord>()

@@ -4,10 +4,11 @@
 
 TraderPro AgriSuite is an Android-first agricultural trading and operations product. Its foundation combines a Flutter mobile application with a .NET 10 modular-monolith backend, PostgreSQL 18, one deployable API, and one background worker. Business data is cloud-authoritative; the mobile architecture will preserve locally captured physical facts before synchronisation.
 
-This repository contains a buildable foundation with the first Platform
-database migration and a focused mobile offline-store proof of concept. It
-establishes project, module, dependency, test, and local-infrastructure
-boundaries without implementing complete production business workflows.
+This repository contains a buildable foundation with the Platform database,
+production backend identity/device-session boundary, and focused mobile
+offline-store and two-device proofs of concept. It establishes project,
+module, dependency, test, and local-infrastructure boundaries without
+implementing complete production business workflows.
 
 ## Repository map
 
@@ -140,6 +141,9 @@ powershell -ExecutionPolicy Bypass `
 
 powershell -ExecutionPolicy Bypass `
   -File .\scripts\test\test-mobile-offline-store.ps1
+
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-production-identity-foundation.ps1
 ```
 
 The .NET test command runs unit, PostgreSQL integration, and architecture test
@@ -221,10 +225,11 @@ The API and Worker register persistence but never call
 `Database.Migrate()` during startup. The API exposes `/health/live` and
 database-backed `/health/ready`.
 
-Run either backend only after setting the local connection variable:
+The API also requires the explicit authentication settings documented below;
+it has no committed or fallback signing secret. Run the Worker after setting
+the local connection variable:
 
 ```powershell
-dotnet run --project .\services\backend\src\TraderPro.Api
 dotnet run --project .\services\backend\src\TraderPro.Worker
 ```
 
@@ -258,6 +263,108 @@ dotnet ef database update `
 The reviewed migrations are `AddCloudCommandAndEventCursorSpike` followed by
 `HardenCloudCommandAndEventCursorSpike`. API and Worker startup still never
 apply migrations automatically.
+
+## Production identity and device sessions
+
+Task 7A adds the backend identity prerequisite for future commercial APIs:
+workspace/password login bound to one pre-created active Device, one-time
+device activation, short-lived signed JWT access tokens, rotating hash-only
+refresh tokens, immediate database revalidation, Owner/Operator policies,
+logout, lockout, and safe response-loss replay. Reactivation rotates the
+credential on the same Device row, so reinstall does not consume another
+licensed slot.
+
+Commercial authority is exposed through
+`IAuthenticatedTraderProContext`. It comes from validated authentication and
+current workspace/user/device/company/default-branch/role state. Temporary
+`X-TraderPro-Workspace-ID` and `X-TraderPro-Device-ID` POC headers cannot
+change `/api/v1/auth/me` or any other commercial context. Endpoint metadata,
+not URL-prefix matching, selects commercial context, revoked-family
+allowances, secret-response handling, and commercial authorization policy.
+POC routes remain separate even when an `Authorization` header is present.
+
+Required configuration is under `TraderPro:Authentication`:
+
+- `Issuer`
+- `Audience`
+- `AccessTokenMinutes`
+- `RefreshTokenDays`
+- `RefreshReplaySeconds`
+- `SigningKey`
+- `DataProtectionKeyRingPath`
+- `LockoutFailureLimit`
+- `LockoutMinutes`
+- `ActivationCodeMinutes`
+- `RateLimitingEnabled`
+- `RequireHttps`
+- `ForwardedHeadersEnabled`
+- `TrustedProxyAddresses`
+
+Environment forms use double underscores, for example
+`TraderPro__Authentication__SigningKey`. The signing key must be private
+Base64 representing at least 256 random bits. Never commit or print signing
+keys, Data Protection keys, passwords, activation codes, device secrets,
+access tokens, refresh tokens, or connection strings. Production has no
+fallback secret and refuses missing/unsafe authentication configuration or
+enabled development spikes. Production also refuses `RequireHttps=false`.
+Forwarded TLS state is trusted only when forwarding is explicitly enabled and
+the immediate proxy's exact IP is allowlisted; arbitrary
+`X-Forwarded-Proto` input is ignored.
+
+All secret-bearing identity responses set `Cache-Control: no-store` and
+`Pragma: no-cache`. Valid commercial correlation UUIDs are preserved through
+errors and material audits. Owner-only denials use `OWNER_ROLE_REQUIRED`;
+other commercial authorization denials use `AUTHORIZATION_DENIED`.
+
+PostgreSQL transaction-scoped advisory locks use one deterministic hierarchy:
+bootstrap, user session, activation device, device credential, token family,
+token identity, then command idempotency; family collections are UUID-sorted.
+This serializes login/logout-all, refresh/logout, and login or refresh against
+device reactivation across API instances. Refresh replay is permitted only
+while the exact same-family replacement remains active, unconsumed, and
+hash-verified. Once B rotates to C, presenting predecessor A revokes the family
+and records reuse exactly once. Protected replay material is cleared as soon
+as it is no longer needed.
+
+`HardenProductionIdentitySessionSecurity` follows the original identity
+migration. It enforces same-workspace/family token chains, one predecessor per
+replacement, valid rotation timing, immutable token facts, and one active
+activation code per Device. Issuance and redemption share a device lock.
+Repeating a successful activation-code idempotency key returns
+`DEVICE_ACTIVATION_CODE_RESPONSE_NOT_REPLAYABLE` without persisting or
+returning the code again; a new key intentionally replaces the prior active
+code.
+
+The Development/Testing identity bootstrap flag is
+`TraderPro:Spikes:IdentityBootstrap:Enabled`; it is false by default and never
+mapped in Production. Start a safe local process with:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\poc\start-production-identity-backend.ps1 `
+  -Url 'http://localhost:5000' `
+  -DataProtectionKeyRingPath `
+    '.\artifacts\development-identity-key-ring' `
+  -GenerateTemporarySigningKey `
+  -EnableIdentityBootstrap
+```
+
+Run the focused identity, PostgreSQL 18/API, architecture, and Task 5/6A
+regression suite with:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-production-identity-foundation.ps1
+```
+
+Follow
+[`TPRUN-002-Development-Identity-Bootstrap.md`](docs/runbooks/TPRUN-002-Development-Identity-Bootstrap.md).
+The design is documented in
+[`TPTECH-001.18-Production-Identity-and-Device-Sessions.md`](docs/technical-specs/TPTECH-001.18-Production-Identity-and-Device-Sessions.md)
+and
+[`ADR-0005-authenticated-commercial-context.md`](docs/decisions/ADR-0005-authenticated-commercial-context.md).
+Flutter activation, secure token storage, login screens, and authenticated
+mobile networking are explicitly deferred.
 
 ## Two-device Procurement backend POC (non-production)
 
@@ -391,6 +498,15 @@ and
 - `HardenTwoDeviceProcurementPocContracts` preserves immutable Task 4 payloads,
   binds POC idempotency to device and operation scope, and hardens session
   identity, lifecycle shape, and deletion rules.
+- `AddProductionIdentityAndDeviceSessions` adds immutable commercial workspace
+  codes, password/device credentials, activation codes, rotating
+  refresh-token families, and database transition controls.
+- `HardenProductionIdentitySessionSecurity` constrains token chains to one
+  workspace/family, protects immutable security facts and replay clearing, and
+  enforces one active activation code per Device.
+- The API validates signed access tokens and revalidates current commercial
+  workspace/user/device/company/default-branch/role authority on every
+  protected request; temporary POC context remains separate.
 - Workspace query filters and write validation provide application-level
   tenant scoping; PostgreSQL Row-Level Security remains a mandatory
   pre-production gate.
@@ -434,7 +550,8 @@ The following capabilities are intentionally outside this scaffold:
 - Sales workflows
 - Production workflows
 - Subscription billing
-- Full authentication and authorisation
+- Flutter authentication/activation UI and secure token storage
+- MFA, password reset, SSO, and production onboarding
 - Production cloud synchronisation (Task 6B is a debug-only POC)
 - PDF generation
 - Business-module database migrations and domain entities
