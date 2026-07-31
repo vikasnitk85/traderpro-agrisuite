@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using TraderPro.Application.Common.Tenancy;
 using TraderPro.Domain.Platform;
 using TraderPro.Domain.Platform.Identity;
+using TraderPro.Domain.Operations;
+using TraderPro.Domain.Procurement.MasterData;
 using TraderPro.Domain.Procurement.Poc;
 
 namespace TraderPro.Infrastructure.Persistence;
@@ -40,6 +42,20 @@ public sealed class TraderProDbContext(
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<CommandProbe> CommandProbes => Set<CommandProbe>();
+
+    public DbSet<BusinessLocation> BusinessLocations =>
+        Set<BusinessLocation>();
+
+    public DbSet<ReceivingVehicle> ReceivingVehicles =>
+        Set<ReceivingVehicle>();
+
+    public DbSet<BagType> BagTypes => Set<BagType>();
+
+    public DbSet<WeightProcessingPolicy> WeightProcessingPolicies =>
+        Set<WeightProcessingPolicy>();
+
+    public DbSet<CompanyProcurementSettings> CompanyProcurementSettings =>
+        Set<CompanyProcurementSettings>();
 
     public DbSet<ReceivingSessionPoc> ReceivingSessionPocs =>
         Set<ReceivingSessionPoc>();
@@ -97,6 +113,21 @@ public sealed class TraderProDbContext(
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<CommandProbe>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<BusinessLocation>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<ReceivingVehicle>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<BagType>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<WeightProcessingPolicy>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CompanyProcurementSettings>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<ReceivingSessionPoc>()

@@ -69,6 +69,10 @@ public sealed class ProcurementPocApiTests(PostgreSqlFixture fixture)
                 JOIN pg_namespace n ON n.oid = c.relnamespace
                 WHERE n.nspname = 'procurement'
                   AND NOT t.tgisinternal
+                  AND c.relname IN (
+                    'receiving_session_pocs',
+                    'receiving_entry_pocs',
+                    'receiving_finalization_pocs')
                 """));
     }
 
@@ -118,6 +122,10 @@ public sealed class ProcurementPocApiTests(PostgreSqlFixture fixture)
                 SELECT count(*)
                 FROM information_schema.tables
                 WHERE table_schema = 'procurement'
+                  AND table_name IN (
+                    'receiving_session_pocs',
+                    'receiving_entry_pocs',
+                    'receiving_finalization_pocs')
                 """));
     }
 

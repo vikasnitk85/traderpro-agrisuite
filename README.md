@@ -366,6 +366,64 @@ and
 Flutter activation, secure token storage, login screens, and authenticated
 mobile networking are explicitly deferred.
 
+## Commercial operational master data
+
+Task 7B1 adds the first production commercial masters behind the authenticated
+Task 7A context:
+
+- shared Operations Business Locations;
+- minimal Procurement Receiving Vehicles;
+- Procurement Bag Types with exact `numeric(20,6)` tare;
+- Task 3-aligned Weight Processing Policies;
+- explicit Company Procurement Settings for destination, policy, and optional
+  vehicle selection.
+
+Owner-authenticated routes create, update, deactivate, reactivate, and
+configure these records. Owner and Operator routes read them:
+
+```text
+/api/v1/operations/locations
+/api/v1/procurement/vehicles
+/api/v1/procurement/bag-types
+/api/v1/procurement/weight-policies
+/api/v1/procurement/settings
+```
+
+Commercial authority comes only from `IAuthenticatedTraderProContext`.
+Temporary POC workspace/device headers cannot change it. Codes are normalized
+and immutable, mutations require PostgreSQL-backed idempotency, updates use
+expected versions, physical deletion is prohibited, and material changes
+commit with immutable audit facts and `Internal` outbox events. The current
+default destination and weight policy must be changed in settings before they
+can deactivate.
+
+`HardenCommercialOperationalMasterDataContracts` persists each real
+aggregate revision, guards one-step Version/timestamp transitions in
+PostgreSQL, validates vehicle registration normalization, requires explicit
+Bag Type returnability, scope-binds list cursors, and serializes Procurement
+default assignment/deactivation per company. Internal events do not acquire
+the Task 5/6 global MobileSync cursor-order lock.
+
+Run the focused unit, PostgreSQL 18/API, architecture, Task 7A, and Task 6A
+suite with:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-commercial-operational-master-data.ps1
+```
+
+Follow
+[`TPRUN-003-Commercial-Operational-Master-Data.md`](docs/runbooks/TPRUN-003-Commercial-Operational-Master-Data.md).
+The design is documented in
+[`TPTECH-001.19-Commercial-Operational-Master-Data.md`](docs/technical-specs/TPTECH-001.19-Commercial-Operational-Master-Data.md)
+and
+[`ADR-0006-commercial-operational-master-data.md`](docs/decisions/ADR-0006-commercial-operational-master-data.md).
+
+Task 7B2 remains deferred and will add Suppliers, Product Groups, Products,
+product-specific Standard Bag Weights, and Supplier Product Scope. Task 7B1
+does not add commercial Receiving, settlement, Inventory, Sales, Finance,
+Production, Fleet Management, Flutter screens, or mobile commercial sync.
+
 ## Two-device Procurement backend POC (non-production)
 
 Task 6A adds a development/testing-only backend proof of concept. It is not a
@@ -504,6 +562,9 @@ and
 - `HardenProductionIdentitySessionSecurity` constrains token chains to one
   workspace/family, protects immutable security facts and replay clearing, and
   enforces one active activation code per Device.
+- `AddCommercialOperationalMasterData` adds production Business Locations,
+  Receiving Vehicles, Bag Types, Weight Processing Policies, and the
+  company-level procurement defaults that bind them.
 - The API validates signed access tokens and revalidates current commercial
   workspace/user/device/company/default-branch/role authority on every
   protected request; temporary POC context remains separate.
@@ -554,7 +615,8 @@ The following capabilities are intentionally outside this scaffold:
 - MFA, password reset, SSO, and production onboarding
 - Production cloud synchronisation (Task 6B is a debug-only POC)
 - PDF generation
-- Business-module database migrations and domain entities
+- Business-module migrations and domain entities beyond the Task 7B1
+  commercial operational masters
 - SignalR integration and cloud synchronisation
 
 The implemented database foundation is documented in

@@ -3,6 +3,7 @@ using TraderPro.Infrastructure.Modules.Documents;
 using TraderPro.Infrastructure.Modules.Finance;
 using TraderPro.Infrastructure.Modules.Inventory;
 using TraderPro.Infrastructure.Modules.MasterData;
+using TraderPro.Infrastructure.Modules.Operations;
 using TraderPro.Infrastructure.Modules.Platform;
 using TraderPro.Infrastructure.Modules.Procurement;
 using TraderPro.Infrastructure.Modules.Production;
@@ -25,6 +26,7 @@ public static class ModuleRegistration
 
         return services
             .AddPlatformModule()
+            .AddOperationsModule()
             .AddMasterDataModule()
             .AddProcurementModule()
             .AddInventoryModule()

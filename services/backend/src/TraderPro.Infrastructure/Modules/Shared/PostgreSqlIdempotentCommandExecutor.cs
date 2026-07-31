@@ -10,6 +10,12 @@ using TraderPro.Infrastructure.Persistence;
 
 namespace TraderPro.Infrastructure.Modules.Shared;
 
+internal enum OutboxCommitOrdering
+{
+    MobileSyncCursor,
+    IndependentInternal,
+}
+
 /// <summary>
 /// Shared Task 5/Task 6A database-backed idempotent command transaction.
 /// Correctness is provided by PostgreSQL transaction locks and constraints,
@@ -35,6 +41,64 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
         Func<Task<T>> execute,
         Func<T, bool> isReplayable,
         Func<Task<ApplicationProblemException>>? concurrencyProblem,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        return await ExecuteAsync(
+            workspaceId,
+            commandType,
+            idempotencyKey,
+            requestHash,
+            correlationId,
+            resultStatusCode,
+            execute,
+            isReplayable,
+            concurrencyProblem,
+            persistenceProblem: null,
+            cancellationToken);
+    }
+
+    public async Task<IdempotentCommandResult<T>> ExecuteAsync<T>(
+        Guid workspaceId,
+        string commandType,
+        string idempotencyKey,
+        string requestHash,
+        string correlationId,
+        int resultStatusCode,
+        Func<Task<T>> execute,
+        Func<T, bool> isReplayable,
+        Func<Task<ApplicationProblemException>>? concurrencyProblem,
+        Func<Exception, ApplicationProblemException?>? persistenceProblem,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        return await ExecuteAsync(
+            workspaceId,
+            commandType,
+            idempotencyKey,
+            requestHash,
+            correlationId,
+            resultStatusCode,
+            execute,
+            isReplayable,
+            concurrencyProblem,
+            persistenceProblem,
+            OutboxCommitOrdering.MobileSyncCursor,
+            cancellationToken);
+    }
+
+    public async Task<IdempotentCommandResult<T>> ExecuteAsync<T>(
+        Guid workspaceId,
+        string commandType,
+        string idempotencyKey,
+        string requestHash,
+        string correlationId,
+        int resultStatusCode,
+        Func<Task<T>> execute,
+        Func<T, bool> isReplayable,
+        Func<Task<ApplicationProblemException>>? concurrencyProblem,
+        Func<Exception, ApplicationProblemException?>? persistenceProblem,
+        OutboxCommitOrdering outboxCommitOrdering,
         CancellationToken cancellationToken)
         where T : class
     {
@@ -99,11 +163,16 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
                     existing.ResultStatusCode.Value);
             }
 
-            // All MobileSync event writers share this transaction lock so
-            // cursor sequence visibility stays ordered with commit.
-            await dbContext.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT pg_advisory_xact_lock(hashtextextended({EventCommitOrderLockScope}, 0))",
-                cancellationToken);
+            if (outboxCommitOrdering is
+                OutboxCommitOrdering.MobileSyncCursor)
+            {
+                // MobileSync cursor writers share this transaction lock so
+                // sequence visibility stays ordered with commit. Internal
+                // events do not participate in that cursor contract.
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock(hashtextextended({EventCommitOrderLockScope}, 0))",
+                    cancellationToken);
+            }
 
             var idempotencyRecord = IdempotencyRecord.Create(
                 workspaceId,
@@ -149,6 +218,12 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
         {
             await transaction.RollbackAsync(cancellationToken);
             dbContext.ChangeTracker.Clear();
+            var mapped = persistenceProblem?.Invoke(exception);
+            if (mapped is not null)
+            {
+                throw mapped;
+            }
+
             throw TemporaryFailure(exception);
         }
     }

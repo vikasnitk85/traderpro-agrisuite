@@ -207,6 +207,7 @@ app.MapTraderProIdentityEndpoints(
     authenticationOptions.RateLimitingEnabled,
     identityBootstrapEnabled,
     builder.Environment.IsEnvironment("Testing"));
+app.MapTraderProCommercialMasterDataEndpoints();
 
 if (spikesEnabled)
 {

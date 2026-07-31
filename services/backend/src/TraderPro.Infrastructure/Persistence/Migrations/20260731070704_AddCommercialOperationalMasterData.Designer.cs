@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731070704_AddCommercialOperationalMasterData")]
+    partial class AddCommercialOperationalMasterData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1418,7 +1421,7 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_receiving_vehicles_code", "code = normalized_code\nAND normalized_code ~ '^[A-Z0-9-]{2,32}$'");
 
-                            t.HasCheckConstraint("ck_receiving_vehicles_registration", "registration_number = btrim(registration_number)\nAND normalized_registration_number ~\n    '^[A-Z0-9]{2,32}$'\nAND normalized_registration_number = upper(\n    regexp_replace(\n        registration_number,\n        '[ -]',\n        '',\n        'g'))");
+                            t.HasCheckConstraint("ck_receiving_vehicles_registration", "normalized_registration_number ~\n    '^[A-Z0-9]{2,32}$'");
 
                             t.HasCheckConstraint("ck_receiving_vehicles_status", "status IN (1, 2)");
 

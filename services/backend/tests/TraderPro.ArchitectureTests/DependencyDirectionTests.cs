@@ -512,6 +512,151 @@ public sealed class DependencyDirectionTests
         Assert.Empty(offendingFiles);
     }
 
+    [Fact]
+    public void Commercial_master_services_use_authenticated_context_only()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Operations"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Procurement",
+                "MasterData"),
+        };
+        var files = roots.SelectMany(EnumerateSourceFiles).ToArray();
+        var forbidden = new[]
+        {
+            "ITemporaryWorkspaceContextResolver",
+            "ITemporaryDeviceContextResolver",
+            "ICurrentDeviceAccessor",
+            "CurrentDeviceAccessor",
+            "SpikeRequestContext",
+            "X-TraderPro-Workspace-ID",
+            "X-TraderPro-Device-ID",
+        };
+
+        Assert.Contains(
+            files,
+            path => File.ReadAllText(path).Contains(
+                "IAuthenticatedTraderProContext",
+                StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            files,
+            path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Commercial_master_scope_does_not_introduce_deferred_modules()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Domain",
+                "Operations"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Domain",
+                "Procurement",
+                "MasterData"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Operations"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Procurement",
+                "MasterData"),
+        };
+        var forbidden = new[]
+        {
+            "Supplier",
+            "ProductGroup",
+            "SupplierProduct",
+            "InventoryMovement",
+            "PurchaseBill",
+            "Settlement",
+            "SalesOrder",
+            "JournalEntry",
+            "BillingRepository",
+        };
+        var offending = roots
+            .SelectMany(EnumerateSourceFiles)
+            .Where(path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offending);
+    }
+
+    [Fact]
+    public void Commercial_master_events_remain_outside_mobile_sync()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Operations"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Procurement",
+                "MasterData"),
+        };
+        var offending = roots
+            .SelectMany(EnumerateSourceFiles)
+            .Where(path => File.ReadAllText(path).Contains(
+                "OutboxEventStream.MobileSync",
+                StringComparison.Ordinal))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offending);
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
