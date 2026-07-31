@@ -6,6 +6,7 @@ import 'procurement_poc_control_service.dart';
 import 'procurement_poc_event_poller.dart';
 import 'procurement_poc_ports.dart';
 import 'procurement_poc_sync_engine.dart';
+import '../domain/procurement_poc_models.dart';
 
 final class TimerProcurementPocScheduler implements ProcurementPocScheduler {
   const TimerProcurementPocScheduler();
@@ -74,6 +75,7 @@ final class ProcurementPocCoordinator {
   final Duration pollingInterval;
   ProcurementPocCycleCompleted? _onCycleCompleted;
   ProcurementPocScheduledTask? _task;
+  bool? _automaticSyncPaused;
   var _foreground = false;
   var _cycleRunning = false;
   var _disposed = false;
@@ -111,6 +113,13 @@ final class ProcurementPocCoordinator {
     _foreground = foreground;
   }
 
+  void setAutomaticSyncPaused(bool paused) {
+    if (_disposed) {
+      return;
+    }
+    _automaticSyncPaused = paused;
+  }
+
   Future<void> runAutomaticCycle() => _runCycle(automatic: true);
 
   Future<void> runManualCycle() => _runCycle(automatic: false);
@@ -134,7 +143,7 @@ final class ProcurementPocCoordinator {
         );
         return;
       }
-      if (automatic && profile.automaticSyncPaused) {
+      if (_automaticWorkIsPaused(automatic, profile)) {
         return;
       }
 
@@ -142,12 +151,21 @@ final class ProcurementPocCoordinator {
       if (_disposed || !_foreground) {
         return;
       }
+      if (_automaticWorkIsPaused(automatic, profile)) {
+        return;
+      }
       await _controlService.queueDueHeartbeats();
       if (_disposed || !_foreground) {
         return;
       }
+      if (_automaticWorkIsPaused(automatic, profile)) {
+        return;
+      }
       final controls = await _controlService.executePending();
       if (_disposed || !_foreground) {
+        return;
+      }
+      if (_automaticWorkIsPaused(automatic, profile)) {
         return;
       }
       final events = await _eventPoller.pollOnce();
@@ -187,6 +205,14 @@ final class ProcurementPocCoordinator {
         }
       }
     }
+  }
+
+  bool _automaticWorkIsPaused(
+    bool automatic,
+    PocDeviceProfile persistedProfile,
+  ) {
+    return automatic &&
+        (_automaticSyncPaused ?? persistedProfile.automaticSyncPaused);
   }
 
   void dispose() {

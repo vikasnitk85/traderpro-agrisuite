@@ -204,8 +204,9 @@ final class ProcurementPocControlService {
           queued.commandId,
           _clock.nowUtc(),
         );
-        final api = _apiFactory(profile);
+        ProcurementPocApi? api;
         try {
+          api = _apiFactory(profile);
           final result = await _execute(api, command);
           final cloud = await _syncStore.getCloudState(
             profile,
@@ -248,8 +249,19 @@ final class ProcurementPocControlService {
             nowUtc: _clock.nowUtc(),
           );
           pending++;
+        } on Object {
+          await _controlStore.recordControlTransportFailure(
+            profile: profile,
+            commandId: command.commandId,
+            errorCode: 'POC_NETWORK_AMBIGUOUS',
+            message:
+                'The network outcome is unknown. The same persisted command '
+                'key remains queued for safe replay.',
+            nowUtc: _clock.nowUtc(),
+          );
+          pending++;
         } finally {
-          api.dispose();
+          api?.dispose();
         }
       }
       return ControlRunResult(

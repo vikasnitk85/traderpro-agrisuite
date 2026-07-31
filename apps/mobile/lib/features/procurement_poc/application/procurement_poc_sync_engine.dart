@@ -124,8 +124,9 @@ final class ProcurementPocSyncEngine {
             .toList(growable: false);
         final now = _clock.nowUtc();
         await _syncStore.markMobileOperationsSending(ids, now);
-        final api = _apiFactory(profile);
+        ProcurementPocApi? api;
         try {
+          api = _apiFactory(profile);
           final response = await api.sendOperations(
             prepared.map((item) => item.envelope).toList(growable: false),
           );
@@ -150,6 +151,23 @@ final class ProcurementPocSyncEngine {
               message:
                   'The response did not match the durable operations or '
                   'required cloud state. The same operations remain queued.',
+            );
+          }
+          if (response.operations.any(_isRetryableTransportResult)) {
+            await _syncStore.recordMobileTransportFailure(
+              operationIds: ids,
+              errorCode: 'POC_NETWORK_AMBIGUOUS',
+              nowUtc: _clock.nowUtc(),
+            );
+            return SyncRunResult(
+              sent: sent,
+              completed: completed,
+              needsAttention: attention,
+              rejected: rejected,
+              networkAmbiguous: true,
+              message:
+                  'The server reported an unavailable or ambiguous transport '
+                  'outcome. The same operations remain queued.',
             );
           }
           try {
@@ -220,8 +238,24 @@ final class ProcurementPocSyncEngine {
             nowUtc: _clock.nowUtc(),
           );
           attention += results.length;
+        } on Object {
+          await _syncStore.recordMobileTransportFailure(
+            operationIds: ids,
+            errorCode: 'POC_NETWORK_AMBIGUOUS',
+            nowUtc: _clock.nowUtc(),
+          );
+          return SyncRunResult(
+            sent: sent + prepared.length,
+            completed: completed,
+            needsAttention: attention,
+            rejected: rejected,
+            networkAmbiguous: true,
+            message:
+                'The network outcome is unknown. The same durable operations '
+                'remain queued for safe replay.',
+          );
         } finally {
-          api.dispose();
+          api?.dispose();
         }
       }
       return SyncRunResult(
@@ -355,6 +389,19 @@ final class ProcurementPocSyncEngine {
       }
     }
     return true;
+  }
+
+  static bool _isRetryableTransportResult(
+    MobileSyncOperationResult result,
+  ) {
+    return !result.isAccepted &&
+        const {
+          'POC_NETWORK_AMBIGUOUS',
+          'POC_RESPONSE_INVALID',
+          'POC_HTTP_ERROR',
+          'POC_CLIENT_DISPOSED',
+          'POC_RUNTIME_DISPOSED',
+        }.contains(result.errorCode);
   }
 
   Future<bool> _successfulResponsesAreValid(

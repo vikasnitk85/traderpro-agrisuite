@@ -193,12 +193,7 @@ final class _HeartbeatApi implements ProcurementPocApi {
     heartbeatKeys.add(idempotencyKey);
     if (dropFirstHeartbeatResponse && !_dropped) {
       _dropped = true;
-      throw const ProcurementPocApiException(
-        code: 'POC_NETWORK_AMBIGUOUS',
-        message: 'Fake heartbeat response lost after commit.',
-        retryable: true,
-        responseAmbiguous: true,
-      );
+      throw const SocketException('Deterministic heartbeat socket failure.');
     }
     return ProcurementPocCommandResult(
       sessionId: sessionId,

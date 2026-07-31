@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -319,11 +320,8 @@ final class _FinalizationApi implements ProcurementPocApi {
     finalizationIds.add(finalizationId);
     if (dropFirstResponse && !_dropped) {
       _dropped = true;
-      throw const ProcurementPocApiException(
-        code: 'POC_NETWORK_AMBIGUOUS',
-        message: 'Fake response lost after finalization commit.',
-        retryable: true,
-        responseAmbiguous: true,
+      throw TimeoutException(
+        'Deterministic timeout after finalization may have committed.',
       );
     }
     return ProcurementPocCommandResult(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Variable;
@@ -201,6 +202,99 @@ void main() {
           ],
         ),
         throwsA(anything),
+      );
+    },
+  );
+
+  test(
+    'socket failure returns Sending to Pending and diagnostics stay queued',
+    () async {
+      final database = LocalDatabaseOpeners.openInMemoryForTest();
+      addTearDown(database.close);
+      final clock = _PocTestClock(DateTime.utc(2026, 7, 30, 9, 30));
+      final receiving = LocalReceivingStore(
+        database: database,
+        installReference: 'offline-poc',
+        clock: clock,
+        idGenerator: SequentialLocalIdGenerator(),
+      );
+      final repository = ProcurementPocLocalRepository(
+        database: database,
+        localReceivingStore: receiving,
+      );
+      final profile = await repository.saveActiveProfile(
+        PocDeviceProfile(
+          backendBaseUrl: 'http://192.168.1.50:5000',
+          workspaceId: '019fad0f-2d6a-7000-8000-0000000001c0',
+          deviceId: '019fad0f-2d6a-7000-8000-0000000001c1',
+          displayRole: PocDisplayRole.operator,
+          createdAtUtc: clock.nowUtc(),
+          updatedAtUtc: clock.nowUtc(),
+        ),
+      );
+      final created = await receiving.createLocalReceivingSession();
+      final api = _FakePocApi(clock);
+      final engine = ProcurementPocSyncEngine(
+        feature: _enabledFeature,
+        profileStore: repository,
+        syncStore: repository,
+        apiFactory: (_) => api,
+        clock: clock,
+      );
+      expect((await engine.synchronize()).completed, 1);
+      await receiving.recordWeightLocally(
+        RecordWeightLocallyCommand(
+          sessionId: created.session.id,
+          productReference: 'OFFLINE',
+          bagTypeReference: 'JUTE',
+          bagCount: 2,
+          rawWeightKg: '20.00',
+          decimalPlaces: 2,
+          processingMethod: WeightProcessingMethod.standard,
+          weightSource: WeightSource.manualSpike,
+          capturedAtDeviceUtc: clock.nowUtc(),
+        ),
+      );
+      final beforeFailure = (await repository.listLocalOutboxOperations(
+        aggregateId: created.session.id,
+      )).last;
+      final localBefore = await receiving.getSession(created.session.id);
+      api.throwSocketBeforeCommit = true;
+
+      final offline = await engine.synchronize();
+
+      expect(offline.networkAmbiguous, isTrue);
+      final afterFailure = (await repository.listLocalOutboxOperations(
+        aggregateId: created.session.id,
+      )).last;
+      expect(afterFailure.status, OutboxOperationStatus.pending);
+      expect(afterFailure.lastErrorCode, 'POC_NETWORK_AMBIGUOUS');
+      expect(afterFailure.operationId, beforeFailure.operationId);
+      expect(afterFailure.payloadJson, beforeFailure.payloadJson);
+      expect(afterFailure.payloadHash, beforeFailure.payloadHash);
+      final diagnostics = await repository.loadDiagnostics(profile);
+      expect(diagnostics.pending, 1);
+      expect(diagnostics.needsAttention, 0);
+      expect(
+        diagnostics.lastNetworkOrPollingErrorCode,
+        'POC_NETWORK_AMBIGUOUS',
+      );
+      final localAfter = await receiving.getSession(created.session.id);
+      expect(localAfter!.activeEntryCount, localBefore!.activeEntryCount);
+      expect(
+        localAfter.processedTotalWeightKg,
+        localBefore.processedTotalWeightKg,
+      );
+
+      expect((await engine.synchronize()).completed, 1);
+      expect(api.batches[1].single.operationId, api.batches[2].single.operationId);
+      expect(api.batches[1].single.payloadJson, api.batches[2].single.payloadJson);
+      expect(api.batches[1].single.payloadHash, api.batches[2].single.payloadHash);
+      expect(
+        (await repository.listLocalOutboxOperations(
+          aggregateId: created.session.id,
+        )).last.status,
+        OutboxOperationStatus.accepted,
       );
     },
   );
@@ -482,6 +576,7 @@ final class _FakePocApi implements ProcurementPocApi {
   final _results = <String, MobileSyncOperationResult>{};
   final _versions = <String, int>{};
   var dropFirstDependentResponse = false;
+  var throwSocketBeforeCommit = false;
   String? needsAttentionAggregate;
   var _dropped = false;
 
@@ -490,6 +585,10 @@ final class _FakePocApi implements ProcurementPocApi {
     List<MobileSyncOperationEnvelope> operations,
   ) async {
     batches.add(List.of(operations));
+    if (throwSocketBeforeCommit) {
+      throwSocketBeforeCommit = false;
+      throw const SocketException('Deterministic offline socket failure.');
+    }
     final results = <MobileSyncOperationResult>[];
     for (final operation in operations) {
       if (operation.aggregateId == needsAttentionAggregate &&
@@ -554,11 +653,8 @@ final class _FakePocApi implements ProcurementPocApi {
           (operation) => operation.operationType == 'RecordReceivingEntry',
         )) {
       _dropped = true;
-      throw const ProcurementPocApiException(
-        code: 'POC_NETWORK_AMBIGUOUS',
-        message: 'Fake response lost after commit.',
-        retryable: true,
-        responseAmbiguous: true,
+      throw TimeoutException(
+        'Deterministic timeout after the server may have committed.',
       );
     }
     return MobileSyncBatchResult(

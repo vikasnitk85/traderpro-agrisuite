@@ -456,6 +456,8 @@ final class PocSyncDiagnostics {
   final int rejected;
   final int eventCursor;
   final String? lastPollErrorCode;
+
+  String? get lastNetworkOrPollingErrorCode => lastPollErrorCode;
 }
 
 String normalizeBackendBaseUrl(String input) {

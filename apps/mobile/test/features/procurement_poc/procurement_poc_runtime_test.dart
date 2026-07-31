@@ -52,6 +52,12 @@ void main() {
       );
       expect(runtime.controller.diagnostics!.completed, 1);
 
+      await runtime.controller.setAutomaticSyncPaused(true);
+      expect(
+        (await runtime.repository.loadActiveProfile())!.automaticSyncPaused,
+        isTrue,
+      );
+      final beforePausedCapture = api.snapshot;
       await runtime.controller.recordManualWeight(
         productReference: 'AUTO-REFRESH',
         bagTypeReference: 'JUTE',
@@ -62,13 +68,27 @@ void main() {
         weightSource: WeightSource.manualSpike,
         capturedAtDeviceUtcText: '2026-07-30T10:00:00.000Z',
       );
+      scheduler.fire();
+      await Future<void>.delayed(Duration.zero);
+      while (runtime.coordinator.isCycleRunning) {
+        await Future<void>.delayed(Duration.zero);
+      }
       await runtime.coordinator.runAutomaticCycle();
+      expect(api.snapshot, beforePausedCapture);
+      expect(
+        runtime.controller.localOperations.last.status.storageValue,
+        'Pending',
+      );
+
+      await runtime.controller.synchronizeNow();
       expect(
         runtime.controller.localOperations.where(
           (item) => item.status.storageValue == 'Accepted',
         ),
         hasLength(2),
       );
+      expect(runtime.controller.profile!.automaticSyncPaused, isTrue);
+      await runtime.controller.setAutomaticSyncPaused(false);
 
       final beforePause = api.snapshot;
       for (final state in [

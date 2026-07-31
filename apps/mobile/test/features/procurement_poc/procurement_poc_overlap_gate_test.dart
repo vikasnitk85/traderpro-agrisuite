@@ -76,6 +76,16 @@ void main() {
       await automatic;
       expect(api.readEventCalls, 1);
 
+      before = api.readEventCalls;
+      blocker = profiles.blockNextLoad();
+      final cycleBeingPaused = coordinator.runAutomaticCycle();
+      await blocker.started.future;
+      coordinator.setAutomaticSyncPaused(true);
+      blocker.release.complete();
+      await cycleBeingPaused;
+      expect(api.readEventCalls, before);
+      coordinator.setAutomaticSyncPaused(false);
+
       before = profiles.loadCalls;
       blocker = profiles.blockNextLoad();
       final firstPoll = poller.pollOnce();

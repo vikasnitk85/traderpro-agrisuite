@@ -42,7 +42,14 @@ final class _ProcurementPocHomeState extends State<ProcurementPocHome> {
         }
         final profile = controller.profile;
         if (profile == null) {
-          return PocSetupScreen(controller: controller);
+          return Scaffold(
+            key: const Key('poc-setup-scaffold'),
+            appBar: AppBar(title: const Text('Procurement POC Setup')),
+            body: SafeArea(
+              top: false,
+              child: PocSetupScreen(controller: controller),
+            ),
+          );
         }
         final roleScreen = profile.displayRole == PocDisplayRole.operator
             ? OperatorSessionScreen(controller: controller)
@@ -60,17 +67,20 @@ final class _ProcurementPocHomeState extends State<ProcurementPocHome> {
                   : 'Procurement POC · Owner',
             ),
           ),
-          body: Column(
-            children: [
-              const DevelopmentOnlyBanner(),
-              if (controller.lastMessage != null)
-                _StatusMessage(
-                  message: controller.lastMessage!,
-                  errorCode: controller.lastErrorCode,
-                ),
-              if (controller.busy) const LinearProgressIndicator(),
-              Expanded(child: screens[_selectedIndex]),
-            ],
+          body: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                const DevelopmentOnlyBanner(),
+                if (controller.lastMessage != null)
+                  _StatusMessage(
+                    message: controller.lastMessage!,
+                    errorCode: controller.lastErrorCode,
+                  ),
+                if (controller.busy) const LinearProgressIndicator(),
+                Expanded(child: screens[_selectedIndex]),
+              ],
+            ),
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedIndex,
@@ -304,6 +314,7 @@ final class _PocSetupScreenState extends State<PocSetupScreen> {
         DropdownButtonFormField<PocDisplayRole>(
           key: const Key('poc-display-role'),
           initialValue: _role,
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Local display role',
             border: OutlineInputBorder(),
@@ -575,6 +586,7 @@ final class _ManualEntryFormState extends State<ManualEntryForm> {
             ),
             DropdownButtonFormField<int>(
               initialValue: _decimalPlaces,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Decimal places'),
               items: const [
                 DropdownMenuItem(value: 1, child: Text('1')),
@@ -589,6 +601,7 @@ final class _ManualEntryFormState extends State<ManualEntryForm> {
             ),
             DropdownButtonFormField<WeightProcessingMethod>(
               initialValue: _method,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Processing method'),
               items: WeightProcessingMethod.values
                   .map(
@@ -606,6 +619,7 @@ final class _ManualEntryFormState extends State<ManualEntryForm> {
             ),
             DropdownButtonFormField<WeightSource>(
               initialValue: _source,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Weight source'),
               items: WeightSource.values
                   .map(
@@ -737,122 +751,134 @@ final class OwnerLiveViewScreen extends StatelessWidget {
         final session = controller.selectedRemoteSession;
         return Scaffold(
           appBar: AppBar(title: const Text('Owner Live View')),
-          body: Column(
-            children: [
-              const DevelopmentOnlyBanner(),
-              if (controller.busy) const LinearProgressIndicator(),
-              Expanded(
-                child: session == null
-                    ? const Center(child: Text('No session selected.'))
-                    : ListView(
-                        key: const Key('owner-live-view-screen'),
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          const Text(
-                            'Read-only monitoring · no receiving-entry '
-                            'editing controls',
-                          ),
-                          const SizedBox(height: 8),
-                          _DetailsCard(
-                            children: [
-                              _Detail(
-                                'Cloud reference',
-                                session.cloudReference,
-                              ),
-                              _Detail('Status', session.status),
-                              _Detail('Editor device', session.editorDeviceId),
-                              _Detail(
-                                'Lease expiry',
-                                session.leaseExpiresAtUtc?.toIso8601String() ??
-                                    'No active lease',
-                              ),
-                              _Detail('Entry count', '${session.entryCount}'),
-                              _Detail(
-                                'Exact total',
-                                '${session.processedTotalWeightKg} kg',
-                              ),
-                              _Detail(
-                                'Cloud version',
-                                '${session.cloudVersion}',
-                              ),
-                              _Detail(
-                                'Last cloud update',
-                                session.lastCloudUpdateAtUtc.toIso8601String(),
-                              ),
-                              if (session.finalizationId != null)
-                                _Detail(
-                                  'Finalization ID',
-                                  session.finalizationId!,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: controller.busy
-                                    ? null
-                                    : () => controller.refreshLiveView(
-                                        session.sessionId,
-                                      ),
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Refresh live view'),
-                              ),
-                              if (session.status == 'SubmittedForReview')
-                                FilledButton.icon(
-                                  key: const Key('owner-approve'),
-                                  onPressed: controller.busy
-                                      ? null
-                                      : controller.approveSelected,
-                                  icon: const Icon(Icons.check_circle_outline),
-                                  label: const Text('Approve'),
-                                ),
-                              if (session.status == 'Approved')
-                                FilledButton.icon(
-                                  key: const Key('owner-finalize'),
-                                  onPressed: controller.busy
-                                      ? null
-                                      : controller.finalizeSelected,
-                                  icon: const Icon(Icons.task_alt),
-                                  label: const Text('Finalize POC session'),
-                                ),
-                              if (session.status == 'Finalized' &&
-                                  controller.canRetrySameFinalization)
-                                FilledButton.tonalIcon(
-                                  key: const Key('owner-retry-finalization'),
-                                  onPressed: controller.busy
-                                      ? null
-                                      : controller.retrySameFinalization,
-                                  icon: const Icon(Icons.replay),
-                                  label: const Text('Retry Same Finalization'),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Recent entries (maximum five)',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          for (final entry in session.recentEntries.take(5))
-                            ListTile(
-                              leading: CircleAvatar(
-                                child: Text('${entry.localSequence}'),
-                              ),
-                              title: Text(
-                                '${entry.productReference} · '
-                                '${entry.processedWeightKg} kg',
-                              ),
-                              subtitle: Text(
-                                '${entry.bagTypeReference} · '
-                                '${entry.bagCount} bags',
-                              ),
+          body: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                const DevelopmentOnlyBanner(),
+                if (controller.busy) const LinearProgressIndicator(),
+                Expanded(
+                  child: session == null
+                      ? const Center(child: Text('No session selected.'))
+                      : ListView(
+                          key: const Key('owner-live-view-screen'),
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            const Text(
+                              'Read-only monitoring · no receiving-entry '
+                              'editing controls',
                             ),
-                        ],
-                      ),
-              ),
-            ],
+                            const SizedBox(height: 8),
+                            _DetailsCard(
+                              children: [
+                                _Detail(
+                                  'Cloud reference',
+                                  session.cloudReference,
+                                ),
+                                _Detail('Status', session.status),
+                                _Detail(
+                                  'Editor device',
+                                  session.editorDeviceId,
+                                ),
+                                _Detail(
+                                  'Lease expiry',
+                                  session.leaseExpiresAtUtc
+                                          ?.toIso8601String() ??
+                                      'No active lease',
+                                ),
+                                _Detail('Entry count', '${session.entryCount}'),
+                                _Detail(
+                                  'Exact total',
+                                  '${session.processedTotalWeightKg} kg',
+                                ),
+                                _Detail(
+                                  'Cloud version',
+                                  '${session.cloudVersion}',
+                                ),
+                                _Detail(
+                                  'Last cloud update',
+                                  session.lastCloudUpdateAtUtc
+                                      .toIso8601String(),
+                                ),
+                                if (session.finalizationId != null)
+                                  _Detail(
+                                    'Finalization ID',
+                                    session.finalizationId!,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: controller.busy
+                                      ? null
+                                      : () => controller.refreshLiveView(
+                                          session.sessionId,
+                                        ),
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Refresh live view'),
+                                ),
+                                if (session.status == 'SubmittedForReview')
+                                  FilledButton.icon(
+                                    key: const Key('owner-approve'),
+                                    onPressed: controller.busy
+                                        ? null
+                                        : controller.approveSelected,
+                                    icon: const Icon(
+                                      Icons.check_circle_outline,
+                                    ),
+                                    label: const Text('Approve'),
+                                  ),
+                                if (session.status == 'Approved')
+                                  FilledButton.icon(
+                                    key: const Key('owner-finalize'),
+                                    onPressed: controller.busy
+                                        ? null
+                                        : controller.finalizeSelected,
+                                    icon: const Icon(Icons.task_alt),
+                                    label: const Text('Finalize POC session'),
+                                  ),
+                                if (session.status == 'Finalized' &&
+                                    controller.canRetrySameFinalization)
+                                  FilledButton.tonalIcon(
+                                    key: const Key('owner-retry-finalization'),
+                                    onPressed: controller.busy
+                                        ? null
+                                        : controller.retrySameFinalization,
+                                    icon: const Icon(Icons.replay),
+                                    label: const Text(
+                                      'Retry Same Finalization',
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Recent entries (maximum five)',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            for (final entry in session.recentEntries.take(5))
+                              ListTile(
+                                leading: CircleAvatar(
+                                  child: Text('${entry.localSequence}'),
+                                ),
+                                title: Text(
+                                  '${entry.productReference} · '
+                                  '${entry.processedWeightKg} kg',
+                                ),
+                                subtitle: Text(
+                                  '${entry.bagTypeReference} · '
+                                  '${entry.bagCount} bags',
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -890,8 +916,8 @@ final class SyncDiagnosticsScreen extends StatelessWidget {
               _Detail('Rejected', '${diagnostics.rejected}'),
               _Detail('Durable event cursor', '${diagnostics.eventCursor}'),
               _Detail(
-                'Last polling error',
-                diagnostics.lastPollErrorCode ?? 'None',
+                'Last network / polling error',
+                diagnostics.lastNetworkOrPollingErrorCode ?? 'None',
               ),
             ],
           ),
@@ -934,26 +960,48 @@ final class _DetailsCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            for (final detail in children)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 145,
-                      child: Text(
-                        detail.label,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Expanded(child: SelectableText(detail.value)),
-                  ],
-                ),
-              ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final useStackedDetails =
+                constraints.maxWidth < 360 ||
+                MediaQuery.textScalerOf(context).scale(14) >= 24;
+            return Column(
+              children: [
+                for (final detail in children)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: useStackedDetails
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                detail.label,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SelectableText(detail.value),
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 145,
+                                child: Text(
+                                  detail.label,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: SelectableText(detail.value)),
+                            ],
+                          ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );

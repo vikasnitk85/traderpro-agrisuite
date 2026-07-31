@@ -1417,12 +1417,48 @@ final class ProcurementPocLocalRepository
   @override
   Future<PocSyncDiagnostics> loadDiagnostics(PocDeviceProfile profile) async {
     final operations = await listLocalOutboxOperations();
+    final commands = await listControlCommands(profile);
     final source =
         await (_database.select(_database.pocSyncSources)
               ..where((table) => table.sourceKey.equals(profile.sourceKey)))
             .getSingleOrNull();
     int count(OutboxOperationStatus status) =>
         operations.where((item) => item.status == status).length;
+    String? lastErrorCode = source?.lastErrorCode;
+    DateTime? lastErrorAt = source?.lastErrorCode == null
+        ? null
+        : _parseUtc(source!.updatedAtUtc, 'updatedAtUtc');
+    void considerRetryableError(
+      String? errorCode,
+      DateTime? attemptedAt,
+      bool retryable,
+    ) {
+      if (!retryable ||
+          errorCode == null ||
+          attemptedAt == null ||
+          (lastErrorAt != null && !attemptedAt.isAfter(lastErrorAt!))) {
+        return;
+      }
+      lastErrorCode = errorCode;
+      lastErrorAt = attemptedAt;
+    }
+
+    for (final operation in operations) {
+      considerRetryableError(
+        operation.lastErrorCode,
+        operation.lastAttemptAtUtc,
+        operation.status == OutboxOperationStatus.pending ||
+            operation.status == OutboxOperationStatus.sending,
+      );
+    }
+    for (final command in commands) {
+      considerRetryableError(
+        command.lastErrorCode,
+        command.lastAttemptAtUtc,
+        command.status == PocControlCommandStatus.pending ||
+            command.status == PocControlCommandStatus.sending,
+      );
+    }
     return PocSyncDiagnostics(
       pending: count(OutboxOperationStatus.pending),
       sending: count(OutboxOperationStatus.sending),
@@ -1430,7 +1466,7 @@ final class ProcurementPocLocalRepository
       needsAttention: count(OutboxOperationStatus.needsAttention),
       rejected: count(OutboxOperationStatus.rejected),
       eventCursor: source?.eventCursor ?? 0,
-      lastPollErrorCode: source?.lastErrorCode,
+      lastPollErrorCode: lastErrorCode,
     );
   }
 

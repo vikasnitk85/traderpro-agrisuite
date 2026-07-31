@@ -85,6 +85,9 @@ final class ProcurementPocController extends ChangeNotifier {
     try {
       await _run(() async {
         profile = await _profileStore.loadActiveProfile();
+        _coordinator.setAutomaticSyncPaused(
+          profile?.automaticSyncPaused ?? false,
+        );
         await _refreshLocalState();
         if (profile != null) {
           await _refreshRemoteFromLocal();
@@ -118,6 +121,7 @@ final class ProcurementPocController extends ChangeNotifier {
         updatedAtUtc: now,
       );
       profile = await _profileStore.saveActiveProfile(candidate);
+      _coordinator.setAutomaticSyncPaused(profile!.automaticSyncPaused);
       await _refreshRemoteFromLocal();
       lastMessage =
           'Development profile saved. These IDs are context only and are '
@@ -223,10 +227,17 @@ final class ProcurementPocController extends ChangeNotifier {
 
   Future<void> setAutomaticSyncPaused(bool paused) async {
     await _run(() async {
-      profile = await _profileStore.setAutomaticSyncPaused(
-        paused,
-        _clock.nowUtc(),
-      );
+      final previouslyPaused = _requireProfile().automaticSyncPaused;
+      _coordinator.setAutomaticSyncPaused(paused);
+      try {
+        profile = await _profileStore.setAutomaticSyncPaused(
+          paused,
+          _clock.nowUtc(),
+        );
+      } on Object {
+        _coordinator.setAutomaticSyncPaused(previouslyPaused);
+        rethrow;
+      }
       lastMessage = paused
           ? 'Automatic synchronization paused. Manual Sync Now remains '
                 'available.'
