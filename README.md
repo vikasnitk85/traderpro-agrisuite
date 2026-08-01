@@ -486,11 +486,47 @@ The design is documented in
 and
 [`ADR-0007-commercial-supplier-and-product-catalog.md`](docs/decisions/ADR-0007-commercial-supplier-and-product-catalog.md).
 
-Task 7C remains the next dependency and will design commercial Receiving
-Sessions separately. Task 7B2 does not implement supplier balances, opening
+Task 7B2 does not implement supplier balances, opening
 payables, stock, prices, rates, settlement, accounting, Purchase Bills,
 Inventory movements, Sales, Finance, Production, recipes, Flutter screens, or
 commercial mobile sync.
+
+## Task 7C0 Commercial Receiving design
+
+Task 7C0 freezes the architecture, contracts, and mobile-security boundaries
+for production Commercial Receiving from local-first immutable capture through
+`SubmittedForSettlementReview`. The accepted design separates durable editor
+ownership, ownership generation, and renewable lease; assigns a distinct cloud
+Receiving reference; snapshots validated commercial masters; defines
+authenticated operation, event, and master synchronization; and requires a
+separate encrypted production mobile database.
+
+This milestone is **documentation only**. No production Commercial Receiving
+domain/application/infrastructure/API code, Flutter screen, database table,
+migration, endpoint, or package exists yet. The Task 5/6 Procurement POC remains
+non-production reference evidence and is not reused as commercial authority.
+
+The current Flutter/Drift database still uses ordinary, **unencrypted SQLite**.
+It is not approved for pilot or production customer data. Task 7C2 must complete
+a reviewed encrypted-SQLite and OS secure-storage compatibility spike before
+selecting packages or enabling Commercial Receiving.
+
+Task 7C0 documents:
+
+- [TPRC-101 requirements baseline](docs/product-specs/TPRC-101-Commercial-Receiving-Requirements-Baseline.md)
+- [TPRC-101 open questions](docs/product-specs/TPRC-101-Open-Questions.md)
+- [TPTECH-001.21 Commercial Receiving contract and mobile security](docs/technical-specs/TPTECH-001.21-Commercial-Receiving-Contract-and-Mobile-Security-Design.md)
+- [ADR-0008 ownership and offline synchronization](docs/decisions/ADR-0008-commercial-receiving-ownership-and-offline-sync.md)
+- [ADR-0009 authenticated mobile sync and storage](docs/decisions/ADR-0009-authenticated-commercial-mobile-sync-and-storage.md)
+- [TPSEC-001 Commercial Mobile Receiving threat model](docs/threat-models/TPSEC-001-Commercial-Mobile-Receiving-Threat-Model.md)
+- [Task 7C1 Commercial Receiving Backend plan](docs/task-plans/TASK-7C1-Commercial-Receiving-Backend.md)
+- [Task 7C2 Secure Flutter Commercial Receiving plan](docs/task-plans/TASK-7C2-Secure-Flutter-Commercial-Receiving.md)
+
+The next milestones are Task 7C1 for the authenticated production backend and
+Task 7C2 for secure Flutter authentication, encrypted local storage, offline
+capture/sync, and read-only Owner monitoring. Missing TPCL-101/TPFS-101 details
+remain explicit gates; Task 7C0 does not invent cancellation, correction,
+transfer approval, final reference format, or settlement/posting behavior.
 
 ## Two-device Procurement backend POC (non-production)
 
@@ -633,6 +669,10 @@ and
 - `AddCommercialOperationalMasterData` adds production Business Locations,
   Receiving Vehicles, Bag Types, Weight Processing Policies, and the
   company-level procurement defaults that bind them.
+- Task 7C0 documents the production Commercial Receiving aggregate, two-state
+  lifecycle, ownership generation/lease recovery, authenticated commercial
+  operation/event/master sync, secure mobile storage strategy, threat model,
+  and Task 7C1/7C2 backlogs. It adds no production Receiving code.
 - The API validates signed access tokens and revalidates current commercial
   workspace/user/device/company/default-branch/role authority on every
   protected request; temporary POC context remains separate.
@@ -674,6 +714,9 @@ and
 The following capabilities are intentionally outside this scaffold:
 
 - Complete Receiving Session workflows and UI
+- Task 7C1 production Commercial Receiving backend implementation
+- Task 7C2 secure Flutter Commercial Receiving, authentication, encrypted
+  local database, and commercial offline synchronization
 - Inventory movements
 - Financial posting
 - Sales workflows
