@@ -45,6 +45,40 @@ public static class CommercialMasterDataCommandTypes
         "Procurement.CompanySettings.Configure";
     public const string UpdateCompanySettings =
         "Procurement.CompanySettings.Update";
+
+    public const string CreateSupplier = "Procurement.Supplier.Create";
+    public const string UpdateSupplier = "Procurement.Supplier.Update";
+    public const string DeactivateSupplier =
+        "Procurement.Supplier.Deactivate";
+    public const string ReactivateSupplier =
+        "Procurement.Supplier.Reactivate";
+    public const string AddSupplierProductScope =
+        "Procurement.SupplierProductScope.Add";
+    public const string DeactivateSupplierProductScope =
+        "Procurement.SupplierProductScope.Deactivate";
+    public const string ReactivateSupplierProductScope =
+        "Procurement.SupplierProductScope.Reactivate";
+
+    public const string CreateProductGroup = "Catalog.ProductGroup.Create";
+    public const string UpdateProductGroup = "Catalog.ProductGroup.Update";
+    public const string DeactivateProductGroup =
+        "Catalog.ProductGroup.Deactivate";
+    public const string ReactivateProductGroup =
+        "Catalog.ProductGroup.Reactivate";
+    public const string CreateProduct = "Catalog.Product.Create";
+    public const string UpdateProduct = "Catalog.Product.Update";
+    public const string DeactivateProduct = "Catalog.Product.Deactivate";
+    public const string ReactivateProduct = "Catalog.Product.Reactivate";
+    public const string CreateProductStandardBagWeight =
+        "Catalog.ProductStandardBagWeight.Create";
+    public const string UpdateProductStandardBagWeight =
+        "Catalog.ProductStandardBagWeight.Update";
+    public const string DeactivateProductStandardBagWeight =
+        "Catalog.ProductStandardBagWeight.Deactivate";
+    public const string ReactivateProductStandardBagWeight =
+        "Catalog.ProductStandardBagWeight.Reactivate";
+    public const string SetDefaultProductStandardBagWeight =
+        "Catalog.ProductStandardBagWeight.SetDefault";
 }
 
 public enum MasterStatusFilter
@@ -215,7 +249,13 @@ public static class MasterDataProblem
         return new ApplicationProblemException(
             exception.Code,
             exception.Message,
-            exception.Code is "MASTER_STATUS_INVALID"
+            exception.Code is
+                "MASTER_STATUS_INVALID" or
+                "SUPPLIER_PRODUCT_SCOPE_REQUIRED" or
+                "PRODUCT_GROUP_IN_USE" or
+                "PRODUCT_SUPPLIER_SCOPE_IN_USE" or
+                "PRODUCT_STANDARD_BAG_WEIGHT_IN_USE" or
+                "PRODUCT_STANDARD_BAG_WEIGHT_DEFAULT_CONFLICT"
                 ? ApplicationErrorCategory.Conflict
                 : ApplicationErrorCategory.Validation,
             fieldErrors: exception.Field is null

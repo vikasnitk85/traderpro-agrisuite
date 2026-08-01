@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using TraderPro.Application.Catalog;
 using TraderPro.Application.Common.Commands;
 using TraderPro.Application.Common.Errors;
 using TraderPro.Application.Common.MasterData;
@@ -19,7 +20,8 @@ internal sealed partial class ProcurementMasterDataService(
     TraderProDbContext dbContext,
     IAuthenticatedTraderProContext context,
     IClock clock,
-    PostgreSqlIdempotentCommandExecutor idempotency) :
+    PostgreSqlIdempotentCommandExecutor idempotency,
+    IBagTypeProductStandardUsageReader bagStandardUsage) :
     IProcurementMasterDataService
 {
     private const int EventVersion = 1;
@@ -412,8 +414,16 @@ internal sealed partial class ProcurementMasterDataService(
             activate
                 ? "Procurement.BagTypeReactivated"
                 : "Procurement.BagTypeDeactivated",
-            (bagType, now) =>
+            async (bagType, now) =>
             {
+                if (!activate &&
+                    await bagStandardUsage.AcquireLockAndIsInUseAsync(
+                        bagType.Id,
+                        cancellationToken))
+                {
+                    throw BagTypeProductStandardInUse();
+                }
+
                 CommercialMasterDataInfrastructure.Domain(
                     () =>
                     {
@@ -426,7 +436,6 @@ internal sealed partial class ProcurementMasterDataService(
                             bagType.Deactivate(now);
                         }
                     });
-                return Task.CompletedTask;
             },
             cancellationToken);
     }

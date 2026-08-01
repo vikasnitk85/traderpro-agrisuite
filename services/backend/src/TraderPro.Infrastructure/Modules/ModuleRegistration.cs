@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using TraderPro.Infrastructure.Modules.Catalog;
 using TraderPro.Infrastructure.Modules.Documents;
 using TraderPro.Infrastructure.Modules.Finance;
 using TraderPro.Infrastructure.Modules.Inventory;
@@ -28,6 +29,7 @@ public static class ModuleRegistration
             .AddPlatformModule()
             .AddOperationsModule()
             .AddMasterDataModule()
+            .AddCatalogModule()
             .AddProcurementModule()
             .AddInventoryModule()
             .AddSalesModule()

@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using TraderPro.Application.Common.Tenancy;
 using TraderPro.Domain.Platform;
 using TraderPro.Domain.Platform.Identity;
+using TraderPro.Domain.Catalog;
 using TraderPro.Domain.Operations;
 using TraderPro.Domain.Procurement.MasterData;
 using TraderPro.Domain.Procurement.Poc;
+using TraderPro.Domain.Procurement.Suppliers;
 
 namespace TraderPro.Infrastructure.Persistence;
 
@@ -56,6 +58,18 @@ public sealed class TraderProDbContext(
 
     public DbSet<CompanyProcurementSettings> CompanyProcurementSettings =>
         Set<CompanyProcurementSettings>();
+
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+
+    public DbSet<SupplierProductScope> SupplierProductScopes =>
+        Set<SupplierProductScope>();
+
+    public DbSet<ProductGroup> ProductGroups => Set<ProductGroup>();
+
+    public DbSet<Product> Products => Set<Product>();
+
+    public DbSet<ProductStandardBagWeight> ProductStandardBagWeights =>
+        Set<ProductStandardBagWeight>();
 
     public DbSet<ReceivingSessionPoc> ReceivingSessionPocs =>
         Set<ReceivingSessionPoc>();
@@ -128,6 +142,21 @@ public sealed class TraderProDbContext(
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<CompanyProcurementSettings>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<Supplier>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<SupplierProductScope>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<ProductGroup>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<Product>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<ProductStandardBagWeight>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<ReceivingSessionPoc>()

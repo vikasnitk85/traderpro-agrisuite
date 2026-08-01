@@ -15,6 +15,13 @@ internal static class CommercialMasterKinds
     public const string BagType = "Procurement.BagType";
     public const string WeightProcessingPolicy =
         "Procurement.WeightProcessingPolicy";
+    public const string Supplier = "Procurement.Supplier";
+    public const string SupplierProductScope =
+        "Procurement.SupplierProductScope";
+    public const string ProductGroup = "Catalog.ProductGroup";
+    public const string Product = "Catalog.Product";
+    public const string ProductStandardBagWeight =
+        "Catalog.ProductStandardBagWeight";
 }
 
 internal sealed record CommercialMasterCursorScope(
@@ -23,7 +30,8 @@ internal sealed record CommercialMasterCursorScope(
     Guid CompanyId,
     Guid? BranchId,
     MasterStatusFilter Status,
-    string? Search);
+    string? Search,
+    string? FilterScope = null);
 
 internal readonly record struct CommercialMasterCursorPosition(
     string Code,
@@ -121,6 +129,10 @@ internal static class CommercialMasterDataInfrastructure
                     payload.Search,
                     scope.Search,
                     StringComparison.Ordinal) ||
+                !string.Equals(
+                    payload.FilterScope,
+                    scope.FilterScope,
+                    StringComparison.Ordinal) ||
                 payload.Id == Guid.Empty ||
                 string.IsNullOrEmpty(payload.Code))
             {
@@ -165,6 +177,7 @@ internal static class CommercialMasterDataInfrastructure
                     scope.BranchId,
                     scope.Status.ToString(),
                     scope.Search,
+                    scope.FilterScope,
                     code,
                     id),
                 CursorJsonOptions));
@@ -227,6 +240,7 @@ internal static class CommercialMasterDataInfrastructure
         Guid? BranchId,
         string Status,
         string? Search,
+        string? FilterScope,
         string Code,
         Guid Id);
 }

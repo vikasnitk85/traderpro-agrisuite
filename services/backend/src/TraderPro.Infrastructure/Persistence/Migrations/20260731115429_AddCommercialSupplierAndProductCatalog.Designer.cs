@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731115429_AddCommercialSupplierAndProductCatalog")]
+    partial class AddCommercialSupplierAndProductCatalog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2240,7 +2243,7 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_suppliers_code", "code = normalized_code\nAND normalized_code ~ '^[A-Z0-9-]{2,32}$'");
 
-                            t.HasCheckConstraint("ck_suppliers_email", "email IS NULL OR (email = lower(btrim(email)) AND length(email) <= 254 AND email !~ '[[:space:][:cntrl:]]' AND length(email) - length(replace(email, '@', '')) = 1 AND position('@' in email) > 1 AND position('@' in email) < length(email))");
+                            t.HasCheckConstraint("ck_suppliers_email", "email IS NULL OR (email = lower(btrim(email)) AND position('@' in email) > 1)");
 
                             t.HasCheckConstraint("ck_suppliers_scope_mode", "product_scope_mode IN (1, 2)");
 

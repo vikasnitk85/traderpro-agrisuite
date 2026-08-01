@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260801030919_HardenCommercialSupplierProductCatalogContracts")]
+    partial class HardenCommercialSupplierProductCatalogContracts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

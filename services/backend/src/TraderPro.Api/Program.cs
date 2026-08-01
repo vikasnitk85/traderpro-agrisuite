@@ -208,6 +208,7 @@ app.MapTraderProIdentityEndpoints(
     identityBootstrapEnabled,
     builder.Environment.IsEnvironment("Testing"));
 app.MapTraderProCommercialMasterDataEndpoints();
+app.MapTraderProCommercialSupplierCatalogEndpoints();
 
 if (spikesEnabled)
 {

@@ -422,6 +422,13 @@ internal sealed partial class ProcurementMasterDataService
             "The current default weight policy must be changed before this policy can be deactivated.");
     }
 
+    private static ApplicationProblemException BagTypeProductStandardInUse()
+    {
+        return CommercialMasterDataInfrastructure.Conflict(
+            "BAG_TYPE_PRODUCT_STANDARD_IN_USE",
+            "Active product standard bag weights must be deactivated before this Bag Type.");
+    }
+
     private static ApplicationProblemException SettingsInvalid()
     {
         return new ApplicationProblemException(
@@ -447,6 +454,8 @@ internal sealed partial class ProcurementMasterDataService
                 WeightPolicyCodeExists(),
             "ck_procurement_default_weight_policy_active" =>
                 DefaultPolicyInUse(),
+            "ck_bag_type_product_standard_in_use" =>
+                BagTypeProductStandardInUse(),
             "fk_company_procurement_settings_company" or
             "fk_company_procurement_settings_default_branch" or
             "fk_company_procurement_settings_default_destination" or

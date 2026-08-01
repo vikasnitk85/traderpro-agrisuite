@@ -419,10 +419,78 @@ The design is documented in
 and
 [`ADR-0006-commercial-operational-master-data.md`](docs/decisions/ADR-0006-commercial-operational-master-data.md).
 
-Task 7B2 remains deferred and will add Suppliers, Product Groups, Products,
-product-specific Standard Bag Weights, and Supplier Product Scope. Task 7B1
-does not add commercial Receiving, settlement, Inventory, Sales, Finance,
-Production, Fleet Management, Flutter screens, or mobile commercial sync.
+Task 7B1 does not add commercial Receiving, settlement, Inventory, Sales,
+Finance, Production, Fleet Management, Flutter screens, or mobile commercial
+sync.
+
+## Commercial Supplier and Product Catalog
+
+Task 7B2 adds production Suppliers, Product Groups, Products, optional
+Supplier Product Scope, and product-specific Standard Bag Weights behind the
+authenticated Task 7A context. Product Types and explicit purchasability
+prepare selection for Task 7C. Optional normalized Processing Family allows
+Aman, H Aman, and P Aman products to share `AMAN` without introducing
+Production behavior.
+
+Owner-authenticated routes manage records; Owners and Operators may read:
+
+```text
+/api/v1/procurement/suppliers
+/api/v1/procurement/suppliers/{supplierId}/product-scopes
+/api/v1/catalog/product-groups
+/api/v1/catalog/products
+/api/v1/catalog/products/{productId}/bag-standards
+```
+
+Supplier scope defaults to Unrestricted. Restricted suppliers require an
+Active Product association and cannot lose their final Active scope. Standard
+bag content is an exact product-specific net weight and remains separate from
+Task 7B1 Bag Type tare. At most one Active default standard exists per
+Product. Active associations protect Product, Product Group, and Bag Type
+deactivation.
+
+Codes and ownership are immutable, physical DELETE is prohibited, successful
+mutations advance persisted versions, and PostgreSQL advisory locks protect
+scope/default and in-use races. Commands reuse database idempotency and commit
+safe audit plus `Internal` outbox facts atomically. Presence-aware update
+contracts reject immutable codes and bag-standard Product, Bag Type, or
+default fields before idempotency begins. Audit snapshots explain safe material
+changes separately from minimal Internal event payloads. Supplier protected
+values never enter either projection; audits identify protected changes only
+through deterministic field names. Product audits retain safe Description
+before/after values and identify Notes changes through a deterministic `notes`
+field name without storing raw Notes; Product Internal events keep their
+minimal shape. Initial Supplier scopes, including Unrestricted initial scopes,
+each receive an audit and event in Product ID order, and the entire
+Supplier/scope/fact/result composite rolls back if any scope event fails.
+Commercial catalog events remain outside the temporary POC MobileSync cursor.
+
+The follow-up
+`20260801030919_HardenCommercialSupplierProductCatalogContracts` migration
+strengthens direct-SQL Supplier email validation to require canonical lowercase
+trimmed values, exactly one non-edge `@`, and no whitespace or control
+characters. The original Task 7B2 migration remains unchanged.
+
+Run the focused unit, PostgreSQL 18/API, architecture, Task 7B1, Task 7A, and
+Task 6A suite with:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\test\test-commercial-supplier-product-catalog.ps1
+```
+
+Follow
+[`TPRUN-004-Commercial-Supplier-and-Product-Catalog.md`](docs/runbooks/TPRUN-004-Commercial-Supplier-and-Product-Catalog.md).
+The design is documented in
+[`TPTECH-001.20-Commercial-Supplier-and-Product-Catalog.md`](docs/technical-specs/TPTECH-001.20-Commercial-Supplier-and-Product-Catalog.md)
+and
+[`ADR-0007-commercial-supplier-and-product-catalog.md`](docs/decisions/ADR-0007-commercial-supplier-and-product-catalog.md).
+
+Task 7C remains the next dependency and will design commercial Receiving
+Sessions separately. Task 7B2 does not implement supplier balances, opening
+payables, stock, prices, rates, settlement, accounting, Purchase Bills,
+Inventory movements, Sales, Finance, Production, recipes, Flutter screens, or
+commercial mobile sync.
 
 ## Two-device Procurement backend POC (non-production)
 
@@ -615,8 +683,8 @@ The following capabilities are intentionally outside this scaffold:
 - MFA, password reset, SSO, and production onboarding
 - Production cloud synchronisation (Task 6B is a debug-only POC)
 - PDF generation
-- Business-module migrations and domain entities beyond the Task 7B1
-  commercial operational masters
+- Business-module migrations and domain entities beyond the Task 7B2
+  commercial Supplier and Product catalog
 - SignalR integration and cloud synchronisation
 
 The implemented database foundation is documented in

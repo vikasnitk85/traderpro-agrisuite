@@ -3,8 +3,10 @@ using System.Text.RegularExpressions;
 using TraderPro.Application.Common.Errors;
 using TraderPro.Domain.Common.MasterData;
 using TraderPro.Domain.Common.Measurements;
+using TraderPro.Domain.Catalog;
 using TraderPro.Domain.Operations;
 using TraderPro.Domain.Procurement.MasterData;
+using TraderPro.Domain.Procurement.Suppliers;
 
 namespace TraderPro.Application.Common.MasterData;
 
@@ -223,6 +225,122 @@ public static partial class CommercialMasterDataInputRules
         };
     }
 
+    public static SupplierType ParseSupplierType(string? value)
+    {
+        return value switch
+        {
+            "Individual" => SupplierType.Individual,
+            "Business" => SupplierType.Business,
+            _ => throw Validation(
+                "SUPPLIER_INVALID",
+                "Supplier type must be Individual or Business.",
+                "supplierType"),
+        };
+    }
+
+    public static SupplierProductScopeMode ParseSupplierProductScopeMode(
+        string? value,
+        bool useDefault = false)
+    {
+        return value switch
+        {
+            null or "" when useDefault =>
+                SupplierProductScopeMode.Unrestricted,
+            "Unrestricted" => SupplierProductScopeMode.Unrestricted,
+            "Restricted" => SupplierProductScopeMode.Restricted,
+            _ => throw Validation(
+                "SUPPLIER_INVALID",
+                "Product scope mode must be Unrestricted or Restricted.",
+                "productScopeMode"),
+        };
+    }
+
+    public static ProductType ParseProductType(string? value)
+    {
+        return value switch
+        {
+            "RawMaterial" => ProductType.RawMaterial,
+            "FinishedGood" => ProductType.FinishedGood,
+            "ByProduct" => ProductType.ByProduct,
+            "Consumable" => ProductType.Consumable,
+            "Other" => ProductType.Other,
+            _ => throw Validation(
+                "PRODUCT_INVALID",
+                "Product type must be RawMaterial, FinishedGood, ByProduct, Consumable, or Other.",
+                "productType"),
+        };
+    }
+
+    public static bool RequireProductPurchasable(bool? value)
+    {
+        if (value is null)
+        {
+            throw Validation(
+                "PRODUCT_INVALID",
+                "isPurchasable must be explicitly supplied as true or false.",
+                "isPurchasable");
+        }
+
+        return value.Value;
+    }
+
+    public static decimal ParseStandardContentWeight(string? value)
+    {
+        if (value is null ||
+            !PositiveWeightPattern().IsMatch(value) ||
+            !decimal.TryParse(
+                value,
+                NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture,
+                out var parsed) ||
+            parsed <= 0m)
+        {
+            throw Validation(
+                "PRODUCT_STANDARD_BAG_WEIGHT_VALUE_INVALID",
+                "Standard content weight must be a positive decimal string with at most 14 integer and 6 fractional digits.",
+                "standardContentWeightKg");
+        }
+
+        return parsed;
+    }
+
+    public static string? NormalizeProcessingFamilyFilter(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Product.CanonicalizeProcessingFamily(value).Normalized;
+        }
+        catch (MasterDataDomainException exception)
+        {
+            throw MasterDataProblem.FromDomain(exception);
+        }
+    }
+
+    public static Guid[] CanonicalInitialProductIds(
+        IReadOnlyCollection<Guid>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return [];
+        }
+
+        if (values.Any(id => id == Guid.Empty) ||
+            values.Distinct().Count() != values.Count)
+        {
+            throw Validation(
+                "SUPPLIER_PRODUCT_SCOPE_INVALID",
+                "Initial product IDs must be unique non-empty UUIDs.",
+                "initialProductIds");
+        }
+
+        return values.OrderBy(id => id).ToArray();
+    }
+
     private static ApplicationProblemException Validation(
         string code,
         string message,
@@ -244,4 +362,9 @@ public static partial class CommercialMasterDataInputRules
         "^[0-9]{1,14}(\\.[0-9]{1,6})?$",
         RegexOptions.CultureInvariant)]
     private static partial Regex TareWeightPattern();
+
+    [GeneratedRegex(
+        "^[0-9]{1,14}(\\.[0-9]{1,6})?$",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex PositiveWeightPattern();
 }

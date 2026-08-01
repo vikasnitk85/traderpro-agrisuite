@@ -657,6 +657,211 @@ public sealed class DependencyDirectionTests
         Assert.Empty(offending);
     }
 
+    [Fact]
+    public void Supplier_and_catalog_boundaries_use_authenticated_context_only()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Catalog"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Procurement",
+                "Suppliers"),
+        };
+        var files = roots.SelectMany(EnumerateSourceFiles).ToArray();
+        var forbidden = new[]
+        {
+            "ITemporaryWorkspaceContextResolver",
+            "ITemporaryDeviceContextResolver",
+            "ICurrentDeviceAccessor",
+            "SpikeRequestContext",
+            "X-TraderPro-Workspace-ID",
+            "X-TraderPro-Device-ID",
+        };
+
+        Assert.All(
+            files,
+            path => Assert.DoesNotContain(
+                forbidden,
+                marker => File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)));
+        Assert.Contains(
+            files,
+            path => File.ReadAllText(path).Contains(
+                "IAuthenticatedTraderProContext",
+                StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Supplier_and_catalog_domain_and_application_keep_persistence_out()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Domain",
+                "Catalog"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Domain",
+                "Procurement",
+                "Suppliers"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Catalog"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Procurement",
+                "Suppliers"),
+        };
+        var forbidden = new[]
+        {
+            "Microsoft.EntityFrameworkCore",
+            "Npgsql",
+            "TraderProDbContext",
+            "Microsoft.AspNetCore",
+            "TraderPro.Infrastructure",
+        };
+        var offending = roots
+            .SelectMany(EnumerateSourceFiles)
+            .Where(path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offending);
+    }
+
+    [Fact]
+    public void Supplier_and_catalog_scope_does_not_add_deferred_business_workflows()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Domain",
+                "Catalog"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Domain",
+                "Procurement",
+                "Suppliers"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Catalog"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Application",
+                "Procurement",
+                "Suppliers"),
+        };
+        var forbidden = new[]
+        {
+            "ReceivingSession",
+            "InventoryMovement",
+            "PurchaseBill",
+            "SupplierBalance",
+            "Settlement",
+            "SalesOrder",
+            "JournalEntry",
+            "MillingRun",
+            "BillingRepository",
+        };
+        var offending = roots
+            .SelectMany(EnumerateSourceFiles)
+            .Where(path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(
+                    marker,
+                    StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offending);
+    }
+
+    [Fact]
+    public void Supplier_and_catalog_events_use_only_internal_outbox()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Catalog"),
+            Path.Combine(
+                repositoryRoot,
+                "services",
+                "backend",
+                "src",
+                "TraderPro.Infrastructure",
+                "Modules",
+                "Procurement",
+                "Suppliers"),
+        };
+        var files = roots.SelectMany(EnumerateSourceFiles).ToArray();
+
+        Assert.DoesNotContain(
+            files,
+            path => File.ReadAllText(path).Contains(
+                "OutboxEventStream.MobileSync",
+                StringComparison.Ordinal));
+        Assert.Contains(
+            files,
+            path => File.ReadAllText(path).Contains(
+                "OutboxEventStream.Internal",
+                StringComparison.Ordinal));
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

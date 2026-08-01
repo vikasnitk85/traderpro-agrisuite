@@ -2,8 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using TraderPro.Application.Operations;
 using TraderPro.Application.Procurement.MasterData;
 using TraderPro.Application.Procurement.Poc;
+using TraderPro.Application.Procurement.Suppliers;
 using TraderPro.Infrastructure.Modules.Procurement.MasterData;
 using TraderPro.Infrastructure.Modules.Procurement.Poc;
+using TraderPro.Infrastructure.Modules.Procurement.Suppliers;
 
 namespace TraderPro.Infrastructure.Modules.Procurement;
 
@@ -22,6 +24,7 @@ public static class ProcurementModuleRegistration
             ProcurementMasterDataService>();
         services.AddScoped<IBusinessLocationDefaultUsageReader,
             ProcurementDefaultUsageReader>();
+        services.AddScoped<ISupplierService, SupplierService>();
         return services;
     }
 }
