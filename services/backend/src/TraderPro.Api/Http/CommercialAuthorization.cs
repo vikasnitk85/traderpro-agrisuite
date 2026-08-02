@@ -8,6 +8,7 @@ public enum TraderProCommercialAuthorizationKind
     Anonymous,
     CommercialUser,
     Owner,
+    Operator,
     OperatorOrOwner,
 }
 
@@ -19,7 +20,7 @@ public sealed record TraderProCommercialContextOptions(
     TraderProCommercialAuthorizationKind AuthorizationKind);
 
 internal sealed record CommercialRoleRequirement(
-    bool OwnerOnly) : IAuthorizationRequirement;
+    TraderProCommercialAuthorizationKind RequiredKind) : IAuthorizationRequirement;
 
 internal sealed class CommercialRoleAuthorizationHandler(
     IAuthenticatedTraderProContext currentIdentity) :
@@ -30,9 +31,13 @@ internal sealed class CommercialRoleAuthorizationHandler(
         CommercialRoleRequirement requirement)
     {
         if (currentIdentity.IsBound &&
-            (requirement.OwnerOnly
-                ? currentIdentity.IsOwner
-                : currentIdentity.IsOperatorOrOwner))
+            requirement.RequiredKind switch
+            {
+                TraderProCommercialAuthorizationKind.Owner => currentIdentity.IsOwner,
+                TraderProCommercialAuthorizationKind.Operator =>
+                    currentIdentity.IsOperator,
+                _ => currentIdentity.IsOperatorOrOwner,
+            })
         {
             context.Succeed(requirement);
         }
@@ -55,7 +60,7 @@ internal static class CommercialAuthorizationRegistration
                 {
                     policy.RequireAuthenticatedUser();
                     policy.AddRequirements(
-                        new CommercialRoleRequirement(OwnerOnly: false));
+                        new CommercialRoleRequirement(TraderProCommercialAuthorizationKind.CommercialUser));
                 })
             .AddPolicy(
                 TraderProAuthorizationPolicies.Owner,
@@ -63,7 +68,15 @@ internal static class CommercialAuthorizationRegistration
                 {
                     policy.RequireAuthenticatedUser();
                     policy.AddRequirements(
-                        new CommercialRoleRequirement(OwnerOnly: true));
+                        new CommercialRoleRequirement(TraderProCommercialAuthorizationKind.Owner));
+                })
+            .AddPolicy(
+                TraderProAuthorizationPolicies.Operator,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.AddRequirements(
+                        new CommercialRoleRequirement(TraderProCommercialAuthorizationKind.Operator));
                 })
             .AddPolicy(
                 TraderProAuthorizationPolicies.OperatorOrOwner,
@@ -71,7 +84,7 @@ internal static class CommercialAuthorizationRegistration
                 {
                     policy.RequireAuthenticatedUser();
                     policy.AddRequirements(
-                        new CommercialRoleRequirement(OwnerOnly: false));
+                        new CommercialRoleRequirement(TraderProCommercialAuthorizationKind.OperatorOrOwner));
                 });
         return services;
     }
@@ -104,6 +117,8 @@ public static class CommercialEndpointConventionExtensions
                 TraderProCommercialAuthorizationKind.CommercialUser,
             TraderProAuthorizationPolicies.Owner =>
                 TraderProCommercialAuthorizationKind.Owner,
+            TraderProAuthorizationPolicies.Operator =>
+                TraderProCommercialAuthorizationKind.Operator,
             TraderProAuthorizationPolicies.OperatorOrOwner =>
                 TraderProCommercialAuthorizationKind.OperatorOrOwner,
             _ => throw new ArgumentException(

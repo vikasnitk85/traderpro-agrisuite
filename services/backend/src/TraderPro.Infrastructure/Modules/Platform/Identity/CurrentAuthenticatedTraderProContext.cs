@@ -24,6 +24,8 @@ internal sealed class CurrentAuthenticatedTraderProContext :
 
     public bool IsOwner => TraderProAuthorizationRules.IsOwner(Role);
 
+    public bool IsOperator => TraderProAuthorizationRules.IsOperator(Role);
+
     public bool IsOperatorOrOwner =>
         TraderProAuthorizationRules.IsOperatorOrOwner(Role);
 

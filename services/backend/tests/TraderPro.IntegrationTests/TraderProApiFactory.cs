@@ -19,7 +19,8 @@ public sealed class TraderProApiFactory(
     string[]? trustedProxyAddresses = null,
     int leaseMinutes = 5,
     int refreshReplaySeconds = 30,
-    DateTimeOffset? utcNow = null) : WebApplicationFactory<Program>
+    DateTimeOffset? utcNow = null,
+    IClock? testClock = null) : WebApplicationFactory<Program>
 {
     public const string TestIssuer = "TraderPro.IntegrationTests";
     public const string TestAudience =
@@ -132,12 +133,13 @@ public sealed class TraderProApiFactory(
                     }
                 }
             });
-        if (utcNow is not null)
+        if (testClock is not null || utcNow is not null)
         {
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IClock>();
-                services.AddSingleton<IClock>(new FixedClock(utcNow.Value));
+                services.AddSingleton(
+                    testClock ?? new FixedClock(utcNow!.Value));
             });
         }
     }

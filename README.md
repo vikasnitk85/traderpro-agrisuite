@@ -501,32 +501,46 @@ Receiving reference; snapshots validated commercial masters; defines
 authenticated operation, event, and master synchronization; and requires a
 separate encrypted production mobile database.
 
-This milestone is **documentation only**. No production Commercial Receiving
-domain/application/infrastructure/API code, Flutter screen, database table,
-migration, endpoint, or package exists yet. The Task 5/6 Procurement POC remains
-non-production reference evidence and is not reused as commercial authority.
+Task 7C1 now implements the authenticated production backend in a separate
+Domain/Application/Infrastructure/API boundary. It adds immutable Session,
+Entry, ownership, reference policy/counter, commercial event audience, and
+commercial master-change persistence through the reviewed
+`AddCommercialReceivingBackend` migration and the reviewed
+`HardenCommercialReceivingBackendContracts` follow-up. Receiving mutations are
+Operator-only; durable operation claims retain `NeedsAttention` identity;
+Start reserves non-reusable references before aggregate execution; and
+deterministic master locks, snapshot triggers, deferred audience constraints,
+and Session/ownership transition guards protect the commit boundary. Owner
+transfer clears the lease, and the authenticated target Operator must acquire
+its own lease. Master sync uses explicit camel-case `contractVersion: 1`
+selection payloads rather than table-row JSON. Task 7C2 Flutter work remains
+deferred. The Task 5/6 Procurement POC remains separate and unchanged.
 
 The current Flutter/Drift database still uses ordinary, **unencrypted SQLite**.
 It is not approved for pilot or production customer data. Task 7C2 must complete
 a reviewed encrypted-SQLite and OS secure-storage compatibility spike before
 selecting packages or enabling Commercial Receiving.
 
-Task 7C0 documents:
+Commercial Receiving documents:
 
 - [TPRC-101 requirements baseline](docs/product-specs/TPRC-101-Commercial-Receiving-Requirements-Baseline.md)
 - [TPRC-101 open questions](docs/product-specs/TPRC-101-Open-Questions.md)
 - [TPTECH-001.21 Commercial Receiving contract and mobile security](docs/technical-specs/TPTECH-001.21-Commercial-Receiving-Contract-and-Mobile-Security-Design.md)
+- [TPTECH-001.22 Commercial Receiving backend](docs/technical-specs/TPTECH-001.22-Commercial-Receiving-Backend.md)
 - [ADR-0008 ownership and offline synchronization](docs/decisions/ADR-0008-commercial-receiving-ownership-and-offline-sync.md)
 - [ADR-0009 authenticated mobile sync and storage](docs/decisions/ADR-0009-authenticated-commercial-mobile-sync-and-storage.md)
+- [ADR-0010 references and sync streams](docs/decisions/ADR-0010-commercial-receiving-reference-and-sync-streams.md)
+- [TPRUN-005 Commercial Receiving backend runbook](docs/runbooks/TPRUN-005-Commercial-Receiving-Backend.md)
 - [TPSEC-001 Commercial Mobile Receiving threat model](docs/threat-models/TPSEC-001-Commercial-Mobile-Receiving-Threat-Model.md)
 - [Task 7C1 Commercial Receiving Backend plan](docs/task-plans/TASK-7C1-Commercial-Receiving-Backend.md)
 - [Task 7C2 Secure Flutter Commercial Receiving plan](docs/task-plans/TASK-7C2-Secure-Flutter-Commercial-Receiving.md)
 
-The next milestones are Task 7C1 for the authenticated production backend and
-Task 7C2 for secure Flutter authentication, encrypted local storage, offline
+Task 7C1 is the implemented authenticated production backend. The next
+milestone is Task 7C2 for secure Flutter authentication, encrypted local storage, offline
 capture/sync, and read-only Owner monitoring. Missing TPCL-101/TPFS-101 details
 remain explicit gates; Task 7C0 does not invent cancellation, correction,
-transfer approval, final reference format, or settlement/posting behavior.
+or settlement/posting behavior. Task 7C1 resolves focused Owner transfer and
+automatic Receiving-reference behavior only.
 
 ## Two-device Procurement backend POC (non-production)
 
@@ -672,7 +686,16 @@ and
 - Task 7C0 documents the production Commercial Receiving aggregate, two-state
   lifecycle, ownership generation/lease recovery, authenticated commercial
   operation/event/master sync, secure mobile storage strategy, threat model,
-  and Task 7C1/7C2 backlogs. It adds no production Receiving code.
+  and Task 7C1/7C2 backlogs.
+- `AddCommercialReceivingBackend` implements the separate authenticated
+  production Session/Entry/ownership/reference boundary, commercial event
+  audiences/cursor, and safe commercial master change log through submission
+  for settlement review, with no settlement or posting effects.
+- `HardenCommercialReceivingBackendContracts` adds durable mobile-operation
+  claims, non-reusable reference reservations, same-company master foreign
+  keys and snapshot validation, deferred commercial-audience completeness,
+  serialized transfer/acquisition guards, and explicit versioned master
+  payload builders without changing the POC or adding posting effects.
 - The API validates signed access tokens and revalidates current commercial
   workspace/user/device/company/default-branch/role authority on every
   protected request; temporary POC context remains separate.
@@ -713,8 +736,7 @@ and
 
 The following capabilities are intentionally outside this scaffold:
 
-- Complete Receiving Session workflows and UI
-- Task 7C1 production Commercial Receiving backend implementation
+- Commercial Receiving Flutter workflows and UI (Task 7C2)
 - Task 7C2 secure Flutter Commercial Receiving, authentication, encrypted
   local database, and commercial offline synchronization
 - Inventory movements
@@ -742,3 +764,43 @@ for sensitive customer data**. Encrypted local storage selection, key
 management, and migration remain mandatory pre-pilot security work.
 
 These omissions are intentional. Future work should introduce each capability through reviewed specifications and tests while preserving the rules in `AGENTS.md`.
+
+### Task 7C1 final contract corrections
+
+`20260802120000_FinalizeCommercialReceivingBackendContracts` completes the
+Commercial Receiving backend contract. Immutable mobile payloads are scanned
+recursively and reject lease/cloud-version capabilities at any depth; a later
+same-Session batch item blocked by an earlier item returns retryable
+`COMMERCIAL_MOBILE_OPERATION_WAITING_FOR_PRIOR_SEQUENCE` without a claim or
+idempotency record. Every claim transition is serialized by the commercial
+command scope plus `OperationId`, and terminal claims are database-immutable.
+
+PostgreSQL now locks every Session/Entry master row while validating snapshots,
+rejects vehicle facts when vehicle selection is Disabled, enforces the explicit
+heartbeat/reacquire/transfer/submission ownership state machine, and validates
+mobile claim/reservation UUIDv7 identities. Monitoring uses the later of the
+Session and Ownership update times and exposes acquisition/reacquisition
+attention. Reconstructible original-Task-7C1 operations retain exact replay;
+unknown legacy identities are explicitly non-replayable and cannot reserve a
+second reference.
+
+All Task 7C1 migrations are forward-only. After finalization, `dotnet ef
+database update <older migration>` is unsupported; rollback means application
+rollback plus database restore from backup.
+
+### Task 7C1 reference-contract seal
+
+`20260802130000_SealCommercialReceivingReferenceContracts` enforces one
+durable reference reservation per workspace/company/Session. Start validates
+and rejects its typed immutable payload after claiming the Operation but before
+locking the reference series or advancing its counter. Invalid commands never
+allocate; a valid Start that later needs business attention may retain its
+reservation and intentional numbering gap.
+
+Reservations are historical numbering-policy snapshots. Exact retry consumes
+the original rendered reference even after the current policy format/version
+changes, while a new Session uses the new format. Start lock order is claim,
+reference series, reservation/policy/counter, Session/defaults, Supplier,
+settings, destination, Weight Policy, and optional Vehicle. Entry lock order is
+claim, Session, Ownership, Product, optional scope, Bag Type, and optional
+standard weight. The seal is also forward-only.

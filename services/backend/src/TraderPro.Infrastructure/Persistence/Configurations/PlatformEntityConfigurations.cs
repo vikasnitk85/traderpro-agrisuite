@@ -512,7 +512,7 @@ internal sealed class OutboxMessageConfiguration :
                     "status IN (1, 2, 3, 4)");
                 table.HasCheckConstraint(
                     "ck_outbox_messages_event_stream",
-                    "event_stream IN (1, 2)");
+                    "event_stream IN (1, 2, 3)");
                 table.HasCheckConstraint(
                     "ck_outbox_messages_event_version",
                     "event_version > 0");
@@ -628,6 +628,72 @@ internal sealed class OutboxMessageConfiguration :
         PropertyBuilder<TProperty> property)
     {
         property.Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+    }
+}
+
+internal sealed class CommercialOutboxAudienceConfiguration :
+    IEntityTypeConfiguration<CommercialOutboxAudience>
+{
+    public void Configure(EntityTypeBuilder<CommercialOutboxAudience> builder)
+    {
+        builder.ToTable(
+            "commercial_outbox_audiences",
+            "platform",
+            table => table.HasCheckConstraint(
+                "ck_commercial_outbox_audiences_shape",
+                "audience IN (1, 2) AND ((audience = 1 AND target_device_id IS NULL) OR (audience = 2 AND target_device_id IS NOT NULL))"));
+        builder.HasKey(entity => entity.OutboxMessageId)
+            .HasName("pk_commercial_outbox_audiences");
+        builder.Property(entity => entity.OutboxMessageId)
+            .HasColumnName("outbox_message_id")
+            .ValueGeneratedNever();
+        builder.Property(entity => entity.WorkspaceId)
+            .HasColumnName("workspace_id")
+            .IsRequired();
+        builder.Property(entity => entity.CompanyId)
+            .HasColumnName("company_id")
+            .IsRequired();
+        builder.Property(entity => entity.Audience)
+            .HasColumnName("audience")
+            .HasConversion<short>()
+            .IsRequired();
+        builder.Property(entity => entity.TargetDeviceId)
+            .HasColumnName("target_device_id");
+        builder.HasOne<OutboxMessage>()
+            .WithOne()
+            .HasForeignKey<CommercialOutboxAudience>(entity => entity.OutboxMessageId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_commercial_outbox_audiences_message");
+        builder.HasOne<Company>()
+            .WithMany()
+            .HasForeignKey(entity => new { entity.WorkspaceId, entity.CompanyId })
+            .HasPrincipalKey(entity => new { entity.WorkspaceId, entity.Id })
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_commercial_outbox_audiences_company");
+        builder.HasOne<Device>()
+            .WithMany()
+            .HasForeignKey(entity => new { entity.WorkspaceId, entity.TargetDeviceId })
+            .HasPrincipalKey(entity => new { entity.WorkspaceId, entity.Id })
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_commercial_outbox_audiences_target_device");
+        builder.HasIndex(entity => new
+        {
+            entity.WorkspaceId,
+            entity.CompanyId,
+            entity.Audience,
+            entity.TargetDeviceId,
+            entity.OutboxMessageId,
+        }).HasDatabaseName("ix_commercial_outbox_audiences_cursor");
+        builder.HasIndex(entity => new
+        {
+            entity.WorkspaceId,
+            entity.TargetDeviceId,
+        }).HasDatabaseName(
+            "ix_commercial_outbox_audiences_workspace_target_device");
+        foreach (var property in builder.Metadata.GetProperties())
+        {
+            property.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+        }
     }
 }
 

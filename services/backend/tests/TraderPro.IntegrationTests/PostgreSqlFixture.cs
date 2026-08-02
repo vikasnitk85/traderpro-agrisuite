@@ -76,6 +76,7 @@ public sealed class IsolatedPostgreSqlDatabase(
         "audit_events",
         "branches",
         "command_probes",
+        "commercial_outbox_audiences",
         "companies",
         "device_activation_codes",
         "device_credentials",
@@ -151,4 +152,5 @@ public sealed class IsolatedPostgreSqlDatabase(
     {
         public DateTimeOffset UtcNow { get; } = utcNow;
     }
+
 }

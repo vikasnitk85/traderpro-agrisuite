@@ -401,6 +401,12 @@ internal sealed class CompanyProcurementSettingsConfiguration :
             });
         builder.HasKey(entity => entity.Id)
             .HasName("pk_company_procurement_settings");
+        builder.HasAlternateKey(entity => new
+        {
+            entity.WorkspaceId,
+            entity.CompanyId,
+            entity.Id,
+        }).HasName("ak_company_procurement_settings_workspace_company_id");
         builder.Property(entity => entity.Id)
             .HasColumnName("id")
             .ValueGeneratedNever();

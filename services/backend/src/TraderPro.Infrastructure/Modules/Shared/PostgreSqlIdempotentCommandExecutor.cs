@@ -14,6 +14,7 @@ internal enum OutboxCommitOrdering
 {
     MobileSyncCursor,
     IndependentInternal,
+    CommercialMobileSync,
 }
 
 /// <summary>
@@ -102,6 +103,38 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
         CancellationToken cancellationToken)
         where T : class
     {
+        return await ExecuteAsync(
+            workspaceId,
+            commandType,
+            idempotencyKey,
+            requestHash,
+            correlationId,
+            resultStatusCode,
+            execute,
+            isReplayable,
+            concurrencyProblem,
+            persistenceProblem,
+            outboxCommitOrdering,
+            orderingCompanyId: null,
+            cancellationToken);
+    }
+
+    public async Task<IdempotentCommandResult<T>> ExecuteAsync<T>(
+        Guid workspaceId,
+        string commandType,
+        string idempotencyKey,
+        string requestHash,
+        string correlationId,
+        int resultStatusCode,
+        Func<Task<T>> execute,
+        Func<T, bool> isReplayable,
+        Func<Task<ApplicationProblemException>>? concurrencyProblem,
+        Func<Exception, ApplicationProblemException?>? persistenceProblem,
+        OutboxCommitOrdering outboxCommitOrdering,
+        Guid? orderingCompanyId,
+        CancellationToken cancellationToken)
+        where T : class
+    {
         await using var transaction = await dbContext.Database
             .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
 
@@ -173,6 +206,22 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
                     $"SELECT pg_advisory_xact_lock(hashtextextended({EventCommitOrderLockScope}, 0))",
                     cancellationToken);
             }
+            else if (outboxCommitOrdering is
+                OutboxCommitOrdering.CommercialMobileSync)
+            {
+                if (orderingCompanyId is null || orderingCompanyId == Guid.Empty)
+                {
+                    throw new ArgumentException(
+                        "Commercial outbox ordering requires a Company ID.",
+                        nameof(orderingCompanyId));
+                }
+
+                var commercialLockScope =
+                    $"TraderPro.CommercialMobileSync.CommitOrder.v1\n{workspaceId:D}\n{orderingCompanyId:D}";
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock(hashtextextended({commercialLockScope}, 0))",
+                    cancellationToken);
+            }
 
             var idempotencyRecord = IdempotencyRecord.Create(
                 workspaceId,
@@ -203,20 +252,20 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
         catch (DbUpdateConcurrencyException)
             when (concurrencyProblem is not null)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            await TryRollbackAsync(transaction, cancellationToken);
             dbContext.ChangeTracker.Clear();
             throw await concurrencyProblem();
         }
         catch (ApplicationProblemException)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            await TryRollbackAsync(transaction, cancellationToken);
             dbContext.ChangeTracker.Clear();
             throw;
         }
         catch (Exception exception)
-            when (exception is DbUpdateException or PostgresException)
+            when (IsPersistenceFailure(exception))
         {
-            await transaction.RollbackAsync(cancellationToken);
+            await TryRollbackAsync(transaction, cancellationToken);
             dbContext.ChangeTracker.Clear();
             var mapped = persistenceProblem?.Invoke(exception);
             if (mapped is not null)
@@ -225,6 +274,40 @@ internal sealed class PostgreSqlIdempotentCommandExecutor(
             }
 
             throw TemporaryFailure(exception);
+        }
+    }
+
+    private static bool IsPersistenceFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException!)
+        {
+            if (current is DbUpdateException or PostgresException)
+            {
+                return true;
+            }
+
+            if (current.InnerException is null)
+            {
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task TryRollbackAsync(
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            // PostgreSQL can complete/abort a transaction while reporting a
+            // deferred-constraint failure from COMMIT. Preserve that original
+            // database exception instead of masking it with a second rollback.
         }
     }
 

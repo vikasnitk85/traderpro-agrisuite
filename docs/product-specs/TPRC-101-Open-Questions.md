@@ -1,13 +1,14 @@
 # TPRC-101: Commercial Receiving Open Questions
 
-- Status: Open; decisions are required only where indicated before implementation
+- Status: Partially resolved; OQ-01, OQ-06, OQ-08, and focused OQ-04 resolved for Task 7C1
 - Date: 2026-08-01
 - Scope: Requirements absent from committed TPCL-101/TPFS-101 evidence
 
 ## Status
 
-Open. No listed question has an implied default or authorizes placeholder
-implementation.
+OQ-01, OQ-06, OQ-08, and the focused OQ-04 transfer authority are resolved by
+the approved Task 7C1 decisions below. The remaining questions have no implied
+default or placeholder authorization.
 
 ## Purpose
 
@@ -46,18 +47,39 @@ business source.
 
 | ID | Question | Why unresolved | Safe behavior until resolved | Required before |
 | --- | --- | --- | --- | --- |
-| OQ-01 | What is the final rendered production cloud-reference format and reset scope? | No committed source establishes prefix, width, date/fiscal period, branch component, or gap policy. | Store an immutable company-scoped numeric allocation and opaque rendered reference; never use `RS-POC-*`. | Enabling the production renderer in Task 7C1. |
 | OQ-02 | May an in-progress Session be cancelled; who may cancel it; and what happens to already captured Entries? | Task 4 explicitly deferred cancellation and no commercial source supplies the transition. | Do not add `CancelledBeforeSubmission`, a cancellation endpoint, or UI. Preserve Entries. | Implementing cancellation in any task. |
 | OQ-03 | How is a submitted Session corrected or returned for correction? | Submitted snapshots must be immutable, but no source chooses reject-and-clone, reversal, amendment, or a new Session. | `SubmittedForSettlementReview` remains immutable and terminal for Task 7C. Do not add `RejectedForCorrection`. | Any post-submission correction workflow. |
-| OQ-04 | Who may authorize ownership transfer/recovery, is editor consent required, and what reason/evidence is mandatory? | Only explicit, audited transfer with generation increment is fixed. | No other Device takes ownership automatically. Same-device lease reacquisition is permitted when generation is unchanged. | Exposing a different-device transfer/recovery command in Task 7C1/7C2. |
 | OQ-05 | What are the business maxima for active Sessions per Device/company, Entries per Session, bags per Entry, and Session duration? | Existing limits are POC/transport/physical numeric constraints, not approved business limits. | Enforce only safe technical batch/string/numeric limits and make them distinct from business maxima. | Pilot capacity configuration and UI validation. |
-| OQ-06 | Is zero raw/processed weight a valid Receiving Entry, and is at least one Entry required to submit? | Task 3 permits zero as a pure function but explicitly defers Receiving validation; the POC one-entry rule is not commercial authority. | Preserve the local raw fact, but do not claim business acceptance. Task 7C1 must resolve this before enabling production capture/submission. | Production Entry and Submit validation. |
 | OQ-07 | Which additional Session header fields, if any, are required? | Supplier, destination, policy, and optional vehicle are established; driver, broker, order, remarks, source location, rate, and similar fields are not. | Add none. | Adding any additional production field/API/UI. |
-| OQ-08 | What production lease duration, renewal lead time, grace behavior, and recovery escalation SLA apply? | The five-minute POC policy is explicitly prohibited from promotion. | Use server time and configurable values; do not freeze a POC-derived duration. | Pilot configuration in Task 7C1/7C2. |
 | OQ-09 | When a captured master version is stale but the same master remains Active, what explicit recovery choices may an authorized user make? | Automatic substitution/reclassification is prohibited; the allowed human decision is not specified. | Return `NeedsAttention`, retain the original immutable payload, and expose no auto-fix. | Implementing stale-master recovery commands/UI. |
 | OQ-10 | When an old ownership generation contains queued physical facts, what explicit adoption/re-entry/reconciliation procedure is allowed? | Old-generation operations must be rejected as stale and payloads cannot be rewritten. | Preserve the facts and operation evidence in attention state. | Implementing cross-generation recovery. |
 | OQ-11 | May an Operator override the Company Procurement Settings default destination or Weight Policy, and if so under what authority and audit rules? | The settings defaults exist, but no product source defines who may override them, allowed alternatives, reason capture, or whether override is per Session. | Task 7C1 accepts only the configured default destination and Weight Policy from the exact captured settings revision; expose no alternate route, flag, or UI. | Any destination or Weight Policy override behavior. |
 | OQ-12 | How may a non-editor Operator discover or monitor Sessions being edited by another Device? | Owner monitoring is defined, but company membership alone is not authority for one Operator to observe another Session. | Operator event reads are limited to events targeted to its Device while it is the active editor; expose no company-wide Operator list/live view. | Any non-editor Operator discovery, broadcast, list, or live-view access. |
+
+## Resolved for Task 7C1
+
+- **OQ-01:** Commercial Receiving uses cloud-assigned automatic references.
+  The default template is `RCV-{SEQ:000000}`. V1 permits exactly one sequence
+  token, optional year/month tokens, positive starting numbers, and `Never`,
+  `CalendarYear`, or `Monthly` reset. Calendar-year templates require a year;
+  monthly templates require year and month. Issued references and captured
+  policy versions never change; manual/not-required numbering is not enabled.
+- **OQ-06:** A saved Entry requires positive raw and processed weight and a
+  positive bag count. Zero live-scale observations are not Entries. Submit
+  requires an in-progress Session, exact next sequence, current/reacquired
+  lease, at least one accepted Entry, and a positive processed total.
+- **OQ-08:** Lease duration is 60 minutes and the foreground-online heartbeat
+  target is 10 minutes. Server time is authoritative. Expiry preserves durable
+  ownership and physical facts. The same Device/generation reacquires a new
+  lease; another Device requires Owner-authorized transfer.
+- **OQ-04 (focused Task 7C1 authority):** A different-device transfer is
+  Owner-only, requires an active credentialed target Device, a safe reason,
+  expected Session version and ownership generation, and commits generation
+  advancement, lease clearing, audit, and Owner/old/new Device events atomically.
+  The Owner never receives a target lease. The target Device authenticates as
+  an Operator and acquires its own new lease without changing generation; an
+  already-valid lease cannot be arbitrarily rotated. Broader emergency/consent
+  policy remains future scope.
 
 ## Resolved in Task 7C0 and therefore not open
 
@@ -114,15 +136,34 @@ migrations after source resolution.
 
 ## Future implementation dependencies
 
-- OQ-01 and OQ-08 are explicit Task 7C1 enablement gates and require resolution
-  or reviewed configuration before pilot activation.
-- OQ-04 is required before a different-device transfer route is enabled.
-- OQ-06 is required before production Entry/Submit validation is enabled.
+- OQ-01, OQ-06, and OQ-08 are satisfied for Task 7C1 and now constrain Task
+  7C2 implementation.
+- OQ-04 is resolved for Task 7C1 as Owner-only transfer with an explicit safe
+  reason, expected Session version, and expected ownership generation.
 - OQ-02, OQ-03, OQ-07, OQ-09, OQ-10, OQ-11, and OQ-12 gate only their respective
   optional behavior; their absence must not be filled by speculation.
 
 ## Unresolved questions
 
-OQ-01 through OQ-12 above are the complete open list for this baseline. New
-questions must be added with source evidence and an identified implementation
-gate.
+OQ-02, OQ-03, OQ-05, OQ-07, and OQ-09 through OQ-12 remain open. OQ-04 has the
+focused Task 7C1 Owner-transfer resolution. New questions require source
+evidence and an identified implementation gate.
+
+## Task 7C1 finalization clarifications
+
+The following are closed implementation contracts, not open product defaults:
+recursive immutable-payload capability rejection; retryable waiting outcomes
+for blocked same-Session batch items; serialized and terminal claim states;
+locked master snapshot validation; the exact ownership transition state
+machine; legacy replay versus explicit non-replayable classification; the
+later Session/Ownership monitoring timestamp; acquisition/reacquisition
+attention; UUIDv7 claim/reservation checks; and forward-only Task 7C1 database
+recovery by backup restore. These clarifications add no settlement or posting
+behavior and do not resolve the remaining commercial-policy questions.
+
+Reference sealing is likewise closed implementation behavior: one reservation
+per Session, structural Start rejection before allocation, immutable
+reservation policy snapshots across later policy updates, and canonical
+claim/reference/master lock ordering. A numbering gap is intentional only
+after a structurally valid command has reserved a number and then encounters a
+business or infrastructure failure.

@@ -6,6 +6,8 @@ using TraderPro.Application.Procurement.Suppliers;
 using TraderPro.Infrastructure.Modules.Procurement.MasterData;
 using TraderPro.Infrastructure.Modules.Procurement.Poc;
 using TraderPro.Infrastructure.Modules.Procurement.Suppliers;
+using TraderPro.Application.Procurement.Receiving;
+using TraderPro.Infrastructure.Modules.Procurement.Receiving;
 
 namespace TraderPro.Infrastructure.Modules.Procurement;
 
@@ -25,6 +27,8 @@ public static class ProcurementModuleRegistration
         services.AddScoped<IBusinessLocationDefaultUsageReader,
             ProcurementDefaultUsageReader>();
         services.AddScoped<ISupplierService, SupplierService>();
+        services.AddScoped<ICommercialReceivingService,
+            CommercialReceivingService>();
         return services;
     }
 }

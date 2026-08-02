@@ -10,6 +10,7 @@ using TraderPro.Application.Common.Errors;
 using TraderPro.Application.Common.Time;
 using TraderPro.Application.Platform.Identity;
 using TraderPro.Application.Procurement.Poc;
+using TraderPro.Application.Procurement.Receiving;
 using TraderPro.Infrastructure;
 using TraderPro.Infrastructure.Modules.Platform.Identity;
 using TraderPro.Infrastructure.Persistence;
@@ -59,6 +60,16 @@ builder.Services.AddSingleton(
         leaseMinutes > 0
             ? leaseMinutes
             : ProcurementPocOptions.DevelopmentDefault.LeaseMinutes));
+var commercialReceivingLeaseMinutes = builder.Configuration.GetValue<int?>(
+        "TraderPro:CommercialReceiving:LeaseMinutes") ??
+    CommercialReceivingOptions.DefaultLeaseMinutes;
+if (commercialReceivingLeaseMinutes <= 0)
+{
+    throw new InvalidOperationException(
+        "TraderPro:CommercialReceiving:LeaseMinutes must be positive.");
+}
+builder.Services.AddSingleton(
+    new CommercialReceivingOptions(commercialReceivingLeaseMinutes));
 builder.Services.AddTraderProCommercialAuthorization();
 
 var authenticationOptions =
@@ -209,6 +220,7 @@ app.MapTraderProIdentityEndpoints(
     builder.Environment.IsEnvironment("Testing"));
 app.MapTraderProCommercialMasterDataEndpoints();
 app.MapTraderProCommercialSupplierCatalogEndpoints();
+app.MapTraderProCommercialReceivingEndpoints();
 
 if (spikesEnabled)
 {

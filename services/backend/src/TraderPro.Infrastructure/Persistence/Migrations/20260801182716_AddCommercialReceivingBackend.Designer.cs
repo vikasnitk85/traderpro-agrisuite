@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderPro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using TraderPro.Infrastructure.Persistence;
 namespace TraderPro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TraderProDbContext))]
-    partial class TraderProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260801182716_AddCommercialReceivingBackend")]
+    partial class AddCommercialReceivingBackend
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -588,6 +591,43 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TraderPro.Domain.Platform.CommercialOutboxAudience", b =>
+                {
+                    b.Property<Guid>("OutboxMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("outbox_message_id");
+
+                    b.Property<short>("Audience")
+                        .HasColumnType("smallint")
+                        .HasColumnName("audience");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<Guid?>("TargetDeviceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_device_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("OutboxMessageId")
+                        .HasName("pk_commercial_outbox_audiences");
+
+                    b.HasIndex("WorkspaceId", "CompanyId", "Audience", "TargetDeviceId", "OutboxMessageId")
+                        .HasDatabaseName("ix_commercial_outbox_audiences_cursor");
+
+                    b.HasIndex("WorkspaceId", "TargetDeviceId")
+                        .HasDatabaseName("ix_commercial_outbox_audiences_workspace_target_device");
+
+                    b.ToTable("commercial_outbox_audiences", "platform", t =>
+                        {
+                            t.HasCheckConstraint("ck_commercial_outbox_audiences_shape", "audience IN (1, 2) AND ((audience = 1 AND target_device_id IS NULL) OR (audience = 2 AND target_device_id IS NOT NULL))");
+                        });
+                });
+
             modelBuilder.Entity("TraderPro.Domain.Platform.CommandProbe", b =>
                 {
                     b.Property<Guid>("Id")
@@ -636,43 +676,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_command_probes_counter", "counter >= 0");
 
                             t.HasCheckConstraint("ck_command_probes_version", "version > 0");
-                        });
-                });
-
-            modelBuilder.Entity("TraderPro.Domain.Platform.CommercialOutboxAudience", b =>
-                {
-                    b.Property<Guid>("OutboxMessageId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("outbox_message_id");
-
-                    b.Property<short>("Audience")
-                        .HasColumnType("smallint")
-                        .HasColumnName("audience");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<Guid?>("TargetDeviceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("target_device_id");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("workspace_id");
-
-                    b.HasKey("OutboxMessageId")
-                        .HasName("pk_commercial_outbox_audiences");
-
-                    b.HasIndex("WorkspaceId", "TargetDeviceId")
-                        .HasDatabaseName("ix_commercial_outbox_audiences_workspace_target_device");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "Audience", "TargetDeviceId", "OutboxMessageId")
-                        .HasDatabaseName("ix_commercial_outbox_audiences_cursor");
-
-                    b.ToTable("commercial_outbox_audiences", "platform", t =>
-                        {
-                            t.HasCheckConstraint("ck_commercial_outbox_audiences_shape", "audience IN (1, 2) AND ((audience = 1 AND target_device_id IS NULL) OR (audience = 2 AND target_device_id IS NOT NULL))");
                         });
                 });
 
@@ -1641,9 +1644,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_company_procurement_settings");
 
-                    b.HasAlternateKey("WorkspaceId", "CompanyId", "Id")
-                        .HasName("ak_company_procurement_settings_workspace_company_id");
-
                     b.HasIndex("WorkspaceId", "CompanyId")
                         .IsUnique()
                         .HasDatabaseName("ux_company_procurement_settings_workspace_company");
@@ -2389,18 +2389,9 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_commercial_receiving_entries");
 
-                    b.HasIndex("WorkspaceId", "CompanyId", "BagTypeId");
-
                     b.HasIndex("WorkspaceId", "CompanyId", "OperationId")
                         .IsUnique()
                         .HasDatabaseName("ux_commercial_receiving_entries_company_operation");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "ProductId");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "ProductStandardBagWeightId")
-                        .HasDatabaseName("ix_cr_entries_standard_weight");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "SupplierProductScopeId");
 
                     b.HasIndex("WorkspaceId", "CompanyId", "ReceivingSessionId", "LocalSequence")
                         .IsUnique()
@@ -2411,106 +2402,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_commercial_receiving_entries_physical", "local_sequence > 1 AND bag_count > 0 AND processed_weight_kg > 0 AND decimal_places_snapshot BETWEEN 1 AND 3");
 
                             t.HasCheckConstraint("ck_commercial_receiving_entries_snapshots", "product_version_snapshot > 0 AND product_type_snapshot IN (1, 2, 3, 4, 5) AND supplier_scope_mode_snapshot IN (1, 2) AND ((supplier_scope_mode_snapshot = 1 AND supplier_product_scope_id IS NULL AND supplier_product_scope_version_snapshot IS NULL AND supplier_scope_validation_result_snapshot = 'Unrestricted') OR (supplier_scope_mode_snapshot = 2 AND supplier_product_scope_id IS NOT NULL AND supplier_product_scope_version_snapshot > 0 AND supplier_scope_validation_result_snapshot = 'RestrictedScopeValidated')) AND bag_type_version_snapshot > 0 AND bag_construction_class_snapshot IN (1, 2, 3, 4) AND bag_tare_weight_kg_snapshot >= 0 AND ((product_standard_bag_weight_id IS NULL AND product_standard_bag_weight_version_snapshot IS NULL AND standard_bag_weight_label_snapshot IS NULL AND standard_content_weight_kg_snapshot IS NULL) OR (product_standard_bag_weight_id IS NOT NULL AND product_standard_bag_weight_version_snapshot > 0 AND standard_content_weight_kg_snapshot > 0)) AND processing_method_snapshot IN (0, 1, 2) AND char_length(weight_source) BETWEEN 1 AND 32");
-                        });
-                });
-
-            modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingOperationClaim", b =>
-                {
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("workspace_id");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<string>("CommandScopeValue")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("command_scope");
-
-                    b.Property<Guid>("OperationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("operation_id");
-
-                    b.Property<string>("AttentionCode")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("attention_code");
-
-                    b.Property<string>("AttentionMessage")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("attention_message");
-
-                    b.Property<DateTimeOffset?>("CompletedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at_utc");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<Guid>("DeviceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("device_id");
-
-                    b.Property<DateTimeOffset>("FirstSeenAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("first_seen_at_utc");
-
-                    b.Property<string>("OperationType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("operation_type");
-
-                    b.Property<long?>("OwnershipGeneration")
-                        .HasColumnType("bigint")
-                        .HasColumnName("ownership_generation");
-
-                    b.Property<string>("RequestHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("request_hash");
-
-                    b.Property<bool>("Retryable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("retryable");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("session_id");
-
-                    b.Property<short>("State")
-                        .HasColumnType("smallint")
-                        .HasColumnName("state");
-
-                    b.Property<DateTimeOffset>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at_utc");
-
-                    b.HasKey("WorkspaceId", "CompanyId", "CommandScopeValue", "OperationId")
-                        .HasName("pk_commercial_receiving_operation_claims");
-
-                    b.HasAlternateKey("WorkspaceId", "CompanyId", "OperationId")
-                        .HasName("ak_commercial_receiving_operation_claims_company_operation");
-
-                    b.HasIndex("WorkspaceId", "DeviceId");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "State", "UpdatedAtUtc")
-                        .HasDatabaseName("ix_commercial_receiving_operation_claims_attention");
-
-                    b.ToTable("commercial_receiving_operation_claims", "sync", t =>
-                        {
-                            t.HasCheckConstraint("ck_commercial_receiving_operation_claims_scope", "command_scope = 'Procurement.CommercialReceiving.MobileSyncOperation'");
-
-                            t.HasCheckConstraint("ck_commercial_receiving_operation_claims_shape", "char_length(request_hash) = 64 AND request_hash ~ '^[0-9a-f]{64}$' AND (ownership_generation IS NULL OR ownership_generation > 0) AND ((state IN (1, 4) AND attention_code IS NULL AND attention_message IS NULL) OR (state IN (2, 3) AND attention_code IS NOT NULL AND attention_message IS NOT NULL)) AND ((state = 4 AND completed_at_utc IS NOT NULL) OR (state <> 4 AND completed_at_utc IS NULL)) AND (state NOT IN (3, 4) OR retryable = false)");
-
-                            t.HasCheckConstraint("ck_commercial_receiving_operation_claims_state", "state IN (1, 2, 3, 4)");
-
-                            t.HasCheckConstraint("ck_commercial_receiving_operation_claims_uuidv7", "substring(operation_id::text, 15, 1) = '7' AND substring(session_id::text, 15, 1) = '7'");
                         });
                 });
 
@@ -2707,100 +2598,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingReferenceReservation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("company_id");
-
-                    b.Property<DateTimeOffset?>("ConsumedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("consumed_at_utc");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<Guid>("OperationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("operation_id");
-
-                    b.Property<string>("PeriodKey")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("period_key");
-
-                    b.Property<Guid>("PolicyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("policy_id");
-
-                    b.Property<long>("PolicyVersion")
-                        .HasColumnType("bigint")
-                        .HasColumnName("policy_version");
-
-                    b.Property<string>("RenderedReference")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("rendered_reference");
-
-                    b.Property<string>("RequestHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("request_hash");
-
-                    b.Property<DateTimeOffset>("ReservedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("reserved_at_utc");
-
-                    b.Property<long>("Sequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("sequence");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("session_id");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("workspace_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_commercial_receiving_reference_reservations");
-
-                    b.HasAlternateKey("WorkspaceId", "CompanyId", "Id")
-                        .HasName("ak_commercial_receiving_reference_reservations_scope_id");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "OperationId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_commercial_receiving_reference_reservations_operation");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "RenderedReference")
-                        .IsUnique()
-                        .HasDatabaseName("ux_commercial_receiving_reference_reservations_reference");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "SessionId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_commercial_receiving_reference_reservations_session");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "PolicyId", "PeriodKey", "Sequence")
-                        .IsUnique()
-                        .HasDatabaseName("ux_commercial_receiving_reference_reservations_sequence");
-
-                    b.ToTable("commercial_receiving_reference_reservations", "procurement", t =>
-                        {
-                            t.HasCheckConstraint("ck_commercial_receiving_reference_reservations_shape", "sequence > 0 AND policy_version > 0 AND char_length(request_hash) = 64 AND request_hash ~ '^[0-9a-f]{64}$'");
-
-                            t.HasCheckConstraint("ck_commercial_receiving_reference_reservations_uuidv7", "substring(id::text, 15, 1) = '7' AND substring(operation_id::text, 15, 1) = '7' AND substring(session_id::text, 15, 1) = '7'");
-                        });
-                });
-
             modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2866,10 +2663,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("next_expected_local_sequence");
 
-                    b.Property<long>("OwnershipGeneration")
-                        .HasColumnType("bigint")
-                        .HasColumnName("ownership_generation");
-
                     b.Property<decimal>("ProcessedTotalWeightKg")
                         .HasPrecision(20, 6)
                         .HasColumnType("numeric(20,6)")
@@ -2890,10 +2683,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                     b.Property<long>("ReferencePolicyVersionSnapshot")
                         .HasColumnType("bigint")
                         .HasColumnName("reference_policy_version_snapshot");
-
-                    b.Property<Guid>("ReferenceReservationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("reference_reservation_id");
 
                     b.Property<DateTimeOffset>("StartedAtDeviceUtc")
                         .HasColumnType("timestamp with time zone")
@@ -2989,32 +2778,20 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("WorkspaceId", "CompanyId", "Id")
                         .HasName("ak_commercial_receiving_sessions_scope_id");
 
+                    b.HasIndex("WorkspaceId", "CompanyId", "BranchId");
+
                     b.HasIndex("WorkspaceId", "CompanyId", "CloudReference")
                         .IsUnique()
                         .HasDatabaseName("ux_commercial_receiving_sessions_company_reference");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "CompanyProcurementSettingsId");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "ReceivingVehicleId");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "ReferenceReservationId")
-                        .IsUnique();
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "SupplierId");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "WeightProcessingPolicyId");
-
-                    b.HasIndex("WorkspaceId", "CompanyId", "BranchId", "DestinationLocationId")
-                        .HasDatabaseName("ix_cr_sessions_destination");
 
                     b.HasIndex("WorkspaceId", "CompanyId", "Status", "UpdatedAtUtc", "CloudReference")
                         .HasDatabaseName("ix_commercial_receiving_sessions_company_list");
 
                     b.ToTable("commercial_receiving_sessions", "procurement", t =>
                         {
-                            t.HasCheckConstraint("ck_commercial_receiving_sessions_shape", "version > 0 AND ownership_generation > 0 AND next_expected_local_sequence >= 2 AND entry_count >= 0 AND processed_total_weight_kg >= 0 AND cloud_reference_sequence > 0 AND reference_policy_version_snapshot > 0 AND ((status = 1 AND submitted_at_utc IS NULL) OR (status = 2 AND submitted_at_utc IS NOT NULL AND entry_count > 0 AND processed_total_weight_kg > 0))");
+                            t.HasCheckConstraint("ck_commercial_receiving_sessions_shape", "version > 0 AND next_expected_local_sequence >= 2 AND entry_count >= 0 AND processed_total_weight_kg >= 0 AND cloud_reference_sequence > 0 AND reference_policy_version_snapshot > 0 AND ((status = 1 AND submitted_at_utc IS NULL) OR (status = 2 AND submitted_at_utc IS NOT NULL AND entry_count > 0 AND processed_total_weight_kg > 0))");
 
-                            t.HasCheckConstraint("ck_commercial_receiving_sessions_snapshots", "supplier_version_snapshot > 0 AND supplier_product_scope_mode_snapshot IN (1, 2) AND procurement_settings_version_snapshot > 0 AND vehicle_selection_mode_snapshot IN (1, 2) AND destination_location_version_snapshot > 0 AND weight_policy_version_snapshot > 0 AND weight_decimal_places_snapshot BETWEEN 1 AND 3 AND weight_processing_method_snapshot IN (0, 1, 2) AND ((vehicle_selection_mode_snapshot = 2 AND receiving_vehicle_id IS NULL AND receiving_vehicle_version_snapshot IS NULL AND vehicle_code_snapshot IS NULL AND vehicle_registration_snapshot IS NULL AND vehicle_display_name_snapshot IS NULL) OR (vehicle_selection_mode_snapshot = 1 AND ((receiving_vehicle_id IS NULL AND receiving_vehicle_version_snapshot IS NULL AND vehicle_code_snapshot IS NULL AND vehicle_registration_snapshot IS NULL AND vehicle_display_name_snapshot IS NULL) OR (receiving_vehicle_id IS NOT NULL AND receiving_vehicle_version_snapshot > 0 AND vehicle_code_snapshot IS NOT NULL AND vehicle_registration_snapshot IS NOT NULL))))");
+                            t.HasCheckConstraint("ck_commercial_receiving_sessions_snapshots", "supplier_version_snapshot > 0 AND supplier_product_scope_mode_snapshot IN (1, 2) AND procurement_settings_version_snapshot > 0 AND vehicle_selection_mode_snapshot IN (1, 2) AND destination_location_version_snapshot > 0 AND weight_policy_version_snapshot > 0 AND weight_decimal_places_snapshot BETWEEN 1 AND 3 AND weight_processing_method_snapshot IN (0, 1, 2)");
 
                             t.HasCheckConstraint("ck_commercial_receiving_sessions_status", "status IN (1, 2)");
 
@@ -3341,25 +3118,8 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_branches_companies_workspace_id_company_id");
                 });
 
-            modelBuilder.Entity("TraderPro.Domain.Platform.CommandProbe", b =>
-                {
-                    b.HasOne("TraderPro.Domain.Platform.Workspace", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_command_probes_workspaces_workspace_id");
-                });
-
             modelBuilder.Entity("TraderPro.Domain.Platform.CommercialOutboxAudience", b =>
                 {
-                    b.HasOne("TraderPro.Domain.Platform.OutboxMessage", null)
-                        .WithOne()
-                        .HasForeignKey("TraderPro.Domain.Platform.CommercialOutboxAudience", "OutboxMessageId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_outbox_audiences_message");
-
                     b.HasOne("TraderPro.Domain.Platform.Company", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId", "CompanyId")
@@ -3368,12 +3128,29 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_commercial_outbox_audiences_company");
 
+                    b.HasOne("TraderPro.Domain.Platform.OutboxMessage", null)
+                        .WithOne()
+                        .HasForeignKey("TraderPro.Domain.Platform.CommercialOutboxAudience", "OutboxMessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_commercial_outbox_audiences_message");
+
                     b.HasOne("TraderPro.Domain.Platform.Device", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId", "TargetDeviceId")
                         .HasPrincipalKey("WorkspaceId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_commercial_outbox_audiences_target_device");
+                });
+
+            modelBuilder.Entity("TraderPro.Domain.Platform.CommandProbe", b =>
+                {
+                    b.HasOne("TraderPro.Domain.Platform.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_command_probes_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("TraderPro.Domain.Platform.Company", b =>
@@ -3637,29 +3414,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingEntry", b =>
                 {
-                    b.HasOne("TraderPro.Domain.Procurement.MasterData.BagType", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "BagTypeId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_entries_bag_type");
-
-                    b.HasOne("TraderPro.Domain.Catalog.Product", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "ProductId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_entries_product");
-
-                    b.HasOne("TraderPro.Domain.Catalog.ProductStandardBagWeight", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "ProductStandardBagWeightId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_commercial_receiving_entries_standard_weight");
-
                     b.HasOne("TraderPro.Domain.Procurement.Receiving.CommercialReceivingSession", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId", "CompanyId", "ReceivingSessionId")
@@ -3667,32 +3421,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_commercial_receiving_entries_session");
-
-                    b.HasOne("TraderPro.Domain.Procurement.Suppliers.SupplierProductScope", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "SupplierProductScopeId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_commercial_receiving_entries_supplier_scope");
-                });
-
-            modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingOperationClaim", b =>
-                {
-                    b.HasOne("TraderPro.Domain.Platform.Company", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId")
-                        .HasPrincipalKey("WorkspaceId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_operation_claims_company");
-
-                    b.HasOne("TraderPro.Domain.Platform.Device", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "DeviceId")
-                        .HasPrincipalKey("WorkspaceId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_operation_claims_device");
                 });
 
             modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingOwnership", b =>
@@ -3736,25 +3464,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_commercial_receiving_reference_policies_company");
                 });
 
-            modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingReferenceReservation", b =>
-                {
-                    b.HasOne("TraderPro.Domain.Procurement.Receiving.CommercialReceivingOperationClaim", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "OperationId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "OperationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_reference_reservations_claim");
-
-                    b.HasOne("TraderPro.Domain.Procurement.Receiving.CommercialReceivingReferencePolicy", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "PolicyId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_reference_reservations_policy");
-                });
-
             modelBuilder.Entity("TraderPro.Domain.Procurement.Receiving.CommercialReceivingSession", b =>
                 {
                     b.HasOne("TraderPro.Domain.Platform.Branch", null)
@@ -3764,53 +3473,6 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_commercial_receiving_sessions_branch");
-
-                    b.HasOne("TraderPro.Domain.Procurement.MasterData.CompanyProcurementSettings", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "CompanyProcurementSettingsId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_sessions_settings");
-
-                    b.HasOne("TraderPro.Domain.Procurement.MasterData.ReceivingVehicle", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "ReceivingVehicleId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_commercial_receiving_sessions_vehicle");
-
-                    b.HasOne("TraderPro.Domain.Procurement.Receiving.CommercialReceivingReferenceReservation", null)
-                        .WithOne()
-                        .HasForeignKey("TraderPro.Domain.Procurement.Receiving.CommercialReceivingSession", "WorkspaceId", "CompanyId", "ReferenceReservationId")
-                        .HasPrincipalKey("TraderPro.Domain.Procurement.Receiving.CommercialReceivingReferenceReservation", "WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_sessions_reference_reservation");
-
-                    b.HasOne("TraderPro.Domain.Procurement.Suppliers.Supplier", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "SupplierId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_sessions_supplier");
-
-                    b.HasOne("TraderPro.Domain.Procurement.MasterData.WeightProcessingPolicy", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "WeightProcessingPolicyId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_sessions_weight_policy");
-
-                    b.HasOne("TraderPro.Domain.Operations.BusinessLocation", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId", "CompanyId", "BranchId", "DestinationLocationId")
-                        .HasPrincipalKey("WorkspaceId", "CompanyId", "BranchId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_commercial_receiving_sessions_destination");
                 });
 
             modelBuilder.Entity("TraderPro.Domain.Procurement.Suppliers.Supplier", b =>

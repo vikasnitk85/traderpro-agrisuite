@@ -7,6 +7,7 @@ using TraderPro.Domain.Operations;
 using TraderPro.Domain.Procurement.MasterData;
 using TraderPro.Domain.Procurement.Poc;
 using TraderPro.Domain.Procurement.Suppliers;
+using TraderPro.Domain.Procurement.Receiving;
 
 namespace TraderPro.Infrastructure.Persistence;
 
@@ -41,6 +42,9 @@ public sealed class TraderProDbContext(
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
+    public DbSet<CommercialOutboxAudience> CommercialOutboxAudiences =>
+        Set<CommercialOutboxAudience>();
+
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<CommandProbe> CommandProbes => Set<CommandProbe>();
@@ -70,6 +74,35 @@ public sealed class TraderProDbContext(
 
     public DbSet<ProductStandardBagWeight> ProductStandardBagWeights =>
         Set<ProductStandardBagWeight>();
+
+    public DbSet<CommercialReceivingReferencePolicy>
+        CommercialReceivingReferencePolicies =>
+        Set<CommercialReceivingReferencePolicy>();
+
+    public DbSet<CommercialReceivingReferenceCounter>
+        CommercialReceivingReferenceCounters =>
+        Set<CommercialReceivingReferenceCounter>();
+
+    public DbSet<CommercialReceivingSession> CommercialReceivingSessions =>
+        Set<CommercialReceivingSession>();
+
+    public DbSet<CommercialReceivingOwnership>
+        CommercialReceivingOwnerships =>
+        Set<CommercialReceivingOwnership>();
+
+    public DbSet<CommercialReceivingEntry> CommercialReceivingEntries =>
+        Set<CommercialReceivingEntry>();
+
+    public DbSet<CommercialReceivingOperationClaim>
+        CommercialReceivingOperationClaims =>
+        Set<CommercialReceivingOperationClaim>();
+
+    public DbSet<CommercialReceivingReferenceReservation>
+        CommercialReceivingReferenceReservations =>
+        Set<CommercialReceivingReferenceReservation>();
+
+    public DbSet<CommercialMasterChange> CommercialMasterChanges =>
+        Set<CommercialMasterChange>();
 
     public DbSet<ReceivingSessionPoc> ReceivingSessionPocs =>
         Set<ReceivingSessionPoc>();
@@ -123,6 +156,9 @@ public sealed class TraderProDbContext(
         modelBuilder.Entity<OutboxMessage>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialOutboxAudience>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<AuditEvent>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
@@ -157,6 +193,30 @@ public sealed class TraderProDbContext(
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<ProductStandardBagWeight>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingReferencePolicy>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingReferenceCounter>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingSession>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingOwnership>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingEntry>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingOperationClaim>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialReceivingReferenceReservation>()
+            .HasQueryFilter(entity =>
+                entity.WorkspaceId == ActiveWorkspaceId);
+        modelBuilder.Entity<CommercialMasterChange>()
             .HasQueryFilter(entity =>
                 entity.WorkspaceId == ActiveWorkspaceId);
         modelBuilder.Entity<ReceivingSessionPoc>()

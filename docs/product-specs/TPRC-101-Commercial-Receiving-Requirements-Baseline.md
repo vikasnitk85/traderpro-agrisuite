@@ -1,13 +1,14 @@
 # TPRC-101: Commercial Receiving Requirements Baseline
 
-- Status: Approved baseline for Task 7C0; not a replacement for TPCL-101 or TPFS-101
+- Status: Implemented backend baseline for Task 7C1; not a replacement for TPCL-101 or TPFS-101
 - Date: 2026-08-01
 - Scope: Commercial Receiving through submission for settlement review
 - Owners: Product and Architecture
 
 ## Status
 
-Approved as the Task 7C0 requirements baseline. It remains subordinate to any
+Approved as the Task 7C0 requirements baseline and updated with the binding
+Task 7C1 resolutions for OQ-01, OQ-06, and OQ-08. It remains subordinate to any
 later supplied original TPCL-101/TPFS-101 text and must be revised through an
 explicit reviewed delta if that text changes a recorded rule.
 
@@ -35,8 +36,8 @@ Receiving in progress
   -> submission for settlement/review
 ```
 
-Task 7C0 freezes the design. Task 7C1 will implement the commercial backend and
-Task 7C2 will implement secure Flutter Receiving and offline synchronization.
+Task 7C0 froze the design. Task 7C1 implements the commercial backend and Task
+7C2 will implement secure Flutter Receiving and offline synchronization.
 
 ## Non-goals
 
@@ -66,9 +67,9 @@ commercial specifications prevail over temporary POC behavior.
 ## Binding-rule traceability
 
 The following table records every binding rule explicitly supplied for Task
-7C0. `Design` identifies the Task 7C0 contract, `7C1` and `7C2` identify future
-implementation responsibility, and `Deferred` identifies work that must remain
-outside Task 7C.
+7C0. `Design` identifies the Task 7C0 contract, `7C1` identifies the implemented
+backend responsibility, `7C2` identifies future mobile work, and `Deferred`
+identifies work that must remain outside Task 7C.
 
 | ID | Binding rule | Task 7C0 design | Task 7C1 backend | Task 7C2 mobile | Deferred settlement/posting |
 | --- | --- | --- | --- | --- | --- |
@@ -84,7 +85,7 @@ outside Task 7C.
 | OWN-04 | Offline physical facts are preserved. | Entries and operation payloads are immutable; conflicts become attention. | Never substitute or discard a rejected offline payload. | Save entry plus operation before network I/O and retain attention rows. | Approved recovery semantics where business action is required. |
 | OWN-05 | A different device must not silently take over editing. | Device changes require an explicit audited transfer/recovery. | Reject automatic acquisition by another Device. | Never infer ownership from visibility or an expired lease. | Final approval rules for transfer. |
 | OWN-06 | Recovery or transfer is explicit and auditable. | Generation increments on every accepted ownership change. | Commit ownership change and audit atomically. | Present the result and keep old-generation work visible. | Product approval policy for transfer/recovery. |
-| OWN-07 | The short POC heartbeat lease is not copied unchanged. | Production separates durable ownership, generation, and renewable lease; duration is configurable and unresolved. | Implement server-clock lease policy after review. | Treat expiry as reacquisition/attention, not lost work. | Final operational duration policy. |
+| OWN-07 | The short POC heartbeat lease is not copied unchanged. | Production separates durable ownership, generation, and renewable lease. | Use the configurable 60-minute server-clock lease and same-device reacquisition approved by OQ-08. | Target a 10-minute foreground heartbeat and treat expiry as reacquisition/attention, not lost work. | Future grace/escalation SLA. |
 | OWN-08 | Commercial event visibility follows least privilege. | Owners may read safe company-monitoring broadcasts; any active editor Device may read events targeted to it, and an Operator has no broader entitlement. | Enforce audience kind, target Device, role, Session, and generation after database revalidation. | Store/apply only events authorized for the bound profile. | Any discovery/monitoring of other Sessions by non-editor Operators. |
 | SYN-01 | Ordered mobile operations share one global command scope. | Start/Record/Submit all use `Procurement.CommercialReceiving.MobileSyncOperation`; actual type is hashed. | The same UUID under another type is `IDEMPOTENCY_PAYLOAD_CONFLICT` and does not execute. | Generate one immutable operation UUID/type and never reclassify it. | None. |
 | SYN-02 | Mutable cloud version is not offline operation identity. | Start has no generation/lease; Record/Submit require generation/lease; all omit expected cloud version. | Serialize by authenticated Device, generation, exact sequence, status, and aggregate/ownership lock. | Keep cloud version only in mutable cloud projection, never immutable outbox payload/hash. | Direct approved transfer/recovery may use expected Session/ownership versions. |
@@ -124,6 +125,23 @@ outside Task 7C.
 | SUB-10 | Official purchase finalization is not implemented. | No Approved or Finalized Receiving state is introduced. | Stop at submitted. | Stop at submitted. | Finalization/posting. |
 
 ## Derived contract decisions
+
+Task 7C1 resolves the production enablement gates as follows:
+
+- Receiving references are automatic, cloud-assigned, immutable, and separate
+  from mobile identity, external Supplier references, Purchase Bills, and
+  posting numbers. The default template is `RCV-{SEQ:000000}`; Owners may
+  version future templates using one sequence token, optional year/month
+  tokens, and `Never`, `CalendarYear`, or `Monthly` resets.
+- A persisted Entry requires positive raw weight, processed weight, and bag
+  count. Submission requires at least one accepted Entry and a positive exact
+  Session total.
+- The production lease is 60 minutes. A foreground online mobile client targets
+  a heartbeat every 10 minutes. Expiry preserves the durable editor and local
+  facts; the same Device/generation reacquires before upload or submission.
+- A different Device receives ownership only through an Owner-authorized,
+  reasoned, optimistic, audited transfer. Transfer increments generation and
+  makes old-generation operations require attention.
 
 - The only persisted Task 7C lifecycle states are
   `ReceivingInProgress` and `SubmittedForSettlementReview`.
@@ -197,6 +215,18 @@ rename or reuse POC entities/tables. Task 7C2 requires a new encrypted
 production local database/schema and explicit non-destructive Drift migrations;
 it must not promote or mutate the unencrypted POC database.
 
+Task 7C1 uses the immutable applied `AddCommercialReceivingBackend` migration
+plus `HardenCommercialReceivingBackendContracts`. Only authenticated Operators
+may Start, record Entry, Submit, heartbeat, or acquire/reacquire a lease.
+`NeedsAttention` retains a durable operation claim, while Start reference
+reservations are committed, non-reusable, and may intentionally leave gaps.
+The aggregate transaction locks every selected master and PostgreSQL validates
+the resulting snapshots. Owner transfer changes durable editor/generation and
+clears the lease; the target Operator receives a new lease only through its own
+authenticated acquisition call. Commercial audiences are complete by commit,
+and all ten master types publish explicit version-1 selection payloads without
+Supplier protected fields.
+
 ## Future implementation dependencies
 
 - Task 7C1 depends on Task 7A, Task 7B1, Task 7B2, Task 3, Task 5 transaction
@@ -214,18 +244,50 @@ it must not promote or mutate the unencrypted POC database.
 | --- | --- | --- | --- | --- |
 | Complete TPCL-101 | No committed full document; only name/search references are absent. | Additional header fields, lifecycle behavior, limits, numbering format, settlement behavior. | Original locked TPCL-101 or approved replacement delta. | Blocks affected details, not the two-state core. |
 | Complete TPFS-101 | No committed full document; only Task 7C0 supplied rules are available. | UI workflow, correction/cancellation UX, field optionality, approval rules. | Original locked TPFS-101 or approved replacement delta. | Blocks affected Flutter acceptance criteria. |
-| Production display-reference format | Only POC `RS-POC-*` exists and is prohibited. | Prefix, width, fiscal-year reset, branch segment, or gaplessness. | Product/operations numbering decision. | Renderer configuration; numeric allocator can proceed. |
+| Production display-reference format | Resolved for Task 7C1 as configurable automatic numbering with default `RCV-{SEQ:000000}`. | General voucher numbering, manual numbering, or a gapless promise. | Future System Administration design for other document types. | No Task 7C1 blocker. |
 | Cancellation before submission | Task 4 defers cancellation; Task 7C0 requires explicit treatment. | Whether allowed, who authorizes, and treatment of captured entries. | TPCL/TPFS or approved lifecycle decision. | No cancellation state/endpoint/UI in 7C1/7C2 until resolved. |
 | Correction after submission | Task 4 reserves reversal fields but implements no correction. | Reopen, reject, clone, reverse, or amend behavior. | TPCL/TPFS and settlement-boundary decision. | Submitted snapshots remain immutable. |
-| Ownership transfer authorization | Transfer must be explicit/audited; approver policy is unspecified. | Owner-only vs editor consent, reason requirements, or emergency rules. | TPCL/TPFS or approved security/product decision. | Basic no-takeover rule is fixed; transfer endpoint waits. |
-| Capacity and physical validation limits | Task 3 bounds decimal syntax and numeric capacity; business session limits are absent. | Maximum Sessions, Entries, bags, zero weight, or submission minimum. | TPCL/TPFS and operational capacity review. | Task 7C1 must establish safe technical request limits without inventing business limits. |
+| Ownership transfer authorization | Task 7C1 resolves Owner-only transfer with a safe reason, expected Session version and generation. | Editor consent, emergency escalation, or later approval variants. | TPCL/TPFS or approved security/product decision. | Transfer clears lease capability; the target authenticated Operator must acquire a new lease. |
+| Capacity and physical validation limits | Positive raw/processed weight, positive bags, and at least one Entry are resolved for Task 7C1; broader maxima remain absent. | Maximum Sessions, Entries, bags, or Session duration. | TPCL/TPFS and operational capacity review. | Safe transport/numeric limits only. |
 | Optional Receiving header fields | Supplier, configured destination/policy, and optional vehicle are established. | Driver, vehicle free text, source location, remarks, purchase order, broker, or rate. | TPCL/TPFS. | No speculative fields. |
 | Procurement default overrides | Procurement Settings define default destination and Weight Policy, but no source authorizes operator deviation. | Whether an override exists, who may use it, allowed values, reasons, or audit requirements. | TPCL/TPFS or approved product decision. | Task 7C1 accepts configured defaults only. |
 | Non-editor Operator visibility | Owner monitoring is established, but no source grants Operators discovery of Sessions edited by another Device. | Company-wide Operator event, list, or live-view visibility. | TPCL/TPFS or approved product/security decision. | Operator event cursor remains targeted to its active-editor Device only. |
-| Lease duration and recovery SLA | POC uses five minutes and explicitly cannot be copied unchanged. | Production duration, grace window, escalation timing. | Operational/security review. | Policy remains configurable with safe server defaults reviewed in 7C1. |
+| Lease duration and recovery SLA | Resolved for Task 7C1 as a configurable 60-minute default and 10-minute foreground heartbeat target, with same-device reacquisition and no automatic takeover. | Future grace/escalation SLA beyond explicit reacquisition. | Operational review. | No Task 7C1 blocker. |
 
 ## Unresolved questions
 
 The normative open-question list is
 `docs/product-specs/TPRC-101-Open-Questions.md`. No question in that document
 has an implied default.
+
+## Task 7C1 finalization baseline
+
+- Immutable payload capability rejection is recursive through objects and
+  arrays; `lease`, `leaseId`, `leaseExpiresAtUtc`, and
+  `expectedCloudVersion` are forbidden case-insensitively at every depth.
+- An unattempted operation waiting behind an earlier same-Session operation is
+  `NeedsAttention`, retryable, and has no claim, idempotency, audit, event, or
+  aggregate mutation. Other Sessions in the batch continue.
+- Claim transitions use one Operation-scoped lock discipline and terminal
+  states cannot regress. Snapshot validation takes shared master locks.
+- Ownership accepts only heartbeat, expired/null lease acquisition, transfer
+  with matching Session revision, or submission closure. Transfer locks and
+  revalidates its target Device and active credential.
+- `lastCloudUpdateUtc` is the later Session/Ownership update. Null transferred
+  leases require acquisition; expired leases require reacquisition.
+- Original identities that can be proved from idempotency plus audit facts
+  replay exactly; otherwise they are stable legacy non-replayable records and
+  never allocate a replacement reference.
+- Task 7C1 schema migrations are forward-only. Recovery is an application
+  rollback plus database backup restore, not an EF downgrade.
+- Exactly one durable reservation may exist for a workspace/company/Session.
+  Competing Start Operation IDs return `RECEIVING_REFERENCE_CONFLICT` before a
+  second counter allocation.
+- Typed Start structure is validated after the durable claim and before
+  allocation. Invalid structure creates no reservation or numbering gap;
+  business/master attention after allocation may intentionally retain a gap.
+- A reservation retains its policy version, period, sequence, and rendered
+  reference after the live policy changes. Exact retry consumes that snapshot;
+  only new Sessions use the new policy format.
+- Application and PostgreSQL validation share the canonical Start and Entry
+  claim/reference/session/master lock order.

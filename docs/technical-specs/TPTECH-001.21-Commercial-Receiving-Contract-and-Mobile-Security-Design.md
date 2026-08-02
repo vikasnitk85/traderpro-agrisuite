@@ -1,13 +1,13 @@
 # TPTECH-001.21: Commercial Receiving Contract and Mobile Security Design
 
-- Status: Accepted design for Task 7C0; implementation deferred to Tasks 7C1 and 7C2
+- Status: Accepted design; backend implemented by Task 7C1, mobile deferred to Task 7C2
 - Date: 2026-08-01
 - Scope: Production Commercial Receiving through submission for settlement review
 
 ## Status
 
-Accepted as the Task 7C0 design contract. No production implementation is
-claimed; Tasks 7C1 and 7C2 must satisfy the specified gates and tests.
+Accepted as the Task 7C0 design contract and updated with the implemented Task
+7C1 backend corrections. Task 7C2 still must satisfy the mobile gates and tests.
 
 ## Objective
 
@@ -15,6 +15,24 @@ This specification freezes the production aggregate, ownership, numbering,
 master-validation, authenticated synchronization, event, mobile-authentication,
 secure-storage, local-schema, master-cache, and read-only monitoring boundaries
 needed by Tasks 7C1 and 7C2. Task 7C0 changes documentation only.
+
+## Task 7C1 resolved decisions
+
+Task 7C1 activates the backend contract with automatic references using default
+`RCV-{SEQ:000000}`, positive Entry/bag/weight rules, at least one Entry and a
+positive total for submission, a configurable 60-minute lease, and a
+10-minute foreground heartbeat target. Same-device reacquisition preserves the
+generation. Owner-authorized transfer requires a safe reason and expected
+Session/generation, increments generation once, and targets the old/new Devices
+plus Owners with safe events. These decisions supersede the corresponding
+OQ-01, OQ-06, OQ-08, and transfer-gate placeholders in this Task 7C0 design.
+
+The reviewed `HardenCommercialReceivingBackendContracts` follow-up makes all
+capture mutations Operator-only, durably claims `NeedsAttention` operations,
+reserves Start references without reuse, locks and database-validates master
+snapshots, enforces complete Commercial audiences, and publishes explicit
+version-1 master payloads. Owner transfer clears the lease; only the target
+authenticated Operator receives a new lease from acquisition/reacquisition.
 
 ## Scope
 
@@ -264,8 +282,10 @@ Rules:
 5. A different Device cannot reacquire. It receives
    `RECEIVING_OWNERSHIP_DEVICE_MISMATCH` or
    `RECEIVING_OWNERSHIP_TRANSFER_REQUIRED`.
-6. Approved transfer/recovery increments generation and invalidates the former
-   lease atomically. Old-generation operations are `Rejected` with
+6. Approved Owner transfer increments generation, changes the durable editor,
+   and clears the former lease atomically without returning a lease to the
+   Owner. The target Device authenticates as Operator and acquires its own lease
+   without a generation change. Old-generation operations are `Rejected` with
    `RECEIVING_OWNERSHIP_GENERATION_STALE`; their local facts remain intact.
 7. Submission clears lease ID, expiry, heartbeat, and active edit capability.
 8. PostgreSQL aggregate/ownership row/advisory locks serialize ordered
@@ -273,9 +293,11 @@ Rules:
    generation, exact sequence, and Session status validation. Process-local
    locks and mutable cloud versions are never a correctness boundary.
 
-The exact different-device approval policy remains open; its endpoint must not
-be enabled until resolved. Same-device reacquisition is a technical restoration
-of unchanged ownership and does not increment generation.
+Owner-only different-device transfer is the focused Task 7C1 approval policy.
+Same-device reacquisition is a technical restoration of unchanged ownership and
+does not increment generation. Acquisition is permitted only after transfer
+left no lease or after expiry; arbitrary valid-lease rotation returns
+`RECEIVING_LEASE_STILL_ACTIVE`.
 
 ### Ownership races
 
@@ -288,19 +310,27 @@ of unchanged ownership and does not increment generation.
 
 ## Cloud reference
 
-Commercial Receiving uses a new company-scoped database allocator, distinct
-from Purchase Bill and final-posting numbering. The planned persistence is a
-series row keyed by `(WorkspaceId, CompanyId, SeriesKind)` with the next
-positive `bigint`. `UPDATE ... RETURNING` under a row lock allocates one value
-inside the Start transaction. The Session stores that numeric value, an opaque
-rendered `CloudReference`, and renderer configuration version.
+Commercial Receiving uses the company-scoped policy and period-counter
+allocator implemented by Task 7C1, distinct from Purchase Bill and final-
+posting numbering. A transaction lock keyed by Workspace and Company protects
+policy reads and allocation. Counters are keyed by policy and server-derived
+period; the Session stores the allocated numeric value, immutable rendered
+`CloudReference`, and policy version.
 
-Uniqueness is enforced for `(WorkspaceId, CompanyId, CloudReferenceNumber)`
-and `(WorkspaceId, CompanyId, CloudReference)`. A reference never changes after
-Start. Format configuration may change future rendering without rewriting old
-Sessions or aggregate IDs. Gaps are permitted for safety; no gapless promise
-is made. The actual prefix/reset/width remains unresolved and examples use the
-literal placeholder `<cloud-assigned-reference>`.
+Rendered-reference uniqueness is enforced per Workspace and Company. Numeric
+sequence values may repeat across CalendarYear or Monthly reset periods, while
+the required date tokens keep rendered references unique. The default is
+`RCV-{SEQ:000000}`; V1 supports exactly one 1-12 digit sequence token plus
+deterministic `{YYYY}` and `{MM}` tokens compatible with `Never`,
+`CalendarYear`, or `Monthly`. Existing references never change and no gapless
+promise is made.
+
+Task 7C1 hardening commits a durable reservation under the reference lock before
+the Session transaction. The reservation binds policy/period/reference to the
+immutable Start operation ID and request hash. Exact retry reuses it; another
+operation never can. A failed Session transaction may therefore leave a gap,
+and the reference is not returned until the matching reservation is consumed by
+a committed Session. Policy starting-number checks include reservations.
 
 ## Master validation and snapshot timing
 
@@ -310,6 +340,15 @@ same-company records and accepts only when their versions equal the captured
 versions; it then snapshots the authoritative facts from those exact rows. A
 version mismatch is `NeedsAttention`, preventing the server from silently
 substituting a later name, classification, policy, or association.
+
+The Start transaction takes deterministic share locks on Supplier, Procurement
+Settings, destination, Weight Policy, optional Vehicle, and reference policy.
+Entry takes deterministic share locks on Product, required Supplier Product
+Scope, Bag Type, and optional standard after locking Session/ownership. Master
+mutation either commits first (and Receiving returns `NeedsAttention`) or waits
+until the validated snapshot commits. Same-company composite foreign keys and
+`BEFORE INSERT` validation triggers independently reject fictitious,
+cross-company, stale, or inconsistent direct-SQL snapshots.
 
 ### Session Start
 
@@ -561,8 +600,8 @@ Outcomes:
 
 - `Accepted`: first successful commit.
 - `PreviouslyProcessed`: stored original accepted result; no writes.
-- `NeedsAttention`: no Receiving mutation committed; an external/user action is
-  required and the immutable local operation remains.
+- `NeedsAttention`: no Receiving business mutation committed; an external/user
+  action is required and the immutable local operation remains durably claimed.
 - `Rejected`: permanent structural, identity, generation, relationship, or
   physical-processing conflict; the immutable local fact still remains for
   explicit reconciliation.
@@ -587,16 +626,24 @@ Batch rules:
 8. A non-null ordered-operation `expectedCloudVersion`, a Start generation/
    lease, or a missing Record/Submit generation/lease is rejected without a
    Receiving mutation.
+9. Before business execution, every operation ID is bound durably to Workspace,
+   Company, common scope, type, Session, authenticated Device, applicable
+   generation, canonical request hash, and first-seen time. Exact
+   `NeedsAttention` retry is allowed; changed payload, cross-type, or
+   cross-Device reuse conflicts. Successful retry completes once.
 
 ## `CommercialMobileSync` event stream
 
 Task 7C1 adds `CommercialMobileSync` as a third controlled outbox stream. It
 is separate from `Internal` and temporary POC `MobileSync`. The outbox gains
-commercial audience metadata: `AudienceCompanyId` and `AudienceKind` are
-required for `CommercialMobileSync`; `AudienceKind` is either
-`OwnerCompanyBroadcast` or `EditorDevice`, and `TargetDeviceId` is required only
-for `EditorDevice`. A command may persist separate audience-specific rows for
+commercial audience metadata: Company and audience kind are required for
+`CommercialMobileSync`; audience kind is either `OwnerBroadcast` or
+`TargetDevice`, and target Device is required only for `TargetDevice`. A
+command may persist separate audience-specific rows for
 the same safe logical update. Existing streams and writers are not reclassified.
+Deferred PostgreSQL constraints require exactly one immutable, same-Workspace/
+company audience for each Commercial row by commit and prohibit audience rows
+for Internal or temporary POC MobileSync rows.
 
 Commercial rows use a PostgreSQL commit-order advisory-lock namespace derived
 from the tuple (`CommercialMobileSync` stream contract version, `WorkspaceId`,
@@ -798,9 +845,9 @@ Bill, Sales, or Finance tables/projections are introduced.
 
 ## Commercial master cache
 
-Task 7C1 must provide dedicated authenticated commercial master-sync endpoints;
+Task 7C1 provides dedicated authenticated commercial master-sync endpoints;
 the current owner/operator CRUD list cursors and `Internal` outbox payloads are
-not a sufficient mobile synchronization contract. The planned route is:
+not a sufficient mobile synchronization contract. The route is:
 
 ```text
 GET /api/v1/mobile/commercial-sync/masters?after=<sequence>&bootstrapHighWaterMark=<optional-sequence>&limit=100
@@ -810,7 +857,7 @@ It returns a versioned, safe, company-scoped master projection/change cursor
 covering Suppliers, Supplier Product Scopes, Products, Product Groups required
 for display, Bag Types, Product Standard Bag Weights, Locations, Vehicles,
 Weight Policies, and Company Procurement Settings. Task 7C1 uses one strategy:
-the migration-backed `commercial_mobile_master_changes` log. It never exposes
+the migration-backed `sync.commercial_master_changes` log. It never exposes
 raw `Internal` events.
 
 The forward-only Task 7C1 migration inserts one current safe projection row for
@@ -821,6 +868,12 @@ sequence. The backfill commits before the endpoint is enabled; every later
 master mutation appends its safe versioned change row in the same transaction.
 A unique `(WorkspaceId, CompanyId, MasterKind, MasterId, MasterVersion)` key
 prevents duplicate change facts.
+
+Every one of the ten master types uses an explicit `contractVersion: 1`,
+camel-case payload builder shared by backfill and ongoing triggers. Only
+Receiving-selection data is present; exact decimals are canonical six-decimal
+strings. Supplier contact/email/address/tax/notes and persistence-only fields
+are excluded. Active and Inactive records share the same contract shape.
 
 The first request uses `after=0` without a high-water value. Under the
 `CommercialMobileMasters.v1` Workspace/Company commit-order lock, the server
@@ -870,20 +923,22 @@ attention summary, and submission status/time. Exact decimals are strings.
 
 The Owner client combines cursor events with periodic list/live-view refresh;
 the durable cursor is recovery and polling/optional future SignalR is latency.
-The Owner projection has no Record/Submit path. Explicit transfer/recovery is a
-separate audited command only after OQ-04 is resolved. No settlement controls
-appear in Task 7C.
+The Owner projection has no Start/Record/Submit/heartbeat/acquisition path.
+Owner transfer is a separate audited command that clears the lease; the target
+Operator acquires its own capability. The live timestamp is the later of
+Session and ownership updates. No settlement controls appear in Task 7C.
 
 ## Transaction boundaries
 
 | Operation | Atomic PostgreSQL writes |
 | --- | --- |
-| Start | Idempotency claim/result, Session, ownership generation/lease, reference allocation, audit, `CommercialMobileSync` event. |
+| Start reservation | Durable operation claim plus committed, non-reusable reference reservation; no reference is returned yet. |
+| Start aggregate | Matching reservation consumption, Session, ownership generation/lease, audit, audience-complete `CommercialMobileSync` events, idempotent result, and completed durable claim. |
 | Entry | Idempotency claim/result, immutable Entry, Session sequence/count/total/version, audit, event. |
 | Submit | Idempotency claim/result, submitted Session, ownership closure, audit, event. |
 | Lease reacquisition/renewal | Ownership row and any required safe audit/event; routine renewal may remain quiet, but reacquisition is observable. |
-| Transfer/recovery | Ownership generation/editor/lease, material audit, ownership-changed event, idempotent result. |
-| Master projection change | Existing master transaction plus one safe versioned `commercial_mobile_master_changes` row under the scoped master-stream lock. |
+| Transfer/recovery | Session version, ownership generation/editor/cleared lease, material audit, audience-complete ownership events, idempotent result. |
+| Master projection change | Existing master transaction plus one explicit safe versioned `sync.commercial_master_changes` row under the scoped master-stream lock. |
 
 All use PostgreSQL serialization and constraints. Outbox publishing is not
 performed inside the transaction; external delivery continues through the
@@ -893,8 +948,10 @@ the master change log uses its separately named but equally scoped lock.
 
 ## Failure behavior
 
-- PostgreSQL failure rolls back aggregate, Entry, reference allocation state,
-  audit, outbox, and idempotent completion together.
+- PostgreSQL failure rolls back aggregate, Entry, reservation consumption,
+  audit, outbox, and idempotent completion together. The already-committed
+  operation claim and Start reservation remain; this intentionally preserves
+  operation identity and may leave a non-reusable numbering gap.
 - Outbox publisher failure does not roll back a committed command and does not
   affect cursor visibility of committed event facts.
 - Response loss retains/replays the same operation.
@@ -920,9 +977,12 @@ separate gates/deferred work.
 Task 7C1 uses new production names such as
 `commercial_receiving_sessions`, `commercial_receiving_entries`, and
 `commercial_receiving_ownership`; it never renames/reuses POC tables/classes.
-It adds the reference allocator, commercial event audience metadata/indexes,
-the deterministic `commercial_mobile_master_changes` table/backfill and scoped
-change-stream lock, constraints, immutable triggers, and forward-only migration.
+The original `AddCommercialReceivingBackend` migration remains immutable. The
+reviewed `HardenCommercialReceivingBackendContracts` follow-up adds durable
+operation claims/reference reservations, same-company snapshot constraints and
+locks, deferred audience completeness, exact ownership/Session transition
+guards, and explicit master payload builders on top of its reference allocator,
+audience metadata, master backfill, locks, constraints, and triggers.
 Upgrade verification starts from existing Task 7B1/7B2 commercial masters,
 associations, and settings in both Active and Inactive states and proves their
 safe backfill before testing concurrent bootstrap deltas. Existing POC and
@@ -944,8 +1004,45 @@ compatibility spike. There is no automatic import of POC data.
 
 ## Unresolved questions
 
-The final reference renderer, cancellation, submitted correction, different-
-device transfer approval, business limits, zero-weight/submission minimum,
-additional header fields, production lease timing, stale-master recovery, and
-cross-generation physical-fact recovery remain unresolved. See the normative
-open-question register; no POC behavior fills these gaps.
+Cancellation, submitted correction, broader business maxima, additional header
+fields, stale-master recovery choices, and cross-generation physical-fact
+recovery remain unresolved. References, minimum positive Entry/submission,
+production lease timing, and focused Owner transfer are resolved for Task 7C1.
+See the normative open-question register; no POC behavior fills remaining gaps.
+
+## Finalized mobile security invariants
+
+Payload capability scanning descends through every JSON object and array and
+rejects the four lease/cloud-version property names case-insensitively before a
+claim is created. Unknown non-capability fields and the exact payload bytes/hash
+remain untouched. A blocked later same-Session item is retryable
+`NeedsAttention` and is deliberately absent from claims and idempotency.
+
+All claim writes acquire the scope-plus-`OperationId` advisory/row-lock
+discipline. Pending, attention, rejection, completion, and replay
+reconciliation have explicit database transitions; Completed and Rejected are
+immutable. Session and Entry validation uses row-level shared locks for every
+validated master and for Session/Ownership, so direct SQL and API commands have
+the same commit ordering. Ownership transitions are exactly heartbeat,
+null/expired acquisition, generation-plus-one transfer, or submission closure;
+transfer also locks then freshly reloads the Device and credential.
+
+Commercial monitoring returns `lastCloudUpdateUtc = max(Session.UpdatedAtUtc,
+Ownership.UpdatedAtUtc)`, `LeaseAcquisitionRequired` after transfer, and
+`LeaseReacquisitionRequired` after expiry. Task 7C1 database finalization is
+forward-only and requires backup restore for schema rollback.
+
+The reference-contract seal makes `(WorkspaceId, CompanyId, SessionId)` unique
+for reservations. Start claims first, validates typed identity/UUIDv7 IDs,
+required master identities and versions, UTC timestamp, external-reference
+shape, and sequence 1, and only then enters reference allocation. Exact replay
+may consume its immutable reservation after the current policy changes because
+Session validation compares the reservation snapshot, not the current policy
+version. A competing Operation ID fails before another sequence is consumed.
+
+Canonical Start locking is claim, company reference series,
+reservation/policy/counter, Session/defaults, Supplier, settings, destination,
+Weight Policy, optional Vehicle. Canonical Entry locking is claim, Session,
+Ownership, Product, optional Supplier scope, Bag Type, optional standard
+weight. Application commands and PostgreSQL snapshot triggers use the same
+relative order.

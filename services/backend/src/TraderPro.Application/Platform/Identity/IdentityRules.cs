@@ -42,6 +42,11 @@ public static class TraderProAuthorizationRules
         return role is TraderProRole.Owner;
     }
 
+    public static bool IsOperator(TraderProRole role)
+    {
+        return role is TraderProRole.Operator;
+    }
+
     public static bool IsOperatorOrOwner(TraderProRole role)
     {
         return role is TraderProRole.Owner or TraderProRole.Operator;
@@ -52,5 +57,6 @@ public static class TraderProAuthorizationPolicies
 {
     public const string CommercialUser = "TraderProCommercialUser";
     public const string Owner = "TraderProOwner";
+    public const string Operator = "TraderProOperator";
     public const string OperatorOrOwner = "TraderProOperatorOrOwner";
 }

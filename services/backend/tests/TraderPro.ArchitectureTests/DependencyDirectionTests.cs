@@ -862,6 +862,60 @@ public sealed class DependencyDirectionTests
                 StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Commercial_receiving_domain_and_application_keep_production_boundaries()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var roots = new[]
+        {
+            Path.Combine(repositoryRoot, "services", "backend", "src", "TraderPro.Domain", "Procurement", "Receiving"),
+            Path.Combine(repositoryRoot, "services", "backend", "src", "TraderPro.Application", "Procurement", "Receiving"),
+        };
+        var forbidden = new[]
+        {
+            "Microsoft.EntityFrameworkCore",
+            "Microsoft.AspNetCore",
+            "Npgsql",
+            "TraderProDbContext",
+            "TraderPro.Infrastructure",
+            "Procurement.Poc",
+            "ITemporaryWorkspaceContextResolver",
+            "ICurrentDeviceAccessor",
+        };
+
+        var offending = roots.SelectMany(EnumerateSourceFiles)
+            .Where(path => forbidden.Any(marker => File.ReadAllText(path).Contains(marker, StringComparison.Ordinal)))
+            .Select(path => Path.GetRelativePath(repositoryRoot, path))
+            .ToArray();
+
+        Assert.Empty(offending);
+    }
+
+    [Fact]
+    public void Commercial_receiving_uses_authenticated_context_and_adds_no_posting_modules()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var root = Path.Combine(repositoryRoot, "services", "backend", "src", "TraderPro.Infrastructure", "Modules", "Procurement", "Receiving");
+        var files = EnumerateSourceFiles(root).ToArray();
+        var forbidden = new[]
+        {
+            "PurchaseBill",
+            "InventoryMovement",
+            "SupplierPayable",
+            "SalesOrder",
+            "FinancePosting",
+            "ProductionRun",
+            "ReceivingSessionPoc",
+            "MobileSyncOperationPoc",
+        };
+
+        Assert.Contains(files, path => File.ReadAllText(path).Contains("IAuthenticatedTraderProContext", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            files,
+            path => forbidden.Any(marker =>
+                File.ReadAllText(path).Contains(marker, StringComparison.Ordinal)));
+    }
+
     private static string FindRepositoryRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

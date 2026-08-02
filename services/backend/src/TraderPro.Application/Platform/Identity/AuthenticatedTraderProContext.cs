@@ -20,6 +20,8 @@ public interface IAuthenticatedTraderProContext
 
     bool IsOwner { get; }
 
+    bool IsOperator => TraderProAuthorizationRules.IsOperator(Role);
+
     bool IsOperatorOrOwner { get; }
 
     Guid TokenFamilyId { get; }

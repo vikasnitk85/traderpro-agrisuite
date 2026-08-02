@@ -53,4 +53,11 @@ public enum OutboxEventStream : short
 {
     Internal = 1,
     MobileSync = 2,
+    CommercialMobileSync = 3,
+}
+
+public enum OutboxAudience : short
+{
+    OwnerBroadcast = 1,
+    TargetDevice = 2,
 }

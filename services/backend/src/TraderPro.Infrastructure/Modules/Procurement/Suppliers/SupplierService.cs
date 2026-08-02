@@ -125,6 +125,10 @@ internal sealed class SupplierService(
                         "Procurement.SupplierProductScopeAdded",
                         null,
                         supplier.CreatedAtUtc);
+                    // Persist each initial scope inside the executor's transaction so
+                    // identity-backed outbox sequences preserve canonical Product ID
+                    // order instead of EF command sorting by independently generated IDs.
+                    await dbContext.SaveChangesAsync(cancellationToken);
                 }
                 return ToResult(supplier);
             },
