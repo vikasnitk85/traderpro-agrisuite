@@ -59,7 +59,7 @@ internal sealed partial class CommercialReceivingService(
                 results.Add(Failed(
                     operation,
                     CommercialMobileOperationStatus.NeedsAttention,
-                    "COMMERCIAL_MOBILE_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
+                    "RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
                     "A prior operation blocked this Receiving Session in the batch.",
                     retryable: true,
                     requiresAction: true));

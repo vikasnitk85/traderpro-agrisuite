@@ -1,6 +1,6 @@
 # ADR-0008: Commercial Receiving ownership and offline synchronization
 
-- Status: Accepted for Task 7C0 design; implementation begins in Tasks 7C1/7C2
+- Status: Accepted; backend implemented by Task 7C1 and mobile contract frozen by Task 7C2A
 - Date: 2026-08-01
 - Scope: Commercial Receiving lifecycle, aggregate, ownership generation,
   cloud reference, immutable facts, and offline operation ordering
@@ -72,8 +72,8 @@ Start assigns editor and generation 1. A same-device reacquisition after expiry
 may issue a new lease without incrementing generation. A different Device
 cannot acquire automatically. Its approved transfer/recovery transaction
 changes editor, increments generation, invalidates the old lease, and commits
-audit/event evidence. The approval policy is unresolved, so the route remains
-disabled until approved.
+audit/event evidence. Task 7C1 implements Owner-only transfer; Task 7C2A
+defers the mobile transfer UI.
 
 All three ordered mobile operation types claim one database idempotency scope,
 `Procurement.CommercialReceiving.MobileSyncOperation`. The server canonical
@@ -111,10 +111,10 @@ version or process-local lock is a correctness boundary.
 ### Cloud reference
 
 A new company-scoped database allocator assigns one positive numeric reference
-value during Start. A renderer stores one immutable opaque reference and format
+value during Start. A renderer stores one immutable reference and format
 version. It is separate from aggregate identity, POC references, Purchase Bill
-numbering, and final-posting numbering. The actual rendered format remains
-open.
+numbering, and final-posting numbering. The implemented default is
+`RCV-{SEQ:000000}` with `Never` reset and starting number 1.
 
 ## Race outcomes
 
@@ -178,11 +178,13 @@ transaction.
 Stable ownership errors include
 `RECEIVING_OWNERSHIP_DEVICE_MISMATCH`,
 `RECEIVING_OWNERSHIP_GENERATION_STALE`, `RECEIVING_LEASE_REQUIRED`,
-`RECEIVING_LEASE_EXPIRED_REACQUISITION_REQUIRED`, and
-`RECEIVING_OWNERSHIP_TRANSFER_REQUIRED`. Reversible lease/stale-master
-conditions create attention without consuming or rewriting the physical
-operation. Database failure rolls back the complete unit. Ambiguous response
-reuses the same operation.
+`RECEIVING_LEASE_INVALID`, and `RECEIVING_LEASE_REACQUISITION_REQUIRED`.
+Reversible lease/stale-master
+conditions, Device mismatch, and stale generation create attention without
+consuming or rewriting the physical operation. A blocked follower uses
+`RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE` without creating a claim.
+Database failure rolls back the complete unit. Ambiguous response reuses the
+same operation.
 
 ## Security implications
 
@@ -208,9 +210,19 @@ separate encrypted production local schema; no POC table is repurposed.
 
 ## Unresolved questions
 
-The final reference format, production lease timing, different-device transfer
-approval, stale-master recovery, old-generation fact reconciliation,
-cancellation, correction, business limits, and optional fields remain open.
+Stale-master recovery, old-generation fact reconciliation, cancellation,
+correction, business limits, optional fields, and later lease anomaly policy
+remain open. The default reference, 60-minute lease, 10-minute heartbeat,
+Owner-only backend transfer, and absence of transfer UI are closed.
+
+## Task 7C2A offline capture clarification
+
+A securely bound authenticated Operator may create the local UUIDv7 Session
+and immutable Entries offline from valid cached Active master/settings
+revisions. Start remains sequence 1 and dependent operations stay queued until
+Start returns the cloud reference, generation, and lease. Start rejection
+preserves the facts in attention; no official number is generated locally and
+no Entry/payload is rewritten. Task 7C2 capture source is exactly `Manual`.
 
 ## Consequences
 

@@ -771,7 +771,7 @@ These omissions are intentional. Future work should introduce each capability th
 Commercial Receiving backend contract. Immutable mobile payloads are scanned
 recursively and reject lease/cloud-version capabilities at any depth; a later
 same-Session batch item blocked by an earlier item returns retryable
-`COMMERCIAL_MOBILE_OPERATION_WAITING_FOR_PRIOR_SEQUENCE` without a claim or
+`RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE` without a claim or
 idempotency record. Every claim transition is serialized by the commercial
 command scope plus `OperationId`, and terminal claims are database-immutable.
 

@@ -1,0 +1,242 @@
+{
+  "contract": "TraderPro.CommercialReceiving.MobileOperations",
+  "contractVersion": 1,
+  "serverHashContractVersion": "v1",
+  "sharedCommandScope": "Procurement.CommercialReceiving.MobileSyncOperation",
+  "context": {
+    "workspaceId": "11111111-1111-4111-8111-111111111111",
+    "companyId": "22222222-2222-4222-8222-222222222222",
+    "userId": "33333333-3333-4333-8333-333333333333",
+    "deviceId": "44444444-4444-4444-8444-444444444444"
+  },
+  "operationStatuses": [
+    "Accepted",
+    "PreviouslyProcessed",
+    "NeedsAttention",
+    "Rejected"
+  ],
+  "mobileWeightSources": [
+    "Manual"
+  ],
+  "operations": [
+    {
+      "name": "start",
+      "operationType": "StartCommercialReceivingSession",
+      "operationId": "019fc400-0000-7000-8000-000000000001",
+      "sessionId": "019fc400-0000-7000-8000-000000000010",
+      "localSequence": 1,
+      "ownershipGeneration": null,
+      "expectedCloudVersion": null,
+      "lease": null,
+      "payloadJson": "{\"operationId\":\"019fc400-0000-7000-8000-000000000001\",\"sessionId\":\"019fc400-0000-7000-8000-000000000010\",\"localSequence\":1,\"supplierId\":\"019fc400-0000-7000-8000-000000000101\",\"supplierVersion\":7,\"companyProcurementSettingsId\":\"019fc400-0000-7000-8000-000000000102\",\"procurementSettingsVersion\":9,\"destinationLocationId\":\"019fc400-0000-7000-8000-000000000103\",\"destinationLocationVersion\":5,\"weightProcessingPolicyId\":\"019fc400-0000-7000-8000-000000000104\",\"weightProcessingPolicyVersion\":3,\"vehicleSelectionMode\":\"Optional\",\"receivingVehicleId\":null,\"receivingVehicleVersion\":null,\"externalReference\":\"SUP-DELIVERY-42\",\"startedAtDeviceUtc\":\"2026-08-02T08:00:00+00:00\"}",
+      "payloadHash": "3354ad0d3ba61725166258d5406a6111d3be2d9cbbeac1cf45aacec6c81de876",
+      "canonicalRequestHash": "b9f4c7ac56364d962342c71405e8799dd11366015a9c6e3749d83398017f9d44"
+    },
+    {
+      "name": "record-entry",
+      "operationType": "RecordCommercialReceivingEntry",
+      "operationId": "019fc400-0000-7000-8000-000000000002",
+      "sessionId": "019fc400-0000-7000-8000-000000000010",
+      "localSequence": 2,
+      "ownershipGeneration": 1,
+      "expectedCloudVersion": null,
+      "lease": {
+        "leaseId": "<runtime-lease-capability-not-frozen>"
+      },
+      "payloadJson": "{\"operationId\":\"019fc400-0000-7000-8000-000000000002\",\"entryId\":\"019fc400-0000-7000-8000-000000000011\",\"sessionId\":\"019fc400-0000-7000-8000-000000000010\",\"localSequence\":2,\"productId\":\"019fc400-0000-7000-8000-000000000105\",\"productVersion\":11,\"supplierProductScopeId\":null,\"supplierProductScopeVersion\":null,\"bagTypeId\":\"019fc400-0000-7000-8000-000000000106\",\"bagTypeVersion\":4,\"productStandardBagWeightId\":\"019fc400-0000-7000-8000-000000000107\",\"productStandardBagWeightVersion\":2,\"bagCount\":10,\"rawWeightKg\":\"0500.2350\",\"processedWeightKg\":\"500.240000\",\"displayWeightKg\":\"500.24\",\"decimalPlaces\":2,\"processingMethod\":\"Standard\",\"weightSource\":\"Manual\",\"capturedAtDeviceUtc\":\"2026-08-02T08:30:00+00:00\"}",
+      "payloadHash": "dfb1e19cc49d40550429984006633c6cb629820771e5f7348902e6f97ee680ed",
+      "canonicalRequestHash": "db10229bb90a603296e13d697c4f4fe8e64465c06e1be30c25eaade252692901"
+    },
+    {
+      "name": "submit",
+      "operationType": "SubmitCommercialReceivingSession",
+      "operationId": "019fc400-0000-7000-8000-000000000003",
+      "sessionId": "019fc400-0000-7000-8000-000000000010",
+      "localSequence": 3,
+      "ownershipGeneration": 1,
+      "expectedCloudVersion": null,
+      "lease": {
+        "leaseId": "<runtime-lease-capability-not-frozen>"
+      },
+      "payloadJson": "{\"operationId\":\"019fc400-0000-7000-8000-000000000003\",\"sessionId\":\"019fc400-0000-7000-8000-000000000010\",\"localSequence\":3,\"submittedAtDeviceUtc\":\"2026-08-02T09:00:00+00:00\"}",
+      "payloadHash": "5d4f6a87f42846dacde6e73423ac2f5e076e9f4f8606d76e7c646d5fd040da8e",
+      "canonicalRequestHash": "677d1161ae54d0fb981080d6b6fadc1d871a1fd9ebe4b96a91a8124647495623"
+    }
+  ],
+  "resultExamples": [
+    {
+      "name": "accepted",
+      "status": "Accepted",
+      "cloud": {
+        "cloudReference": "RCV-000001",
+        "sessionStatus": "ReceivingInProgress",
+        "sessionVersion": 1,
+        "ownershipGeneration": 1,
+        "leaseId": "<runtime-lease-capability-not-frozen>",
+        "leaseExpiresAtUtc": "2026-08-02T09:00:00+00:00",
+        "entryCount": 0,
+        "processedTotalWeightKg": "0.000000"
+      },
+      "error": null
+    },
+    {
+      "name": "previously-processed",
+      "status": "PreviouslyProcessed",
+      "cloud": {
+        "cloudReference": "RCV-000001",
+        "sessionStatus": "ReceivingInProgress",
+        "sessionVersion": 1,
+        "ownershipGeneration": 1,
+        "leaseId": "<runtime-lease-capability-not-frozen>",
+        "leaseExpiresAtUtc": "2026-08-02T09:00:00+00:00",
+        "entryCount": 0,
+        "processedTotalWeightKg": "0.000000"
+      },
+      "error": null
+    },
+    {
+      "name": "stale-generation-needs-attention",
+      "status": "NeedsAttention",
+      "cloud": null,
+      "error": {
+        "code": "RECEIVING_OWNERSHIP_GENERATION_STALE",
+        "message": "The ownership generation is stale.",
+        "retryable": false,
+        "requiresAction": true
+      }
+    },
+    {
+      "name": "prior-sequence-waiting",
+      "status": "NeedsAttention",
+      "cloud": null,
+      "error": {
+        "code": "RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
+        "message": "A prior operation blocked this Receiving Session in the batch.",
+        "retryable": true,
+        "requiresAction": true
+      },
+      "claimCreated": false,
+      "businessMutationCreated": false
+    },
+    {
+      "name": "rejected",
+      "status": "Rejected",
+      "cloud": null,
+      "error": {
+        "code": "COMMERCIAL_MOBILE_OPERATION_PAYLOAD_HASH_INVALID",
+        "message": "The payload hash does not match the exact UTF-8 payload JSON.",
+        "retryable": false,
+        "requiresAction": false
+      }
+    }
+  ],
+  "sourceErrorCodes": [
+    "AUTHORIZATION_DENIED",
+    "COMMERCIAL_MASTER_CURSOR_INVALID",
+    "COMMERCIAL_MOBILE_OPERATION_BATCH_INVALID",
+    "COMMERCIAL_MOBILE_OPERATION_CLAIM_MISSING",
+    "COMMERCIAL_MOBILE_OPERATION_LEGACY_NON_REPLAYABLE",
+    "COMMERCIAL_MOBILE_OPERATION_PAYLOAD_HASH_INVALID",
+    "COMMERCIAL_MOBILE_OPERATION_REJECTED",
+    "COMMERCIAL_MOBILE_OPERATION_TYPE_UNSUPPORTED",
+    "COMMERCIAL_SYNC_CURSOR_INVALID",
+    "IDEMPOTENCY_IN_PROGRESS",
+    "IDEMPOTENCY_KEY_INVALID",
+    "IDEMPOTENCY_PAYLOAD_CONFLICT",
+    "IDEMPOTENCY_PREVIOUS_ATTEMPT_FAILED",
+    "OWNER_ROLE_REQUIRED",
+    "RECEIVING_BAG_TYPE_INACTIVE",
+    "RECEIVING_BAG_TYPE_VERSION_STALE",
+    "RECEIVING_DEFAULT_DESTINATION_MISMATCH",
+    "RECEIVING_DEFAULT_POLICY_MISMATCH",
+    "RECEIVING_DESTINATION_INACTIVE",
+    "RECEIVING_ENTRY_REQUIRED",
+    "RECEIVING_LEASE_INVALID",
+    "RECEIVING_LEASE_REACQUISITION_REQUIRED",
+    "RECEIVING_LEASE_REQUIRED",
+    "RECEIVING_LEASE_STILL_ACTIVE",
+    "RECEIVING_MASTER_NEEDS_ATTENTION",
+    "RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
+    "RECEIVING_OWNERSHIP_DEVICE_MISMATCH",
+    "RECEIVING_OWNERSHIP_GENERATION_STALE",
+    "RECEIVING_OWNERSHIP_TARGET_INVALID",
+    "RECEIVING_OWNERSHIP_TRANSFER_CONFLICT",
+    "RECEIVING_PRODUCT_INACTIVE",
+    "RECEIVING_PRODUCT_NOT_PURCHASABLE",
+    "RECEIVING_PRODUCT_SCOPE_INVALID",
+    "RECEIVING_PRODUCT_SCOPE_REQUIRED",
+    "RECEIVING_PRODUCT_VERSION_STALE",
+    "RECEIVING_REFERENCE_CONFLICT",
+    "RECEIVING_REFERENCE_POLICY_INVALID",
+    "RECEIVING_REFERENCE_POLICY_NOT_CONFIGURED",
+    "RECEIVING_REFERENCE_SERIES_STARTED",
+    "RECEIVING_SEQUENCE_CONFLICT",
+    "RECEIVING_SEQUENCE_GAP",
+    "RECEIVING_SESSION_ID_INVALID",
+    "RECEIVING_SESSION_NOT_FOUND",
+    "RECEIVING_SETTINGS_NOT_CONFIGURED",
+    "RECEIVING_SETTINGS_VERSION_STALE",
+    "RECEIVING_STANDARD_BAG_WEIGHT_INVALID",
+    "RECEIVING_STANDARD_BAG_WEIGHT_VERSION_STALE",
+    "RECEIVING_STATUS_INVALID",
+    "RECEIVING_SUPPLIER_INACTIVE",
+    "RECEIVING_SUPPLIER_VERSION_STALE",
+    "RECEIVING_TOTAL_WEIGHT_EXCEEDED",
+    "RECEIVING_TOTAL_WEIGHT_REQUIRED",
+    "RECEIVING_VEHICLE_INACTIVE",
+    "RECEIVING_WEIGHT_POLICY_INACTIVE",
+    "RECEIVING_WEIGHT_PROCESSING_MISMATCH",
+    "REQUEST_BODY_INVALID",
+    "TEMPORARY_COMMAND_FAILURE"
+  ],
+  "needsAttentionCodes": [
+    "IDEMPOTENCY_IN_PROGRESS",
+    "RECEIVING_BAG_TYPE_INACTIVE",
+    "RECEIVING_BAG_TYPE_VERSION_STALE",
+    "RECEIVING_DEFAULT_DESTINATION_MISMATCH",
+    "RECEIVING_DEFAULT_POLICY_MISMATCH",
+    "RECEIVING_DESTINATION_INACTIVE",
+    "RECEIVING_LEASE_INVALID",
+    "RECEIVING_LEASE_REACQUISITION_REQUIRED",
+    "RECEIVING_LEASE_REQUIRED",
+    "RECEIVING_MASTER_NEEDS_ATTENTION",
+    "RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
+    "RECEIVING_OWNERSHIP_DEVICE_MISMATCH",
+    "RECEIVING_OWNERSHIP_GENERATION_STALE",
+    "RECEIVING_PRODUCT_INACTIVE",
+    "RECEIVING_PRODUCT_NOT_PURCHASABLE",
+    "RECEIVING_PRODUCT_SCOPE_INVALID",
+    "RECEIVING_PRODUCT_SCOPE_REQUIRED",
+    "RECEIVING_PRODUCT_VERSION_STALE",
+    "RECEIVING_SEQUENCE_GAP",
+    "RECEIVING_SETTINGS_NOT_CONFIGURED",
+    "RECEIVING_SETTINGS_VERSION_STALE",
+    "RECEIVING_STANDARD_BAG_WEIGHT_INVALID",
+    "RECEIVING_STANDARD_BAG_WEIGHT_VERSION_STALE",
+    "RECEIVING_SUPPLIER_INACTIVE",
+    "RECEIVING_SUPPLIER_VERSION_STALE",
+    "RECEIVING_VEHICLE_INACTIVE",
+    "RECEIVING_WEIGHT_POLICY_INACTIVE",
+    "TEMPORARY_COMMAND_FAILURE"
+  ],
+  "directProblemCodes": [
+    "AUTHORIZATION_DENIED",
+    "COMMERCIAL_MASTER_CURSOR_INVALID",
+    "COMMERCIAL_SYNC_CURSOR_INVALID",
+    "IDEMPOTENCY_KEY_INVALID",
+    "IDEMPOTENCY_PREVIOUS_ATTEMPT_FAILED",
+    "OWNER_ROLE_REQUIRED",
+    "RECEIVING_LEASE_STILL_ACTIVE",
+    "RECEIVING_OWNERSHIP_TARGET_INVALID",
+    "RECEIVING_OWNERSHIP_TRANSFER_CONFLICT",
+    "RECEIVING_REFERENCE_CONFLICT",
+    "RECEIVING_REFERENCE_POLICY_INVALID",
+    "RECEIVING_REFERENCE_POLICY_NOT_CONFIGURED",
+    "RECEIVING_REFERENCE_SERIES_STARTED",
+    "RECEIVING_SESSION_ID_INVALID",
+    "RECEIVING_SESSION_NOT_FOUND",
+    "RECEIVING_STATUS_INVALID",
+    "REQUEST_BODY_INVALID",
+    "TEMPORARY_COMMAND_FAILURE"
+  ]
+}

@@ -86,7 +86,7 @@ identifies work that must remain outside Task 7C.
 | OWN-05 | A different device must not silently take over editing. | Device changes require an explicit audited transfer/recovery. | Reject automatic acquisition by another Device. | Never infer ownership from visibility or an expired lease. | Final approval rules for transfer. |
 | OWN-06 | Recovery or transfer is explicit and auditable. | Generation increments on every accepted ownership change. | Commit ownership change and audit atomically. | Present the result and keep old-generation work visible. | Product approval policy for transfer/recovery. |
 | OWN-07 | The short POC heartbeat lease is not copied unchanged. | Production separates durable ownership, generation, and renewable lease. | Use the configurable 60-minute server-clock lease and same-device reacquisition approved by OQ-08. | Target a 10-minute foreground heartbeat and treat expiry as reacquisition/attention, not lost work. | Future grace/escalation SLA. |
-| OWN-08 | Commercial event visibility follows least privilege. | Owners may read safe company-monitoring broadcasts; any active editor Device may read events targeted to it, and an Operator has no broader entitlement. | Enforce audience kind, target Device, role, Session, and generation after database revalidation. | Store/apply only events authorized for the bound profile. | Any discovery/monitoring of other Sessions by non-editor Operators. |
+| OWN-08 | Commercial event visibility follows least privilege. | Owners may read safe company-monitoring broadcasts; a Device may read immutable events targeted to it, including transfer-away history, and an Operator has no broader list/live entitlement. | Enforce audience kind, target Device, role, Workspace, Company, and active Device after database revalidation. Current editor/generation controls mutations and future event targeting, not historical suppression. | Store/apply only broadcasts or TargetDevice rows authorized for the bound profile; reject unrelated Sessions. | Any discovery/monitoring of other Sessions by non-editor Operators. |
 | SYN-01 | Ordered mobile operations share one global command scope. | Start/Record/Submit all use `Procurement.CommercialReceiving.MobileSyncOperation`; actual type is hashed. | The same UUID under another type is `IDEMPOTENCY_PAYLOAD_CONFLICT` and does not execute. | Generate one immutable operation UUID/type and never reclassify it. | None. |
 | SYN-02 | Mutable cloud version is not offline operation identity. | Start has no generation/lease; Record/Submit require generation/lease; all omit expected cloud version. | Serialize by authenticated Device, generation, exact sequence, status, and aggregate/ownership lock. | Keep cloud version only in mutable cloud projection, never immutable outbox payload/hash. | Direct approved transfer/recovery may use expected Session/ownership versions. |
 | WGT-01 | Raw weight is stored unchanged. | Entry contract stores the original decimal text. | Verify and persist exact text. | Persist exact text before sync. | None. |
@@ -157,8 +157,10 @@ Task 7C1 resolves the production enablement gates as follows:
 - Submission, lease clearing, audit, event, and idempotent result form one
   cloud transaction.
 - Owners may read safe company-monitoring event broadcasts. An Operator Device
-  cannot read unrelated Session events merely because it belongs to the same
-  company; only events targeted to that Device while it is active editor are visible.
+  cannot discover unrelated Sessions merely because it belongs to the same
+  company. TargetDevice event audience is immutable: a Device can read events
+  issued to it, including its transfer-away row. Current editor/generation is
+  revalidated for mutations, and subsequent events target the new editor.
 - Existing Active and Inactive Task 7B1/7B2 masters are exposed through a
   deterministic migration-backed safe change log. Bootstrap captures a scoped
   high-water mark and then resumes strictly after it, so concurrent mutations
@@ -189,14 +191,21 @@ Owner-monitoring rows on mobile are disposable read-only projections.
 ## Failure behavior
 
 No failure silently deletes or rewrites an offline physical payload. Reversible
-conditions such as an expired lease for the unchanged owner or a stale master/
-Procurement Settings revision produce `NeedsAttention` without consuming the
-immutable operation. Permanent
-identity conflicts such as another Device or an old ownership generation are
-rejected, while the local fact remains available for an explicit future
-recovery decision. Database failures roll back the whole cloud or local
-transaction. Ambiguous network responses reuse the same operation ID and
-payload.
+conditions such as an expired lease for the unchanged owner, a stale master/
+Procurement Settings revision, another editor Device, or stale ownership
+generation produce `NeedsAttention` without a Receiving mutation. The local
+fact remains available for an explicit future recovery decision. Database
+failures roll back the whole cloud or local transaction. Ambiguous network
+responses reuse the same operation ID and payload.
+
+An authenticated, securely bound Operator may create a local Session and
+capture immutable Entries offline only from valid cached Active master and
+Company Procurement Settings revisions. Start is immutable sequence 1 and all
+Entry/Submit operations queue behind it. Dependent operations are not sent
+until Start is accepted and returns the official reference, ownership
+generation, and lease. A rejected Start makes the preserved Session/facts
+attention-required; mobile generates no official reference and never rewrites
+an Entry or payload to obtain acceptance.
 
 ## Security implications
 
@@ -251,7 +260,7 @@ Supplier protected fields.
 | Capacity and physical validation limits | Positive raw/processed weight, positive bags, and at least one Entry are resolved for Task 7C1; broader maxima remain absent. | Maximum Sessions, Entries, bags, or Session duration. | TPCL/TPFS and operational capacity review. | Safe transport/numeric limits only. |
 | Optional Receiving header fields | Supplier, configured destination/policy, and optional vehicle are established. | Driver, vehicle free text, source location, remarks, purchase order, broker, or rate. | TPCL/TPFS. | No speculative fields. |
 | Procurement default overrides | Procurement Settings define default destination and Weight Policy, but no source authorizes operator deviation. | Whether an override exists, who may use it, allowed values, reasons, or audit requirements. | TPCL/TPFS or approved product decision. | Task 7C1 accepts configured defaults only. |
-| Non-editor Operator visibility | Owner monitoring is established, but no source grants Operators discovery of Sessions edited by another Device. | Company-wide Operator event, list, or live-view visibility. | TPCL/TPFS or approved product/security decision. | Operator event cursor remains targeted to its active-editor Device only. |
+| Non-editor Operator visibility | Owner monitoring is established, but no source grants Operators discovery of Sessions edited by another Device. Immutable TargetDevice events remain readable by their issued Device, including transfer-away history. | Company-wide Operator broadcast, list, or live-view visibility. | TPCL/TPFS or approved product/security decision. | Operator list/live remains current-editor only; its event cursor returns only rows targeted to that Device. |
 | Lease duration and recovery SLA | Resolved for Task 7C1 as a configurable 60-minute default and 10-minute foreground heartbeat target, with same-device reacquisition and no automatic takeover. | Future grace/escalation SLA beyond explicit reacquisition. | Operational review. | No Task 7C1 blocker. |
 
 ## Unresolved questions
@@ -266,8 +275,9 @@ has an implied default.
   arrays; `lease`, `leaseId`, `leaseExpiresAtUtc`, and
   `expectedCloudVersion` are forbidden case-insensitively at every depth.
 - An unattempted operation waiting behind an earlier same-Session operation is
-  `NeedsAttention`, retryable, and has no claim, idempotency, audit, event, or
-  aggregate mutation. Other Sessions in the batch continue.
+  `NeedsAttention` with `RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE`,
+  retryable, and has no claim, idempotency, audit, event, or aggregate mutation.
+  Other Sessions in the batch continue.
 - Claim transitions use one Operation-scoped lock discipline and terminal
   states cannot regress. Snapshot validation takes shared master locks.
 - Ownership accepts only heartbeat, expired/null lease acquisition, transfer
