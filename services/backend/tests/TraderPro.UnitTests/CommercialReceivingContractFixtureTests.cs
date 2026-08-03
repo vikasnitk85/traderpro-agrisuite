@@ -1,6 +1,6 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using TraderPro.Application.Platform.Identity;
 using TraderPro.Application.Procurement.Receiving;
 using TraderPro.Domain.Procurement.Receiving;
 
@@ -8,7 +8,7 @@ namespace TraderPro.UnitTests;
 
 public sealed partial class CommercialReceivingContractFixtureTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = false,
     };
@@ -62,13 +62,8 @@ public sealed partial class CommercialReceivingContractFixtureTests
             var payloadHash = RequiredString(operation, "payloadHash");
 
             Assert.True(expectedTypes.TryGetValue(operationType, out var payloadType));
-            Assert.NotNull(JsonSerializer.Deserialize(
-                payloadJson,
-                payloadType!,
-                JsonOptions));
-            AssertPropertySet(
-                JsonDocument.Parse(payloadJson).RootElement,
-                payloadType!);
+            using var payloadDocument = JsonDocument.Parse(payloadJson);
+            AssertMatchesProductionDto(payloadDocument.RootElement, payloadType!);
             Assert.Equal(
                 CommercialReceivingRequestHash.PayloadHash(payloadJson),
                 payloadHash);
@@ -98,10 +93,12 @@ public sealed partial class CommercialReceivingContractFixtureTests
         var sourceCodes = Strings(root.GetProperty("sourceErrorCodes"));
         Assert.Equal(ExpectedSourceErrorCodes, sourceCodes);
         var productionSource = ReadProductionReceivingSource();
-        foreach (var code in sourceCodes)
-        {
-            Assert.Contains($"\"{code}\"", productionSource, StringComparison.Ordinal);
-        }
+        var activeSourceCodes = ProductionErrorCodePattern().Matches(productionSource)
+            .Select(match => match.Groups["code"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(sourceCodes, activeSourceCodes);
 
         Assert.DoesNotContain(
             "COMMERCIAL_MOBILE_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
@@ -135,6 +132,45 @@ public sealed partial class CommercialReceivingContractFixtureTests
                 StringComparer.Ordinal);
 
         Assert.Equal(ExpectedRoutes, routes);
+        var registrationRoot = Path.Combine(
+            RepositoryRoot(),
+            "services", "backend", "src", "TraderPro.Api", "Http");
+        var registeredRoutes = ReadRegisteredRoutes(Path.Combine(
+                registrationRoot,
+                "IdentityEndpointRegistration.cs"))
+            .Where(route =>
+                route.Contains(" /api/v1/auth/", StringComparison.Ordinal) ||
+                route.Contains(" /api/v1/devices/", StringComparison.Ordinal))
+            .Concat(ReadRegisteredRoutes(Path.Combine(
+                registrationRoot,
+                "CommercialReceivingEndpointRegistration.cs")))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var fixtureRoutes = routes.Values
+            .Select(NormalizeExpectedRoute)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(fixtureRoutes, registeredRoutes);
+
+        var authentication = root.GetProperty("authenticationExamples");
+        AssertMatchesProductionDto(
+            authentication.GetProperty("activation").GetProperty("request"),
+            typeof(RedeemDeviceActivationRequest));
+        AssertMatchesProductionDto(
+            authentication.GetProperty("activation").GetProperty("response"),
+            typeof(RedeemDeviceActivationResult));
+        AssertMatchesProductionDto(
+            authentication.GetProperty("login").GetProperty("request"),
+            typeof(LoginRequest));
+        AssertMatchesProductionDto(
+            authentication.GetProperty("login").GetProperty("response"),
+            typeof(AuthenticationTokenResult));
+        AssertMatchesProductionDto(
+            authentication.GetProperty("refresh").GetProperty("request"),
+            typeof(RefreshRequest));
+        AssertMatchesProductionDto(
+            authentication.GetProperty("me").GetProperty("response"),
+            typeof(CurrentIdentityResult));
         var reference = root.GetProperty("referencePolicyExample");
         Assert.Equal(
             CommercialReceivingReferencePolicy.DefaultFormatTemplate,
@@ -152,23 +188,6 @@ public sealed partial class CommercialReceivingContractFixtureTests
         Assert.Contains("<runtime-secret-or-capability-not-frozen>", serialized);
         Assert.DoesNotMatch(GuidCapabilityPattern(), serialized);
 
-        var endpointSource = File.ReadAllText(Path.Combine(
-            RepositoryRoot(),
-            "services", "backend", "src", "TraderPro.Api", "Http",
-            "CommercialReceivingEndpointRegistration.cs"));
-        foreach (var fragment in new[]
-                 {
-                     "/api/v1/mobile/commercial-sync",
-                     "/operations", "/events", "/masters",
-                     "/api/v1/procurement/receiving-sessions",
-                     "/{id:guid}/live-view", "/{id:guid}/lease/heartbeat",
-                     "/{id:guid}/lease/reacquire",
-                     "/{id:guid}/ownership/transfer",
-                     "/api/v1/procurement/receiving-reference-policy",
-                 })
-        {
-            Assert.Contains(fragment, endpointSource, StringComparison.Ordinal);
-        }
     }
 
     [Fact]
@@ -178,6 +197,7 @@ public sealed partial class CommercialReceivingContractFixtureTests
             "events",
             "commercial-receiving-events.v1.json");
         var events = document.RootElement.GetProperty("events").EnumerateArray().ToArray();
+        AssertNoSensitiveProperties(document.RootElement);
         var expectedEnvelope = new[]
         {
             "sequence", "eventId", "eventType", "eventVersion", "aggregateId",
@@ -268,6 +288,7 @@ public sealed partial class CommercialReceivingContractFixtureTests
             "golden-vectors",
             "commercial-master-changes.v1.json");
         var changes = document.RootElement.GetProperty("changes").EnumerateArray().ToArray();
+        AssertNoSensitiveProperties(document.RootElement);
         var common = new[] { "contractVersion", "id", "version", "status" };
         var shapes = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -320,6 +341,7 @@ public sealed partial class CommercialReceivingContractFixtureTests
         "COMMERCIAL_MOBILE_OPERATION_PAYLOAD_HASH_INVALID", "COMMERCIAL_MOBILE_OPERATION_REJECTED",
         "COMMERCIAL_MOBILE_OPERATION_TYPE_UNSUPPORTED", "COMMERCIAL_SYNC_CURSOR_INVALID",
         "IDEMPOTENCY_IN_PROGRESS", "IDEMPOTENCY_KEY_INVALID", "IDEMPOTENCY_PAYLOAD_CONFLICT",
+        "IDEMPOTENCY_PREVIOUS_ATTEMPT_FAILED",
         "OWNER_ROLE_REQUIRED", "RECEIVING_BAG_TYPE_INACTIVE", "RECEIVING_BAG_TYPE_VERSION_STALE",
         "RECEIVING_DEFAULT_DESTINATION_MISMATCH", "RECEIVING_DEFAULT_POLICY_MISMATCH",
         "RECEIVING_DESTINATION_INACTIVE", "RECEIVING_ENTRY_REQUIRED", "RECEIVING_LEASE_INVALID",
@@ -340,6 +362,7 @@ public sealed partial class CommercialReceivingContractFixtureTests
         "RECEIVING_TOTAL_WEIGHT_EXCEEDED", "RECEIVING_TOTAL_WEIGHT_REQUIRED",
         "RECEIVING_VEHICLE_INACTIVE", "RECEIVING_WEIGHT_POLICY_INACTIVE",
         "RECEIVING_WEIGHT_PROCESSING_MISMATCH", "REQUEST_BODY_INVALID",
+        "TEMPORARY_COMMAND_FAILURE",
     ];
 
     private static readonly Dictionary<string, string> ExpectedRoutes = new(StringComparer.Ordinal)
@@ -350,24 +373,48 @@ public sealed partial class CommercialReceivingContractFixtureTests
         ["logout"] = "POST /api/v1/auth/logout",
         ["logoutAll"] = "POST /api/v1/auth/logout-all",
         ["me"] = "GET /api/v1/auth/me",
-        ["issueActivationCode"] = "POST /api/v1/devices/{deviceId}/activation-codes",
+        ["issueActivationCode"] = "POST /api/v1/devices/{deviceId:guid}/activation-codes",
         ["operations"] = "POST /api/v1/mobile/commercial-sync/operations",
         ["events"] = "GET /api/v1/mobile/commercial-sync/events?cursor={opaque}&limit={1-100}",
         ["masters"] = "GET /api/v1/mobile/commercial-sync/masters?cursor={opaque}&limit={1-100}",
         ["listSessions"] = "GET /api/v1/procurement/receiving-sessions?status={optional}&search={optional}&cursor={opaque}&limit={1-100}",
-        ["liveView"] = "GET /api/v1/procurement/receiving-sessions/{id}/live-view",
-        ["heartbeat"] = "POST /api/v1/procurement/receiving-sessions/{id}/lease/heartbeat",
-        ["reacquire"] = "POST /api/v1/procurement/receiving-sessions/{id}/lease/reacquire",
-        ["transfer"] = "POST /api/v1/procurement/receiving-sessions/{id}/ownership/transfer",
+        ["liveView"] = "GET /api/v1/procurement/receiving-sessions/{id:guid}/live-view",
+        ["heartbeat"] = "POST /api/v1/procurement/receiving-sessions/{id:guid}/lease/heartbeat",
+        ["reacquire"] = "POST /api/v1/procurement/receiving-sessions/{id:guid}/lease/reacquire",
+        ["transfer"] = "POST /api/v1/procurement/receiving-sessions/{id:guid}/ownership/transfer",
         ["getReferencePolicy"] = "GET /api/v1/procurement/receiving-reference-policy",
         ["updateReferencePolicy"] = "PUT /api/v1/procurement/receiving-reference-policy",
     };
 
-    private static void AssertPropertySet(JsonElement payload, Type payloadType)
+    private static void AssertMatchesProductionDto(JsonElement fixture, Type dtoType)
     {
-        var expected = payloadType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Select(property => JsonNamingPolicy.CamelCase.ConvertName(property.Name));
-        AssertNames(payload, expected);
+        var value = JsonSerializer.Deserialize(fixture.GetRawText(), dtoType, JsonOptions);
+        Assert.NotNull(value);
+        var serialized = JsonSerializer.SerializeToElement(value, dtoType, JsonOptions);
+        AssertSameJsonShape(fixture, serialized);
+    }
+
+    private static void AssertSameJsonShape(JsonElement fixture, JsonElement serialized)
+    {
+        Assert.Equal(serialized.ValueKind, fixture.ValueKind);
+        if (fixture.ValueKind is JsonValueKind.Object)
+        {
+            AssertNames(fixture, serialized.EnumerateObject().Select(property => property.Name));
+            foreach (var property in fixture.EnumerateObject())
+            {
+                AssertSameJsonShape(property.Value, serialized.GetProperty(property.Name));
+            }
+        }
+        else if (fixture.ValueKind is JsonValueKind.Array)
+        {
+            var fixtureItems = fixture.EnumerateArray().ToArray();
+            var serializedItems = serialized.EnumerateArray().ToArray();
+            Assert.Equal(serializedItems.Length, fixtureItems.Length);
+            for (var index = 0; index < fixtureItems.Length; index++)
+            {
+                AssertSameJsonShape(fixtureItems[index], serializedItems[index]);
+            }
+        }
     }
 
     private static void AssertNames(JsonElement element, IEnumerable<string> expected)
@@ -385,14 +432,75 @@ public sealed partial class CommercialReceivingContractFixtureTests
             "contactName", "contactNumber", "email", "addressLine", "taxRegistrationNumber",
             "normalizedTaxRegistrationNumber", "notes", "reason",
         };
+        if (element.ValueKind is JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                AssertNoSensitiveProperties(item);
+            }
+
+            return;
+        }
+
+        if (element.ValueKind is not JsonValueKind.Object)
+        {
+            return;
+        }
+
         foreach (var property in element.EnumerateObject())
         {
             Assert.DoesNotContain(property.Name, forbidden);
-            if (property.Value.ValueKind is JsonValueKind.Object)
-            {
-                AssertNoSensitiveProperties(property.Value);
-            }
+            AssertNoSensitiveProperties(property.Value);
         }
+    }
+
+    private static string[] ReadRegisteredRoutes(string path)
+    {
+        var source = File.ReadAllText(path);
+        var groups = MapGroupPattern().Matches(source)
+            .ToDictionary(
+                match => match.Groups["group"].Value,
+                match => match.Groups["prefix"].Value,
+                StringComparer.Ordinal);
+        var routes = DirectRoutePattern().Matches(source)
+            .Select(match => NormalizeRoute(
+                match.Groups["method"].Value,
+                match.Groups["path"].Value))
+            .ToList();
+        routes.AddRange(GroupRoutePattern().Matches(source)
+            .Where(match => !string.Equals(
+                match.Groups["group"].Value,
+                "endpoints",
+                StringComparison.Ordinal))
+            .Select(match =>
+        {
+            var group = match.Groups["group"].Value;
+            Assert.True(groups.TryGetValue(group, out var prefix));
+            var pathSuffix = match.Groups["path"].Value;
+            return NormalizeRoute(
+                match.Groups["method"].Value,
+                $"{prefix!.TrimEnd('/')}/{pathSuffix.TrimStart('/')}");
+        }));
+        return routes.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string NormalizeExpectedRoute(string route)
+    {
+        var separator = route.IndexOf(' ', StringComparison.Ordinal);
+        Assert.True(separator > 0);
+        return NormalizeRoute(route[..separator], route[(separator + 1)..]);
+    }
+
+    private static string NormalizeRoute(string method, string path)
+    {
+        var query = path.IndexOf('?', StringComparison.Ordinal);
+        var pathOnly = query < 0 ? path : path[..query];
+        if (pathOnly.Length > 1)
+        {
+            pathOnly = pathOnly.TrimEnd('/');
+        }
+
+        return $"{method.ToUpperInvariant()} {pathOnly}";
     }
 
     private static string ReadProductionReceivingSource()
@@ -446,4 +554,16 @@ public sealed partial class CommercialReceivingContractFixtureTests
 
     [GeneratedRegex("\\\"(?:leaseId|refreshToken|activationCode|accessToken)\\\"\\s*:\\s*\\\"[0-9a-f]{8}-[0-9a-f-]{27,}\\\"", RegexOptions.IgnoreCase)]
     private static partial Regex GuidCapabilityPattern();
+
+    [GeneratedRegex("\\\"(?<code>(?:AUTHORIZATION_DENIED|OWNER_ROLE_REQUIRED|REQUEST_BODY_INVALID|TEMPORARY_COMMAND_FAILURE|IDEMPOTENCY_[A-Z0-9_]+|COMMERCIAL_(?:MASTER|MOBILE|SYNC)_[A-Z0-9_]+|RECEIVING_[A-Z0-9_]+))\\\"")]
+    private static partial Regex ProductionErrorCodePattern();
+
+    [GeneratedRegex("var\\s+(?<group>\\w+)\\s*=\\s*endpoints\\.MapGroup\\(\\s*\\\"(?<prefix>[^\\\"]+)\\\"")]
+    private static partial Regex MapGroupPattern();
+
+    [GeneratedRegex("endpoints\\.Map(?<method>Get|Post|Put|Delete)\\(\\s*\\\"(?<path>[^\\\"]+)\\\"")]
+    private static partial Regex DirectRoutePattern();
+
+    [GeneratedRegex("(?<group>\\w+)\\.Map(?<method>Get|Post|Put|Delete)\\(\\s*\\\"(?<path>[^\\\"]+)\\\"")]
+    private static partial Regex GroupRoutePattern();
 }

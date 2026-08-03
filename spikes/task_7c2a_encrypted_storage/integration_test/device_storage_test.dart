@@ -392,7 +392,6 @@ void main() {
 
       final result = <String, Object>{
         'engine': engine,
-        'deviceApi': 35,
         'rows': rows,
         'openMs': openWatch.elapsedMilliseconds,
         'writeTransactionMs': writeWatch.elapsedMilliseconds,
