@@ -26,6 +26,9 @@ generation. Owner-authorized transfer requires a safe reason and expected
 Session/generation, increments generation once, and targets the old/new Devices
 plus Owners with safe events. These decisions supersede the corresponding
 OQ-01, OQ-06, OQ-08, and transfer-gate placeholders in this Task 7C0 design.
+Task 7C2A further freezes the committed opaque cursor routes, immutable event
+audiences, exact error vocabulary, `Manual` weight source, and offline
+pre-Start queueing policy recorded below.
 
 The reviewed `HardenCommercialReceivingBackendContracts` follow-up makes all
 capture mutations Operator-only, durably claims `NeedsAttention` operations,
@@ -50,7 +53,7 @@ This design does not implement or define Purchase Settlement, bag
 reconciliation, empty-bag or DoublePlastic deductions, Goods Supplied to
 Supplier accounting, Purchase Bills, supplier payables, Inventory movements,
 Sales, Finance postings, official purchase finalization, cancellation,
-post-submission correction, or a final display-reference format. It does not
+post-submission correction, or a general voucher-numbering design. It does not
 promote Task 5/6 POC routes, headers, entities, tables, event stream, reference,
 or SQLite database.
 
@@ -99,9 +102,9 @@ a submitted Session/Entry snapshot; and any Approved/Finalized transition.
 Exact retry of an already accepted operation returns the stored result as
 `PreviouslyProcessed` and is not a new transition.
 
-Whether a zero-entry Session may submit and whether zero weight is a valid
-Entry are open questions. Production enablement of those validations is gated
-on source resolution.
+A persisted Entry requires positive processed weight and bag count. Submission
+requires at least one accepted Entry and a positive exact total, as implemented
+and tested by Task 7C1.
 
 ## Data ownership
 
@@ -199,7 +202,7 @@ business Version, and does not change `UpdatedAtUtc`.
 | `DisplayWeightKg` | text | Deterministic Task 3 display string at captured precision. |
 | `DecimalPlacesSnapshot` | 1, 2, or 3 | Must match Session policy. |
 | `ProcessingMethodSnapshot` | controlled text | Must match Session policy. |
-| `WeightSource` | controlled versioned text | Source classification; initial production values require 7C2 review. |
+| `WeightSource` | controlled versioned text | Task 7C2 capture sends exactly `Manual`; server remains forward-compatible with other reviewed safe strings. |
 | `CapturedAtDeviceUtc` | UTC timestamp | Physical capture metadata, not lease/order authority. |
 | `AcceptedAtServerUtc` | UTC timestamp | Server acceptance time. |
 
@@ -263,7 +266,7 @@ sequenceDiagram
     O->>API: Explicit approved transfer/recovery
     API->>DB: serialize; generation 2, new editor, invalidate L2, audit/event
     A->>API: queued operation with generation 1
-    API-->>A: Rejected RECEIVING_OWNERSHIP_GENERATION_STALE
+    API-->>A: NeedsAttention RECEIVING_OWNERSHIP_GENERATION_STALE
 ```
 
 Rules:
@@ -275,17 +278,16 @@ Rules:
 3. A missing active lease returns `NeedsAttention` with
    `RECEIVING_LEASE_REQUIRED`.
 4. Expiry for the same durable editor/generation returns `NeedsAttention` with
-   `RECEIVING_LEASE_EXPIRED_REACQUISITION_REQUIRED`. The same operation may be
+   `RECEIVING_LEASE_REACQUISITION_REQUIRED`. The same operation may be
    retried after same-device reacquisition with a new envelope lease; its ID,
    payload, hash, sequence, and generation do not change. It has no expected
    cloud version.
 5. A different Device cannot reacquire. It receives
-   `RECEIVING_OWNERSHIP_DEVICE_MISMATCH` or
-   `RECEIVING_OWNERSHIP_TRANSFER_REQUIRED`.
+   `RECEIVING_OWNERSHIP_DEVICE_MISMATCH`.
 6. Approved Owner transfer increments generation, changes the durable editor,
    and clears the former lease atomically without returning a lease to the
    Owner. The target Device authenticates as Operator and acquires its own lease
-   without a generation change. Old-generation operations are `Rejected` with
+   without a generation change. Old-generation operations are `NeedsAttention` with
    `RECEIVING_OWNERSHIP_GENERATION_STALE`; their local facts remain intact.
 7. Submission clears lease ID, expiry, heartbeat, and active edit capability.
 8. PostgreSQL aggregate/ownership row/advisory locks serialize ordered
@@ -378,14 +380,13 @@ Stable codes include:
 | Code | Outcome |
 | --- | --- |
 | `RECEIVING_SUPPLIER_INACTIVE` | `NeedsAttention` for a known inactive Supplier. |
-| `RECEIVING_DESTINATION_INACTIVE` | `NeedsAttention`. |
-| `RECEIVING_DESTINATION_BRANCH_MISMATCH` | `Rejected`; authority mismatch. |
+| `RECEIVING_DESTINATION_INACTIVE` | `NeedsAttention`; unavailable and cross-scope identities are not disclosed. |
 | `RECEIVING_WEIGHT_POLICY_INACTIVE` | `NeedsAttention`. |
 | `RECEIVING_VEHICLE_INACTIVE` | `NeedsAttention`. |
-| `RECEIVING_VEHICLE_SELECTION_DISABLED` | `Rejected`; payload conflicts with settings. |
-| `RECEIVING_PROCUREMENT_SETTINGS_INVALID` | `NeedsAttention`. |
-| `RECEIVING_PROCUREMENT_SETTINGS_VERSION_STALE` | `NeedsAttention`; no newer defaults are substituted. |
-| `RECEIVING_MASTER_VERSION_STALE` | `NeedsAttention`, with safe master kind/ID/version details. |
+| `RECEIVING_MASTER_NEEDS_ATTENTION` | `NeedsAttention`; covers disabled vehicle selection and selected destination/Weight Policy/Vehicle version attention. |
+| `RECEIVING_SETTINGS_NOT_CONFIGURED` | `NeedsAttention`. |
+| `RECEIVING_SETTINGS_VERSION_STALE` | `NeedsAttention`; no newer defaults are substituted. |
+| `RECEIVING_SUPPLIER_VERSION_STALE` | `NeedsAttention`. |
 
 Unknown or cross-company IDs use isolated not-found results and never disclose
 another tenant.
@@ -412,13 +413,13 @@ Stable codes include:
 
 | Code | Outcome |
 | --- | --- |
-| `RECEIVING_SUPPLIER_PRODUCT_SCOPE_DENIED` | `NeedsAttention`; Restricted scope does not permit Product. |
-| `RECEIVING_SUPPLIER_SCOPE_VERSION_STALE` | `NeedsAttention`. |
+| `RECEIVING_PRODUCT_SCOPE_REQUIRED` | `NeedsAttention`; Restricted Supplier scope evidence is absent. |
+| `RECEIVING_PRODUCT_SCOPE_INVALID` | `NeedsAttention`; association is inactive, stale, mismatched, or supplied for an Unrestricted Supplier. |
 | `RECEIVING_PRODUCT_INACTIVE` | `NeedsAttention`. |
 | `RECEIVING_PRODUCT_NOT_PURCHASABLE` | `NeedsAttention`. |
 | `RECEIVING_BAG_TYPE_INACTIVE` | `NeedsAttention`. |
-| `RECEIVING_STANDARD_BAG_WEIGHT_INACTIVE` | `NeedsAttention`. |
-| `RECEIVING_STANDARD_BAG_WEIGHT_MISMATCH` | `Rejected`; selected association is for another Product/Bag Type. |
+| `RECEIVING_STANDARD_BAG_WEIGHT_INVALID` | `NeedsAttention`. |
+| `RECEIVING_STANDARD_BAG_WEIGHT_VERSION_STALE` | `NeedsAttention`. |
 | `RECEIVING_WEIGHT_PROCESSING_MISMATCH` | `Rejected`; no fact is accepted. |
 | `RECEIVING_TOTAL_WEIGHT_EXCEEDED` | `Rejected`; transaction rolls back. |
 
@@ -533,8 +534,10 @@ Start payload property order is:
   "destinationLocationVersion": 5,
   "weightProcessingPolicyId": "019fbc80-2000-7c01-8b01-000000000005",
   "weightProcessingPolicyVersion": 3,
+  "vehicleSelectionMode": "Optional",
   "receivingVehicleId": null,
   "receivingVehicleVersion": null,
+  "externalReference": null,
   "startedAtDeviceUtc": "2026-08-01T08:00:00.000Z"
 }
 ```
@@ -602,7 +605,7 @@ Outcomes:
 - `PreviouslyProcessed`: stored original accepted result; no writes.
 - `NeedsAttention`: no Receiving business mutation committed; an external/user
   action is required and the immutable local operation remains durably claimed.
-- `Rejected`: permanent structural, identity, generation, relationship, or
+- `Rejected`: permanent structural, immutable-identity, relationship, or
   physical-processing conflict; the immutable local fact still remains for
   explicit reconciliation.
 
@@ -631,6 +634,10 @@ Batch rules:
    generation, canonical request hash, and first-seen time. Exact
    `NeedsAttention` retry is allowed; changed payload, cross-type, or
    cross-Device reuse conflicts. Successful retry completes once.
+10. A later same-Session item blocked by an earlier item is unattempted
+    `NeedsAttention` with
+    `RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE`; it is retryable and has
+    no claim, idempotency, audit, event, reference, or aggregate mutation.
 
 ## `CommercialMobileSync` event stream
 
@@ -656,26 +663,28 @@ must prove same-company commit order and cross-company independence.
 Authenticated route:
 
 ```text
-GET /api/v1/mobile/commercial-sync/events?after=0&limit=100
+GET /api/v1/mobile/commercial-sync/events?cursor=<opaque>&limit=100
 Authorization: Bearer <access-token>
 ```
 
-`after` is non-negative; `limit` is 1-100. The response contains permitted,
-committed rows with `sequence > after`, ordered ascending, plus `nextCursor`
-and `hasMore`. Reads do not update server delivery state. The cursor is a
-durable resume position and sequence gaps, including gaps for other companies
-or audiences, are valid.
+`cursor` is absent for the first page and otherwise is the exact opaque server
+value returned as `nextCursor`; `limit` is 1-100. The response contains
+permitted committed rows ordered by sequence plus `nextCursor` and `hasMore`.
+Reads do not update server delivery state. The cursor is a durable resume
+position and sequence gaps, including gaps for other companies or audiences,
+are valid. Mobile binds its cursor row to source/stream, contract version,
+Workspace, Company, and Device.
 
-An authenticated active Owner may read safe `OwnerCompanyBroadcast` rows for
-its database-revalidated Workspace/Company. Any authenticated Device may read
-`EditorDevice` rows targeted to it while it is the active editor for the related
-in-progress Session and ownership generation; an Operator has no broader event
-entitlement. Company membership alone never lets another Operator Device read
-an unrelated Session event. Broader discovery or monitoring by a non-editor
-Operator is not implemented without a product decision. The endpoint always
-revalidates commercial context; a cursor value contains no authority. Temporary
-POC cursor code cannot query this stream, and this route cannot query `Internal`
-or POC `MobileSync`.
+An authenticated active Owner may read safe `OwnerBroadcast` rows for its
+database-revalidated Workspace/Company. An authenticated active Device may
+read immutable `TargetDevice` rows issued to it. Current editor/generation is
+revalidated for mutations and determines future event targets; it is not used
+to suppress historical or transfer-away delivery. Thus the former editor can
+receive its ownership-change row, while later Entry/Submit events target only
+the new editor. An Operator has no broader list/live entitlement. The endpoint
+always revalidates commercial context; a cursor contains no authority.
+Temporary POC cursor code cannot query this stream, and this route cannot query
+`Internal` or POC `MobileSync`.
 
 ```mermaid
 flowchart LR
@@ -693,7 +702,7 @@ Event version 1 types are:
 | `CommercialReceivingSessionStarted` | Session ID/reference/status/version; Supplier code/name snapshot; destination code/name; optional vehicle display; editor Device; generation; lease expiry; count/total; server update time. Never lease ID. |
 | `CommercialReceivingEntryAccepted` | Session/Entry IDs; local sequence; Product/Bag safe snapshots; bag count; raw/processed/display weight strings; captured/accepted times; authoritative count/total/version. |
 | `CommercialReceivingSessionSubmitted` | Session ID/reference; submitted status/time; count/total/version; ownership closed. |
-| `CommercialReceivingOwnershipChanged` | Session ID/reference; prior/current editor Device IDs; prior/current generations; safe reason code; change time; current lease expiry. Never Device secret or lease ID. |
+| `CommercialReceivingOwnershipChanged` | Session ID/reference; prior/current editor Device IDs; prior/current generations; change time; `leaseAcquisitionRequired: true`. Task 7C2A does not add transfer reason, lease expiry, Device secret, or lease ID. |
 
 The exact payload JSON committed with the command is returned. It is never
 reconstructed from current aggregate/master state. Supplier contact, email,
@@ -788,11 +797,12 @@ OS secure-storage integration should expose a narrow application abstraction
 backed by Android Keystore-wrapped material. No Flutter package is selected in
 Task 7C0; Task 7C2 must run a reviewed compatibility spike before adding one.
 
-Key rotation uses a versioned key reference and crash-safe two-phase protocol:
+Task 7C2 V1 does not implement automatic rekey. A later approved key-rotation
+design may use a versioned key reference and crash-safe two-phase protocol:
 prepare a new OS-protected key, rekey/copy the database using the chosen engine,
 verify open/read/close, atomically switch active key metadata, then retire the
-old key after recovery confirmation. Production rotation operations remain
-deferred until the chosen engine proves this path.
+old key after recovery confirmation. Production rotation remains deferred until
+the chosen engine proves this path.
 
 Android verification must prove the database and WAL/journal do not expose the
 SQLite header or seeded known plaintext, correct key reopens after restart,
@@ -808,10 +818,29 @@ old ciphertext must not be silently deleted or opened plaintext, and the UI
 must warn before explicit discard/reinitialization. Android backup must exclude
 raw secrets and either exclude the database or restore only ciphertext that is
 provably bound to restorable protected key material. Cross-device restore fails
-closed and rehydrates cloud-confirmed state.
+closed and is unsupported in V1; a new Device rehydrates cloud-confirmed state.
+Any destructive discard/reinitialization is a separate, explicitly approved
+recovery workflow that must first preserve/classify unsynchronized physical
+facts and retain ciphertext until the user authorizes the destructive step.
 
 The unencrypted POC database is not migrated in place. Production starts in a
 separate encrypted file/schema. No automatic POC-to-commercial import exists.
+
+### Offline pre-Start capture
+
+An authenticated and securely bound Operator Device may create a local Session
+and capture immutable Entries while offline only after a successful commercial
+master bootstrap has cached the required Active revisions and Company
+Procurement Settings. Start is immutable local sequence 1. Entry operations
+queue behind Start and Entry/Submit are not transmitted until Start is accepted
+and cloud state supplies the official reference, ownership generation, and
+lease. Mobile never generates an official reference.
+
+If Start is rejected or needs attention, all Session/Entry physical facts and
+exact operation payloads remain encrypted and immutable; the Session becomes
+attention-required. The client does not substitute a later master, rewrite a
+payload, renumber an operation, or delete an Entry to obtain acceptance.
+Remediation/correction remains outside Task 7C2.
 
 ## Production local schema contract
 
@@ -850,7 +879,7 @@ the current owner/operator CRUD list cursors and `Internal` outbox payloads are
 not a sufficient mobile synchronization contract. The route is:
 
 ```text
-GET /api/v1/mobile/commercial-sync/masters?after=<sequence>&bootstrapHighWaterMark=<optional-sequence>&limit=100
+GET /api/v1/mobile/commercial-sync/masters?cursor=<opaque>&limit=100
 ```
 
 It returns a versioned, safe, company-scoped master projection/change cursor
@@ -875,13 +904,13 @@ Receiving-selection data is present; exact decimals are canonical six-decimal
 strings. Supplier contact/email/address/tax/notes and persistence-only fields
 are excluded. Active and Inactive records share the same contract shape.
 
-The first request uses `after=0` without a high-water value. Under the
+The first request omits `cursor`. Under the
 `CommercialMobileMasters.v1` Workspace/Company commit-order lock, the server
 captures the maximum committed sequence as `bootstrapHighWaterMark = H` and
-returns only rows through `H`. Every remaining bootstrap page supplies that
-same `H`, uses strict `sequence > after AND sequence <= H`, and advances by the
-last returned unique sequence. After reaching `H`, delta polling starts with
-`after=H` and omits the bootstrap high-water value. Master mutation transactions
+returns only rows through `H`. Every remaining bootstrap page supplies the
+opaque returned cursor; that cursor contains the strict after/high-water
+traversal state. After reaching `H`, the next opaque cursor transitions to
+delta polling. Master mutation transactions
 take the same scoped lock before sequence allocation, so a concurrent mutation
 is either committed in the bootstrap through `H` or receives a sequence above
 `H` and appears in the delta; it is never skipped or returned twice in one
@@ -911,8 +940,8 @@ Cache rules:
 Task 7C1 exposes Owner-authenticated, company-scoped reads:
 
 ```text
-GET /api/v1/procurement/commercial-receiving-sessions
-GET /api/v1/procurement/commercial-receiving-sessions/{sessionId}/live-view
+GET /api/v1/procurement/receiving-sessions
+GET /api/v1/procurement/receiving-sessions/{sessionId}/live-view
 ```
 
 The list discovers active and submitted Sessions with opaque scope-bound

@@ -112,6 +112,12 @@ Workspace/Company scoped commit-order lock. The authenticated opaque cursor retu
 Owner broadcasts for Owners and TargetDevice events for the authenticated
 Device.
 
+`OwnerBroadcast` and `TargetDevice` are immutable issuance audiences. Event
+reads revalidate active authenticated Device/Workspace/Company/role but do not
+revalidate current Session editor/generation. This permits delivery of the
+old-Device transfer-away event. Current editor/generation still controls every
+mutation and subsequent Receiving events target only the new editor.
+
 `sync.commercial_master_changes` is an immutable safe log for all Task 7B1/7B2
 Receiving masters. The migration deterministically backfills Active and
 Inactive rows; table triggers append future changes under a company lock.
@@ -147,6 +153,44 @@ Task 7C2 must implement Task 7A mobile authentication, secure secret storage,
 an encrypted production SQLite database, immutable operation persistence,
 lease enrichment outside payload hashes, and the frozen operation/event/master
 cursor contracts. No Dart source changes are part of Task 7C1.
+
+## Task 7C2A contract freeze
+
+Canonical paths are the committed endpoint paths:
+
+```text
+POST /api/v1/auth/device-activations/redeem
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+POST /api/v1/auth/logout-all
+GET  /api/v1/auth/me
+POST /api/v1/mobile/commercial-sync/operations
+GET  /api/v1/mobile/commercial-sync/events?cursor=<opaque>&limit=<1-100>
+GET  /api/v1/mobile/commercial-sync/masters?cursor=<opaque>&limit=<1-100>
+GET  /api/v1/procurement/receiving-sessions
+GET  /api/v1/procurement/receiving-sessions/{id}/live-view
+POST /api/v1/procurement/receiving-sessions/{id}/lease/heartbeat
+POST /api/v1/procurement/receiving-sessions/{id}/lease/reacquire
+POST /api/v1/procurement/receiving-sessions/{id}/ownership/transfer
+GET  /api/v1/procurement/receiving-reference-policy
+PUT  /api/v1/procurement/receiving-reference-policy
+```
+
+Operation statuses are exactly `Accepted`, `PreviouslyProcessed`,
+`NeedsAttention`, and `Rejected`. Blocked followers use
+`RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE`; expired owners use
+`RECEIVING_LEASE_REACQUISITION_REQUIRED`; stale generation is
+`NeedsAttention`. The implemented default reference is
+`RCV-{SEQ:000000}`/`Never`/1. Task 7C2 capture emits `Manual` and no POC source.
+
+A securely bound authenticated Operator may create a local Session and capture
+immutable Entries offline using valid cached Active master/settings revisions.
+Start is sequence 1; dependent operations are not transmitted until Start
+returns official reference, generation, and lease. Start rejection preserves
+all physical facts in attention without rewriting. Owner monitoring stays
+read-only; transfer UI, voice, BLE/scale, settlement/posting, cancellation,
+correction, reopen, and SignalR are deferred.
 
 ## Finalization migration contract
 

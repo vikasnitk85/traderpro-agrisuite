@@ -1,0 +1,199 @@
+{
+  "contract": "TraderPro.CommercialReceiving.MasterChanges",
+  "contractVersion": 1,
+  "cursor": {
+    "transport": "opaque",
+    "binding": ["workspaceId", "companyId"],
+    "bootstrapHighWater": true,
+    "defaultLimit": 50,
+    "minimumLimit": 1,
+    "maximumLimit": 100
+  },
+  "changes": [
+    {
+      "sequence": 201,
+      "masterType": "CompanyProcurementSettings",
+      "masterId": "019fc400-0000-7000-8000-000000000201",
+      "masterVersion": 4,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:01+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000201",
+        "version": 4,
+        "status": "Active",
+        "defaultBranchId": "019fc400-0000-7000-8000-000000000202",
+        "defaultDestinationLocationId": "019fc400-0000-7000-8000-000000000203",
+        "defaultWeightProcessingPolicyId": "019fc400-0000-7000-8000-000000000204",
+        "vehicleSelectionMode": "Optional"
+      }
+    },
+    {
+      "sequence": 202,
+      "masterType": "BusinessLocation",
+      "masterId": "019fc400-0000-7000-8000-000000000203",
+      "masterVersion": 5,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:02+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000203",
+        "version": 5,
+        "status": "Active",
+        "branchId": "019fc400-0000-7000-8000-000000000202",
+        "code": "WH-001",
+        "name": "Synthetic Warehouse",
+        "localName": null,
+        "locationType": "Warehouse"
+      }
+    },
+    {
+      "sequence": 203,
+      "masterType": "ReceivingVehicle",
+      "masterId": "019fc400-0000-7000-8000-000000000205",
+      "masterVersion": 2,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:03+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000205",
+        "version": 2,
+        "status": "Active",
+        "code": "VEH-001",
+        "registrationNumber": "SYNTHETIC-001",
+        "displayName": "Synthetic Truck",
+        "vehicleType": "Truck"
+      }
+    },
+    {
+      "sequence": 204,
+      "masterType": "BagType",
+      "masterId": "019fc400-0000-7000-8000-000000000206",
+      "masterVersion": 6,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:04+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000206",
+        "version": 6,
+        "status": "Active",
+        "code": "JUTE-STD",
+        "name": "Synthetic Jute Bag",
+        "localName": null,
+        "constructionClass": "Jute",
+        "standardTareWeightKg": "0.750000",
+        "isReturnable": true
+      }
+    },
+    {
+      "sequence": 205,
+      "masterType": "WeightProcessingPolicy",
+      "masterId": "019fc400-0000-7000-8000-000000000204",
+      "masterVersion": 3,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:05+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000204",
+        "version": 3,
+        "status": "Active",
+        "code": "ROUND-2",
+        "name": "Synthetic two-decimal policy",
+        "decimalPlaces": 2,
+        "processingMethod": "RoundHalfAwayFromZero"
+      }
+    },
+    {
+      "sequence": 206,
+      "masterType": "Supplier",
+      "masterId": "019fc400-0000-7000-8000-000000000207",
+      "masterVersion": 7,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:06+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000207",
+        "version": 7,
+        "status": "Active",
+        "code": "SUP-001",
+        "name": "Synthetic Supplier",
+        "localName": null,
+        "supplierType": "Business",
+        "productScopeMode": "Restricted"
+      }
+    },
+    {
+      "sequence": 207,
+      "masterType": "SupplierProductScope",
+      "masterId": "019fc400-0000-7000-8000-000000000208",
+      "masterVersion": 2,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:07+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000208",
+        "version": 2,
+        "status": "Active",
+        "supplierId": "019fc400-0000-7000-8000-000000000207",
+        "productId": "019fc400-0000-7000-8000-000000000210"
+      }
+    },
+    {
+      "sequence": 208,
+      "masterType": "ProductGroup",
+      "masterId": "019fc400-0000-7000-8000-000000000209",
+      "masterVersion": 3,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:08+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000209",
+        "version": 3,
+        "status": "Active",
+        "code": "PADDY",
+        "name": "Synthetic Paddy Group",
+        "localName": null
+      }
+    },
+    {
+      "sequence": 209,
+      "masterType": "Product",
+      "masterId": "019fc400-0000-7000-8000-000000000210",
+      "masterVersion": 8,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:09+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000210",
+        "version": 8,
+        "status": "Active",
+        "productGroupId": "019fc400-0000-7000-8000-000000000209",
+        "code": "PADDY-A",
+        "name": "Synthetic Paddy",
+        "localName": null,
+        "productType": "RawMaterial",
+        "isPurchasable": true,
+        "processingFamilyCode": "PADDY"
+      }
+    },
+    {
+      "sequence": 210,
+      "masterType": "ProductStandardBagWeight",
+      "masterId": "019fc400-0000-7000-8000-000000000211",
+      "masterVersion": 2,
+      "status": "Active",
+      "occurredAtUtc": "2026-08-02T07:00:10+00:00",
+      "payload": {
+        "contractVersion": 1,
+        "id": "019fc400-0000-7000-8000-000000000211",
+        "version": 2,
+        "status": "Active",
+        "productId": "019fc400-0000-7000-8000-000000000210",
+        "bagTypeId": "019fc400-0000-7000-8000-000000000206",
+        "label": "Synthetic 50 kg",
+        "standardContentWeightKg": "50.000000",
+        "isDefault": true
+      }
+    }
+  ]
+}

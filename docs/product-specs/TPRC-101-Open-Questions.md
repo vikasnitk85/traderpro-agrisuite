@@ -54,7 +54,7 @@ business source.
 | OQ-09 | When a captured master version is stale but the same master remains Active, what explicit recovery choices may an authorized user make? | Automatic substitution/reclassification is prohibited; the allowed human decision is not specified. | Return `NeedsAttention`, retain the original immutable payload, and expose no auto-fix. | Implementing stale-master recovery commands/UI. |
 | OQ-10 | When an old ownership generation contains queued physical facts, what explicit adoption/re-entry/reconciliation procedure is allowed? | Old-generation operations must be rejected as stale and payloads cannot be rewritten. | Preserve the facts and operation evidence in attention state. | Implementing cross-generation recovery. |
 | OQ-11 | May an Operator override the Company Procurement Settings default destination or Weight Policy, and if so under what authority and audit rules? | The settings defaults exist, but no product source defines who may override them, allowed alternatives, reason capture, or whether override is per Session. | Task 7C1 accepts only the configured default destination and Weight Policy from the exact captured settings revision; expose no alternate route, flag, or UI. | Any destination or Weight Policy override behavior. |
-| OQ-12 | How may a non-editor Operator discover or monitor Sessions being edited by another Device? | Owner monitoring is defined, but company membership alone is not authority for one Operator to observe another Session. | Operator event reads are limited to events targeted to its Device while it is the active editor; expose no company-wide Operator list/live view. | Any non-editor Operator discovery, broadcast, list, or live-view access. |
+| OQ-12 | How may a non-editor Operator discover or monitor Sessions being edited by another Device? | Owner monitoring is defined, but company membership alone is not authority for one Operator to observe another Session. | Expose no company-wide Operator list/live view. The event cursor returns only immutable TargetDevice rows issued to the authenticated active Device, including transfer-away history; this is recovery delivery, not discovery authority. | Any non-editor Operator discovery, broadcast, list, or live-view access. |
 
 ## Resolved for Task 7C1
 
@@ -91,10 +91,11 @@ business source.
 - Every different-device ownership change is explicit, audited, PostgreSQL-
   serialized, and increments the generation.
 - Active Owners may read safe company-monitoring `CommercialMobileSync`
-  broadcasts. An authenticated Device may read events targeted to it while it
-  is the active editor for the related Session; an Operator has no broader
-  entitlement, and same-company membership does not reveal unrelated Session
-  events.
+  broadcasts. An authenticated active Device may read immutable events targeted
+  to it, including its transfer-away event. Current editor/generation is
+  revalidated for mutations and controls future event targeting, not historical
+  event suppression. An Operator has no broader list/live entitlement, and
+  same-company membership does not reveal unrelated Session events.
 - The operation batch maximum is 50; this is a transport safety limit, not a
   business Entry maximum.
 - POC headers, POC event streams, POC references, and the unencrypted POC
@@ -167,3 +168,15 @@ reservation policy snapshots across later policy updates, and canonical
 claim/reference/master lock ordering. A numbering gap is intentional only
 after a structurally valid command has reserved a number and then encounters a
 business or infrastructure failure.
+
+## Task 7C2A closed implementation decisions
+
+The following no longer require mobile interpretation: committed route names;
+opaque event/master cursors; four operation statuses; canonical waiting and
+lease-reacquisition codes; stale generation as `NeedsAttention`; default
+`RCV-{SEQ:000000}` automatic references; immutable `OwnerBroadcast` and
+`TargetDevice` audiences; production capture source `Manual`; and the approved
+offline pre-Start queueing/preservation policy. Owner transfer UI, voice,
+BLE/scale, settlement/posting, cancellation, correction, reopen, and SignalR
+remain absent. These decisions do not resolve OQ-02, OQ-03, OQ-05, OQ-07, or
+OQ-09 through OQ-12 beyond the narrow event-delivery clarification above.

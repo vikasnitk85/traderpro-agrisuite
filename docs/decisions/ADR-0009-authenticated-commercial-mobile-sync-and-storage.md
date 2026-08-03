@@ -9,6 +9,11 @@
 
 Accepted for Task 7C0 design. Encrypted SQLite and OS secure-storage packages
 remain unselected until the Task 7C2 compatibility spike is approved.
+Task 7C2A produced passing host and physical Android 15/API-35 evidence for
+SQLite3MultipleCiphers, SQLCipher, OS secure storage, and force-stop/process-
+restart recovery. It made no selection because physical API-24, destructive
+lifecycle/actual Keystore invalidation, restore/transfer, crash-safe rekey,
+repeated performance, and supply-chain gates remain open.
 
 ## Context
 
@@ -55,10 +60,12 @@ not.
 
 Add controlled outbox stream `CommercialMobileSync`, distinct from `Internal`
 and temporary POC `MobileSync`. Commercial events distinguish safe Owner company
-broadcasts from rows targeted to the active editor Device. An authenticated
-Owner may read the former. Any authenticated Device may read the latter when
-targeted to it and it remains the related Session editor; an Operator has no
-broader entitlement, and company membership alone grants no access to unrelated
+broadcasts from immutable rows targeted to a Device. An authenticated Owner
+may read `OwnerBroadcast`. An authenticated active Device may read
+`TargetDevice` rows issued to it, including transfer-away history. Current
+editor/generation is revalidated for mutations and determines future targets;
+it does not suppress historical delivery. An Operator has no broader list/live
+entitlement, and company membership alone grants no access to unrelated
 Session events. Broader non-editor Operator discovery/monitoring requires a
 product decision.
 
@@ -79,7 +86,8 @@ backfills one safe current row for every existing Task 7B1/7B2 master,
 association, and settings record before endpoint enablement, and later master
 mutations append versioned changes atomically.
 
-Initial sync captures a scoped committed high-water mark `H`, pages unique
+Initial sync omits `cursor`; the server captures a scoped committed high-water
+mark `H`, embeds traversal state in an opaque returned cursor, pages unique
 changes through `H`, then resumes strictly after `H`. The same scoped master-
 stream lock orders mutation sequence allocation and high-water capture, so a
 concurrent change appears either in bootstrap or later delta, never neither.
@@ -119,6 +127,17 @@ profile/credential metadata, master cache, Sessions, immutable Entries,
 immutable operation outbox, cloud state, event inbox, cursor, Owner projection,
 and attention. Event apply and cursor advance are atomic. No local financial or
 Inventory state is introduced.
+
+The local event cursor identity adds source/stream, contract version,
+Workspace, Company, and Device around the opaque server cursor. The server
+cursor is never decoded or reconstructed by mobile.
+
+An authenticated securely bound Operator may create a local Session and
+immutable Entries offline from valid cached Active master/settings revisions.
+Start remains sequence 1 and dependent operations stay queued until Start is
+accepted and returns the official reference, generation, and lease. Rejection
+preserves every physical fact in attention without payload rewrite. Task 7C2
+capture sends only `weightSource: "Manual"`.
 
 ```mermaid
 flowchart LR
@@ -195,7 +214,8 @@ order lock, deterministic master-change table/backfill/high-water protocol, and
 endpoints without reclassifying existing events.
 Task 7C2 adds a new encrypted database schema version 1 after a compatibility
 spike. Existing POC tables and unencrypted files remain untouched; no automatic
-data import occurs. Future upgrades are explicit and non-destructive.
+data import occurs. V1 does not implement automatic rekey. Future schema or key
+upgrades require a separate explicit, non-destructive, reviewed workflow.
 
 ## Future implementation dependencies
 
@@ -211,6 +231,11 @@ The exact encrypted SQLite and secure-storage packages, key-rotation operations,
 backup policy details for supported Android versions, production background
 execution, and hardware/mobile integrity controls remain deferred. Business
 open questions remain in TPRC-101.
+
+Owner monitoring is read-only. Owner transfer UI, voice selection, BLE/scale,
+settlement, Purchase Bill, Inventory, Finance, Sales, Production,
+cancellation, correction, reopen, and SignalR are not authorized by this
+decision.
 
 ## Consequences
 

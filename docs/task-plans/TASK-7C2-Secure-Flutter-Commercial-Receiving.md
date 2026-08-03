@@ -5,6 +5,15 @@
 - Scope: Task 7A mobile identity, encrypted local-first Commercial Receiving,
   authenticated sync, and read-only Owner monitoring
 
+Task 7C2A freezes the implemented Task 7C1 routes, cursor shapes, result/error
+vocabulary, reference policy, immutable event audiences, `Manual` capture
+source, and offline pre-Start behavior before the secure mobile foundation is
+implemented. Task 7C2A does not implement the production client.
+
+The encrypted-storage compatibility evidence and explicit no-selection result
+are recorded in
+`docs/assessments/TASK-7C2A-Encrypted-Storage-Compatibility-Spike.md`.
+
 ## Status
 
 Planned and not implemented. No mobile package or plaintext pilot path is
@@ -47,30 +56,61 @@ or official purchase finalization.
 - An encrypted SQLite + OS secure-storage compatibility spike is reviewed.
 - The supported Android version/ABI matrix and backup behavior are approved.
 - OQ-06 is resolved before enabling physical capture/submission.
-- Different-device transfer UI is absent unless OQ-04 and Task 7C1 support are
-  approved.
+- Different-device transfer UI remains deferred even though the Task 7C1 Owner
+  command is implemented.
+
+## Task 7C2A frozen mobile contract
+
+- The exact routes are the committed Task 7A/7C1 routes. Commercial event and
+  master reads use the server-issued opaque `cursor`; clients do not construct
+  `after` or bootstrap-high-water query parameters.
+- Local event cursor identity is source/stream + contract version + Workspace
+  + Company + Device. Server cursors contain no independent authority.
+- Operation results are exactly `Accepted`, `PreviouslyProcessed`,
+  `NeedsAttention`, and `Rejected`. A same-batch follower uses
+  `RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE`; an expired owner lease uses
+  `RECEIVING_LEASE_REACQUISITION_REQUIRED`; stale ownership generation is
+  `NeedsAttention`.
+- The default automatic reference policy is `RCV-{SEQ:000000}`, `Never`, start
+  1. Mobile never constructs an official reference.
+- `OwnerBroadcast` and `TargetDevice` are immutable issuance audiences. An
+  authenticated active Device may read historical events targeted to it;
+  mutation authority still revalidates current editor/generation. Transfer
+  emits the old-Device row needed to communicate transfer-away, and later
+  Receiving events target only the new editor.
+- Task 7C2 capture emits `weightSource: "Manual"`. POC sources, BLE/scale, and
+  imported-memory sources are not production values.
+- A securely bound authenticated Operator may capture a local Session and
+  immutable Entries offline using valid cached Active master/settings
+  revisions. Start remains sequence 1; dependent operations queue behind it
+  and are not transmitted until Start returns reference, generation, and
+  lease. Start rejection preserves every fact and makes the Session attention-
+  required without rewriting any Entry or payload.
+- Owner monitoring is read-only. Owner transfer UI, voice selection, BLE/scale,
+  settlement, Purchase Bill, Inventory, Finance, Sales, Production,
+  cancellation, correction, reopen, and SignalR remain outside Task 7C2.
 
 ## Backlog
 
 | ID | Artifact/work | Acceptance criteria | Dependencies |
 | --- | --- | --- | --- |
 | 7C2-01 | Encrypted SQLite/secure-storage compatibility spike | Evaluate at least a Drift-compatible SQLCipher/page-encrypted option and OS-backed secure-storage abstraction on supported Android; verify build/release ABI, licensing, performance, wrong-key failure, WAL/journal encryption, known-plaintext absence, restart, rekey feasibility, backup behavior, and test injection. Document package decision before dependency change. | ADR-0009; TPSEC-001; Android matrix. |
-| 7C2-02 | Secure key/secret services | Narrow abstractions store Device secret, rotating refresh token, and DEK/key reference outside SQLite; redact logs; no production default key; key loss and cross-device restore fail closed; test fake is explicit. | 7C2-01. |
-| 7C2-03 | Encrypted commercial database opener | Open a separate production file only with the reviewed encrypted executor/key; release startup proves encryption; no plaintext fallback; POC file/schema is untouched; explicit discard flow preserves/warns about ciphertext and unsynced facts. | 7C2-01/02. |
+| 7C2-02 | Secure key/secret services | Narrow abstractions store Device secret, rotating refresh token, and DEK/key reference outside SQLite; redact logs; no production default key; key loss fails closed; cross-device restore is unsupported in V1; test fake is explicit. | 7C2-01. |
+| 7C2-03 | Encrypted commercial database opener | Open a separate production file only with the reviewed encrypted executor/key; release startup proves encryption; no plaintext fallback; POC file/schema is untouched; ciphertext is retained on key failure. Destructive discard/reinitialization is a separate approved recovery workflow that must first classify/preserve unsynced facts. | 7C2-01/02. |
 | 7C2-04 | Production Drift schema version 1 | Implement isolated tables/constraints/triggers for account/credential metadata, typed masters, Sessions, immutable Entries, immutable outbox, cloud state, event inbox, cursor, Owner projection, recent Entries, attention; exact weights use TEXT/BigInt, never REAL; generated source checked in. | 7C2-03; TPTECH-001.21. |
-| 7C2-05 | Drift migration strategy | Explicit non-destructive future `onUpgrade`; schema-1 creation and reopen tests; no automatic POC import/in-place conversion; backup/recovery hooks follow encrypted engine. | 7C2-04. |
+| 7C2-05 | Drift migration strategy | Explicit non-destructive future `onUpgrade`; schema-1 creation and reopen tests; no automatic POC import/in-place conversion; no automatic rekey in V1; backup/recovery hooks follow encrypted engine. | 7C2-04. |
 | 7C2-06 | Device activation UI/service | Redeem one-time Task 7A code for a pre-created Device; store returned Device secret once; no secret in SQLite/logs/screens after confirmation; reactivation uses same Device slot and explains local-data implications. | 7C2-02; Task 7A. |
 | 7C2-07 | Workspace-code login and context binding | Login using workspace code, credentials, Device ID/secret over HTTPS; store refresh safely; keep access token memory-scoped; call `/auth/me`; bind exact Workspace/Company/default Branch/User/Device/role; mismatch fails closed. | 7C2-02/06; Task 7A. |
 | 7C2-08 | Serialized refresh coordinator | One in-flight refresh shared by all API calls; rotating token stored durably before callers resume; lost response retries same predecessor in replay window; reuse/revocation forces login; business operation IDs remain unchanged. | 7C2-02/07. |
 | 7C2-09 | Logout/logout-all/reactivation/context refresh | Current/all family flows clear credentials appropriately but preserve encrypted pending work; re-login must match bound context; role/context refresh on login/refresh/resume/authorization failure; no silent commercial identity switch while work exists. | 7C2-07/08. |
 | 7C2-10 | Authenticated commercial API client | HTTPS-only release client for operation/event/master/list/live/reacquire routes; bearer injection after refresh; bounded timeouts; exact payload string/hash serialization; decimal strings; safe error/correlation parsing; no mutation auto-retry outside durable engines. | 7C2-08; Task 7C1 contracts. |
 | 7C2-11 | Commercial master cache engine | Bootstrap captures and persists server high-water `H`, applies unique change rows through `H`, then deltas strictly after `H`; page application and cursor are atomic/idempotent. Cache every required Active/Inactive master, association, and settings version; never consume raw `Internal`; cache refresh never rewrites Receiving snapshots. | 7C2-04/10; 7C1 master endpoint. |
-| 7C2-12 | Local Receiving repository | Create mobile UUIDv7 Session/Start op atomically with exact Procurement Settings ID/version and vehicle-mode snapshot; capture Entry/Record and Submit/local close atomically. Immutable operation rows contain the operation-appropriate generation but never expected cloud version; cloud version remains mutable projection state. | 7C2-04; Task 3; OQ-06. |
-| 7C2-13 | Commercial capture UI | Select Active Supplier/Product/Bag/standard/optional vehicle from cache and use only the exact captured settings revision's configured default destination and Weight Policy; expose no override until OQ-11. Snapshot IDs/versions/safe facts, preserve raw text, show exact preview/cache age, and keep widgets outside database access. | 7C2-11/12; OQ-06; OQ-11 for any override. |
+| 7C2-12 | Local Receiving repository | Create mobile UUIDv7 Session/Start op atomically with exact Procurement Settings ID/version and vehicle-mode snapshot; allow approved offline immutable Entry capture queued behind Start; capture Entry/Record and Submit/local close atomically. Immutable operation rows contain the operation-appropriate generation but never expected cloud version; cloud version remains mutable projection state. Start rejection preserves all facts in attention. | 7C2-04; Task 3; frozen Task 7C2A offline policy. |
+| 7C2-13 | Commercial capture UI | Select Active Supplier/Product/Bag/standard/optional vehicle from cache and use only the exact captured settings revision's configured default destination and Weight Policy; expose no override until OQ-11. Snapshot IDs/versions/safe facts, preserve raw text, send only `weightSource: "Manual"`, show exact preview/cache age, and keep widgets outside database access. | 7C2-11/12; frozen Task 7C2A capture contract; OQ-11 for any override. |
 | 7C2-14 | Operation sync engine | Recover ambiguous Sending rows and preserve Session order/max 50. Start sends null/absent generation, expected cloud version, and lease; Record/Submit send required generation/current lease transport metadata and null/absent expected cloud version. All retain the shared scope and immutable actual type; lease enrichment never rewrites payload/hash. | 7C2-10/12; Task 7C1 endpoint. |
 | 7C2-15 | Lease renewal/reacquisition | One foreground coordinator queues renewable lease controls; same Device/generation reacquires after expiry and retries same operation; another Device never auto-acquires; server time wins; lease stored outside payload. Exact production timing is configured from reviewed policy. | 7C2-14; 7C1 reacquire route; OQ-08. |
 | 7C2-16 | Attention and recovery presentation | Stable master/lease/device/generation errors link to original immutable operation/fact; no delete/edit/reclassification shortcut; same-device reacquire action is explicit; stale-master/old-generation actions remain absent until approved. | 7C2-14/15; OQ-09/OQ-10 for future commands. |
-| 7C2-17 | `CommercialMobileSync` event inbox/cursor | Cursor key includes source/workspace/company/device/contract; Owner profiles apply safe company broadcasts, and any active editor profile accepts rows targeted to its Device; Operator profiles have no broader entitlement. Unrelated Session events fail closed. Exact event/inbox/projection/cursor apply is atomic; gaps and duplicate pages are safe. | 7C2-04/10; 7C1 cursor/events; OQ-12 for broader visibility. |
+| 7C2-17 | `CommercialMobileSync` event inbox/cursor | Cursor key includes source/workspace/company/device/contract; Owner profiles apply safe company broadcasts, and a bound Device accepts immutable rows targeted to it, including transfer-away history. Mutation authority remains current-editor/generation bound and future events follow the new editor. Operator profiles have no broader list/live entitlement. Unrelated Session events fail closed. Exact event/inbox/projection/cursor apply is atomic; gaps and duplicate pages are safe. | 7C2-04/10; frozen 7C1 cursor/events; OQ-12 for broader discovery. |
 | 7C2-18 | Owner read-only monitoring | Owner discovers active/submitted Sessions, sees header snapshots/count/total/recent Entries/editor/generation/lease health/update/attention/submission; refresh combines events with list/live view; no Entry/Submit/settlement controls or repository port. | 7C2-17; 7C1 read routes. |
 | 7C2-19 | Runtime/lifecycle coordination | One commercial runtime owns database, credential coordinator, API factories, sync/master/event/lease engines, controller, timers, and lifecycle observer; one gate prevents overlaps before async lookup; disposal stops clients/notifications and closes DB once. Foreground behavior is honest; no background guarantee. | 7C2-08/10/14/15/17. |
 | 7C2-20 | Restart/response-loss tests | File-backed encrypted tests prove settings snapshot/default-only Start, Start-first envelope fields, Record/Submit generation/lease with no cloud version, shared-scope type-conflict safety, exact sequence, dropped responses, same ID/payload/hash replay after cloud progress/reacquisition, master high-water resume, event audience/gaps, and no duplicate Entry/total. | 7C2-03 through 7C2-19. |
@@ -111,7 +151,7 @@ remain a documented limitation. No package is added before the spike.
 The production encrypted schema starts separately at version 1. POC schema
 versions/rows remain untouched and do not become production data. Future
 migrations are forward-only and non-destructive and must account for encrypted
-engine backup/rekey behavior.
+engine backup/rekey behavior. Task 7C2 V1 does not implement automatic rekey.
 
 ## Future implementation dependencies
 
@@ -121,9 +161,10 @@ correction require later reviewed work.
 
 ## Unresolved questions
 
-Package choice, supported Android/backup matrix, production lease timing,
-zero-weight/submission validation, transfer UI authority, and all TPRC-101
-business gaps remain unresolved until their entry gates are satisfied.
+Package choice, supported Android/backup matrix, production lease anomaly
+thresholds, and all remaining TPRC-101 business gaps remain unresolved until
+their entry gates are satisfied. Positive Entry/submission validation and
+lease timing are already frozen by Task 7C1; Owner transfer UI is deferred.
 
 ## Exit criteria
 

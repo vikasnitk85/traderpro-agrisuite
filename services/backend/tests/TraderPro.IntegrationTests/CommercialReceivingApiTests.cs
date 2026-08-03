@@ -161,7 +161,7 @@ public sealed class CommercialReceivingApiTests(PostgreSqlFixture fixture)
             Assert.Equal("RECEIVING_SEQUENCE_GAP", operations[0].GetProperty("error").GetProperty("code").GetString());
             Assert.Equal("NeedsAttention", operations[1].GetProperty("status").GetString());
             Assert.Equal(
-                "COMMERCIAL_MOBILE_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
+                "RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE",
                 operations[1].GetProperty("error").GetProperty("code").GetString());
             Assert.True(operations[1].GetProperty("error").GetProperty("retryable").GetBoolean());
             Assert.Equal("Accepted", operations[2].GetProperty("status").GetString());

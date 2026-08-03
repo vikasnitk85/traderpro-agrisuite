@@ -27,13 +27,26 @@ order by stream contract + Workspace + Company, avoiding global company
 contention. Deferred database constraints require exactly one matching audience
 for each Commercial row and prohibit audience rows for Internal or POC streams.
 
+Audience is an immutable issuance fact. The authenticated active target Device
+may read its historical rows, including transfer-away, without a current-
+generation filter. Current editor/generation remains mandatory for mutations
+and determines future event targeting. Transfer emits Owner, old-Device, and
+new-Device rows; later Receiving events target the new editor. No lease ID,
+secret, transfer reason, or lease-expiry expansion is added by Task 7C2A.
+
 Commercial master synchronization uses an immutable dedicated change log, not
 Internal outbox payloads. Migration backfill and table triggers create safe
 versioned changes through the same explicit per-master builders. The version-1
 contract is camel-case, represents Active and Inactive records, encodes exact
 decimals as canonical strings, and omits Supplier protected/internal fields.
 Bootstrap is bounded by a company high-water sequence and then transitions to
-deltas strictly after that boundary.
+deltas strictly after that boundary. The API exposes only the opaque `cursor`
+query/`nextCursor` response contract; mobile locally binds it to source,
+contract version, Workspace, Company, and Device.
+
+The committed default reference remains `RCV-{SEQ:000000}`, `Never`, starting
+at 1. Task 7C2A freezes this implemented value and does not change allocation
+or rendering behavior.
 
 ## Consequences
 

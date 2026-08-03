@@ -36,6 +36,13 @@ migration/integrity tests, and architecture tests. Run the Task 7B2, 7B1, 7A,
 
 ## Operational behavior
 
+Canonical routes use the committed endpoint map: operations/events/masters are
+under `/api/v1/mobile/commercial-sync`; Session list/live/lease/ownership are
+under `/api/v1/procurement/receiving-sessions`; reference policy is under
+`/api/v1/procurement/receiving-reference-policy`. Event and master reads accept
+only the opaque `cursor` plus `limit`. Do not translate older documented
+`after`, bootstrap-high-water, or `commercial-receiving-sessions` paths.
+
 - Lease duration defaults to 60 minutes under
   `TraderPro:CommercialReceiving:LeaseMinutes`.
 - Routine heartbeat targets 10 minutes while foregrounded and online.
@@ -47,6 +54,11 @@ migration/integrity tests, and architecture tests. Run the Task 7B2, 7B1, 7A,
   Operator-only. Owners retain monitoring, policy management, and transfer.
 - `NeedsAttention` commits the durable operation identity but no business
   mutation or completed result; exact retry is allowed, changed reuse conflicts.
+- A blocked same-Session follower is the special unattempted
+  `RECEIVING_OPERATION_WAITING_FOR_PRIOR_SEQUENCE`: it is retryable and owns no
+  claim, idempotency, audit, event, reference, or aggregate write. Expired lease
+  reacquisition is `RECEIVING_LEASE_REACQUISITION_REQUIRED`; stale generation
+  is `NeedsAttention`.
 - A Start reserves its reference before Session execution. A failed Start may
   leave a permanent gap; another operation never receives that reservation.
 - Receiving transactions lock selected masters. Direct SQL snapshots are also
@@ -56,6 +68,11 @@ migration/integrity tests, and architecture tests. Run the Task 7B2, 7B1, 7A,
 - Master changes use explicit camel-case version-1 payloads and canonical
   six-decimal strings; never inspect them as raw table-row JSON.
 - Submission is terminal for Task 7C1 and creates no posting effect.
+- The default reference is `RCV-{SEQ:000000}` with `Never` reset/start 1.
+- `OwnerBroadcast` and `TargetDevice` are immutable issuance audiences. A
+  former editor receives its transfer-away TargetDevice row; subsequent events
+  target only the new editor. Do not add transfer reason, lease expiry, lease
+  ID, or secrets to the version-1 ownership-change event.
 
 ## Diagnostics
 
