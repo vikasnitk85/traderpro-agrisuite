@@ -40,10 +40,17 @@ final class DatabaseKeyController {
   }
 
   /// Explicit provisioning path for a first-run database only.
-  Future<String> provisionNewDatabase() async {
+  ///
+  /// The caller must establish database-file absence before this method may
+  /// create a key. This keeps an accidental provisioning call fail-closed
+  /// when ciphertext survives but the secure-store value does not.
+  Future<String> provisionNewDatabase({required bool databaseExists}) async {
     final existing = await _store.read();
     if (existing != null) {
       return validateDatabaseKey(existing);
+    }
+    if (databaseExists) {
+      throw const MissingDatabaseKeyException();
     }
 
     final key = generateDatabaseKey();

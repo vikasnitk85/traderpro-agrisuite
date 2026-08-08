@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -89,7 +90,9 @@ void main() {
       const rawStorage = FlutterSecureStorage();
       await store.delete();
 
-      final correctKey = await controller.provisionNewDatabase();
+      final correctKey = await controller.provisionNewDatabase(
+        databaseExists: await file.exists(),
+      );
       final created = StorageSpikeDatabase.open(file: file, keyHex: correctKey);
       await created.insertMarker(_restartMarker);
       await created.close();
@@ -351,54 +354,282 @@ void main() {
   );
 
   testWidgets(
+    'frozen raw-key configuration self-verifies and rejects textual keying',
+    (_) async {
+      final rawFile = File(
+        p.join(supportDirectory.path, 'raw-configuration-$engine.db'),
+      );
+      await _deleteDatabaseFiles(rawFile);
+      final key = generateDatabaseKey();
+      final created = sqlite.sqlite3.open(rawFile.path);
+      late final StorageEncryptionEngine detectedEngine;
+      try {
+        detectedEngine = detectEncryptionEngine(created);
+        configureEncryptedDatabase(created, key);
+        created.execute(
+          'CREATE TABLE configuration_evidence '
+          '(id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
+        );
+        created.execute(
+          'INSERT INTO configuration_evidence(marker) VALUES (?)',
+          ['TRADERPRO_7C2B1_RAW_KEY_EVIDENCE'],
+        );
+        final configuration = readEncryptionConfiguration(
+          created,
+          detectedEngine,
+        );
+        debugPrint(
+          'TASK7C2B1_DEVICE_CONFIGURATION_JSON=${jsonEncode(configuration)}',
+        );
+        expect(configuration['engine'], engine);
+        expect(configuration['pageSize'].toString(), '4096');
+      } finally {
+        created.close();
+      }
+
+      final reopened = sqlite.sqlite3.open(rawFile.path);
+      try {
+        configureEncryptedDatabase(reopened, key);
+        expect(
+          reopened
+              .select('SELECT marker FROM configuration_evidence')
+              .single['marker'],
+          'TRADERPRO_7C2B1_RAW_KEY_EVIDENCE',
+        );
+      } finally {
+        reopened.close();
+      }
+
+      final textualAttempt = sqlite.sqlite3.open(rawFile.path);
+      try {
+        expect(
+          () => configureEncryptedDatabaseForEvidence(
+            textualAttempt,
+            key,
+            keyInterpretation: DatabaseKeyInterpretation.textualHexPassphrase,
+          ),
+          throwsA(anything),
+        );
+      } finally {
+        textualAttempt.close();
+      }
+    },
+    timeout: _testTimeout,
+  );
+
+  testWidgets(
+    'controlled encrypted-page tamper is detected and original is retained',
+    (_) async {
+      final original = File(
+        p.join(supportDirectory.path, 'tamper-original-$engine.db'),
+      );
+      final tampered = File(
+        p.join(supportDirectory.path, 'tamper-copy-$engine.db'),
+      );
+      await _deleteDatabaseFiles(original);
+      await _deleteDatabaseFiles(tampered);
+      final key = generateDatabaseKey();
+      final created = sqlite.sqlite3.open(original.path);
+      late final StorageEncryptionEngine detectedEngine;
+      late final int pageSize;
+      late final int targetPage;
+      try {
+        detectedEngine = detectEncryptionEngine(created);
+        configureEncryptedDatabase(created, key);
+        created.execute(
+          'CREATE TABLE tamper_evidence '
+          '(id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
+        );
+        created.execute('BEGIN IMMEDIATE');
+        final payload = List.filled(768, 'X').join();
+        for (var index = 0; index < 512; index++) {
+          created.execute('INSERT INTO tamper_evidence(marker) VALUES (?)', [
+            'TRADERPRO_7C2B1_TAMPER_ROW_$index:$payload',
+          ]);
+        }
+        created.execute('COMMIT');
+        created.select('PRAGMA wal_checkpoint(TRUNCATE)');
+        pageSize = _asInt(
+          created.select('PRAGMA page_size').single.values.single,
+        );
+        targetPage = _asInt(
+          created
+              .select(
+                "SELECT pageno FROM dbstat "
+                "WHERE name = 'tamper_evidence' AND pagetype = 'leaf' "
+                'ORDER BY pageno DESC LIMIT 1',
+              )
+              .single['pageno'],
+        );
+        expect(targetPage, greaterThan(1));
+      } finally {
+        created.close();
+      }
+
+      await original.copy(tampered.path);
+      final originalBytes = await original.readAsBytes();
+      final tamperedBytes = Uint8List.fromList(await tampered.readAsBytes());
+      final flipOffset = ((targetPage - 1) * pageSize) + 128;
+      expect(flipOffset, lessThan(tamperedBytes.length));
+      tamperedBytes[flipOffset] ^= 0x01;
+      await tampered.writeAsBytes(tamperedBytes, flush: true);
+      expect(await tampered.readAsBytes(), isNot(equals(originalBytes)));
+
+      final corrupted = sqlite.sqlite3.open(tampered.path);
+      try {
+        configureEncryptedDatabase(corrupted, key);
+        if (detectedEngine == StorageEncryptionEngine.sqlcipher) {
+          expect(corrupted.select('PRAGMA cipher_integrity_check'), isNotEmpty);
+        }
+        expect(
+          () => corrupted.select(
+            'SELECT sum(length(marker)) FROM tamper_evidence',
+          ),
+          throwsA(isA<sqlite.SqliteException>()),
+        );
+      } finally {
+        corrupted.close();
+      }
+
+      final retainedOriginal = sqlite.sqlite3.open(original.path);
+      try {
+        configureEncryptedDatabase(retainedOriginal, key);
+        expect(
+          retainedOriginal
+              .select('SELECT count(*) FROM tamper_evidence')
+              .single
+              .values
+              .single,
+          512,
+        );
+      } finally {
+        retainedOriginal.close();
+      }
+      debugPrint(
+        'TASK7C2B1_DEVICE_TAMPER_JSON='
+        '${jsonEncode(<String, Object>{'engine': engine, 'detected': true, 'originalRetained': true, 'page': targetPage, 'offset': flipOffset})}',
+      );
+    },
+    timeout: _testTimeout,
+  );
+
+  testWidgets(
     'records a comparable encrypted create, write, checkpoint, and reopen workload',
     (_) async {
-      const rows = 1000;
-      final file = File(p.join(supportDirectory.path, 'benchmark-$engine.db'));
-      await _deleteDatabaseFiles(file);
-      final key = generateDatabaseKey();
-      final totalWatch = Stopwatch()..start();
+      const samples = 10;
+      final coldOpenMs = <int>[];
+      for (var sample = 0; sample < samples; sample++) {
+        final file = File(
+          p.join(supportDirectory.path, 'benchmark-cold-$engine-$sample.db'),
+        );
+        await _deleteDatabaseFiles(file);
+        final watch = Stopwatch()..start();
+        final database = StorageSpikeDatabase.open(
+          file: file,
+          keyHex: generateDatabaseKey(),
+        );
+        await database.customSelect('SELECT 1').getSingle();
+        watch.stop();
+        coldOpenMs.add(watch.elapsedMilliseconds);
+        await database.close();
+        await _deleteDatabaseFiles(file);
+      }
 
-      final openWatch = Stopwatch()..start();
-      final database = StorageSpikeDatabase.open(file: file, keyHex: key);
-      await database.customSelect('SELECT 1').getSingle();
-      openWatch.stop();
+      final warmFile = File(
+        p.join(supportDirectory.path, 'benchmark-warm-$engine.db'),
+      );
+      await _deleteDatabaseFiles(warmFile);
+      final warmKey = generateDatabaseKey();
+      final warmCreated = StorageSpikeDatabase.open(
+        file: warmFile,
+        keyHex: warmKey,
+      );
+      await warmCreated.insertMarker('SYNTHETIC_WARM_REOPEN');
+      await warmCreated.close();
+      final warmReopenMs = <int>[];
+      for (var sample = 0; sample < samples; sample++) {
+        final watch = Stopwatch()..start();
+        final reopened = StorageSpikeDatabase.open(
+          file: warmFile,
+          keyHex: warmKey,
+        );
+        expect((await reopened.readMarkers()).length, 1);
+        watch.stop();
+        warmReopenMs.add(watch.elapsedMilliseconds);
+        await reopened.close();
+      }
 
-      final writeWatch = Stopwatch()..start();
-      await database.transaction(() async {
-        for (var index = 0; index < rows; index++) {
-          await database.insertMarker('SYNTHETIC_BENCHMARK_$index');
-        }
-      });
-      writeWatch.stop();
+      final transactionResults = <String, Object>{};
+      for (final rows in <int>[1000, 10000]) {
+        final file = File(
+          p.join(supportDirectory.path, 'benchmark-$rows-$engine.db'),
+        );
+        await _deleteDatabaseFiles(file);
+        final database = StorageSpikeDatabase.open(
+          file: file,
+          keyHex: generateDatabaseKey(),
+        );
+        await database.customSelect('SELECT 1').getSingle();
+        final watch = Stopwatch()..start();
+        await database.transaction(() async {
+          for (var index = 0; index < rows; index++) {
+            await database.insertMarker('SYNTHETIC_BENCHMARK_${rows}_$index');
+          }
+        });
+        watch.stop();
+        expect((await database.readMarkers()).length, rows);
+        await database.close();
+        transactionResults['rows$rows'] = <String, Object>{
+          'elapsedMs': watch.elapsedMilliseconds,
+          'databaseBytes': await file.length(),
+        };
+      }
 
+      final queueFile = File(
+        p.join(supportDirectory.path, 'benchmark-queue-$engine.db'),
+      );
+      await _deleteDatabaseFiles(queueFile);
+      final queueKey = generateDatabaseKey();
+      final queueDatabase = StorageSpikeDatabase.open(
+        file: queueFile,
+        keyHex: queueKey,
+      );
+      await queueDatabase.customSelect('SELECT 1').getSingle();
+      final queueWatch = Stopwatch()..start();
+      for (var index = 0; index < 50; index++) {
+        await queueDatabase.insertMarker('SYNTHETIC_QUEUE_$index');
+      }
+      queueWatch.stop();
       final checkpointWatch = Stopwatch()..start();
-      final checkpoint = await database
+      final checkpoint = await queueDatabase
           .customSelect('PRAGMA wal_checkpoint(FULL)')
           .getSingle();
       checkpointWatch.stop();
       expect(checkpoint.read<int>('busy'), 0);
-      await database.close();
+      await queueDatabase.close();
 
-      final reopenWatch = Stopwatch()..start();
-      final reopened = StorageSpikeDatabase.open(file: file, keyHex: key);
-      final countRow = await reopened
-          .customSelect('SELECT count(*) AS row_count FROM synthetic_markers')
-          .getSingle();
-      reopenWatch.stop();
-      expect(countRow.read<int>('row_count'), rows);
-      await reopened.close();
-      totalWatch.stop();
+      final backgroundReopenWatch = Stopwatch()..start();
+      final backgroundReopened = StorageSpikeDatabase.open(
+        file: queueFile,
+        keyHex: queueKey,
+      );
+      expect((await backgroundReopened.readMarkers()).length, 50);
+      backgroundReopenWatch.stop();
+      await backgroundReopened.close();
 
       final result = <String, Object>{
         'engine': engine,
-        'rows': rows,
-        'openMs': openWatch.elapsedMilliseconds,
-        'writeTransactionMs': writeWatch.elapsedMilliseconds,
+        'mode': 'debug-integration-test',
+        'samples': samples,
+        'coldOpenMs': coldOpenMs,
+        'coldOpenSummary': _summarize(coldOpenMs),
+        'warmReopenMs': warmReopenMs,
+        'warmReopenSummary': _summarize(warmReopenMs),
+        'transactions': transactionResults,
+        'queuedWrites50Ms': queueWatch.elapsedMilliseconds,
         'walCheckpointMs': checkpointWatch.elapsedMilliseconds,
-        'reopenAndCountMs': reopenWatch.elapsedMilliseconds,
-        'totalMs': totalWatch.elapsedMilliseconds,
-        'databaseBytes': await file.length(),
+        'backgroundIsolateReopenMs': backgroundReopenWatch.elapsedMilliseconds,
+        'queueDatabaseBytes': await queueFile.length(),
       };
       final resultJson = jsonEncode(result);
       debugPrint('TASK7C2A_PERF_JSON=$resultJson');
@@ -412,6 +643,27 @@ void main() {
     timeout: _testTimeout,
   );
 }
+
+Map<String, num> _summarize(List<int> values) {
+  final sorted = [...values]..sort();
+  final middle = sorted.length ~/ 2;
+  final median = sorted.length.isOdd
+      ? sorted[middle].toDouble()
+      : (sorted[middle - 1] + sorted[middle]) / 2;
+  final p95Index = math.max(0, (sorted.length * 0.95).ceil() - 1);
+  return <String, num>{
+    'min': sorted.first,
+    'median': median,
+    'max': sorted.last,
+    'p95': sorted[p95Index],
+  };
+}
+
+int _asInt(Object? value) => switch (value) {
+  int parsed => parsed,
+  String text => int.parse(text),
+  _ => throw StateError('Expected an integer SQLite evidence value.'),
+};
 
 Future<void> _deleteDatabaseFiles(File file) async {
   for (final path in [file.path, '${file.path}-wal', '${file.path}-shm']) {

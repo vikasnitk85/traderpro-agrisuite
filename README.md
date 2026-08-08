@@ -760,8 +760,10 @@ isolation decisions and the remaining RLS security gate are documented in
 The focused mobile store is documented in
 `docs/technical-specs/TPTECH-001.14-Mobile-Offline-Store-Spike.md`.
 It currently uses ordinary, unencrypted SQLite and is **not production-ready
-for sensitive customer data**. Encrypted local storage selection, key
-management, and migration remain mandatory pre-pilot security work.
+for sensitive customer data**. ADR-0011 selects SQLite3MultipleCiphers for the
+future production Commercial store, but Task 7C2B2 implementation, key
+management, backup exclusions, migration controls, and pilot verification
+remain mandatory pre-pilot security work.
 
 These omissions are intentional. Future work should introduce each capability through reviewed specifications and tests while preserving the rules in `AGENTS.md`.
 

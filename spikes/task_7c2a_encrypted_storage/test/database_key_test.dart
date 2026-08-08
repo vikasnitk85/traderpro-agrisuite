@@ -6,8 +6,8 @@ void main() {
     final store = MemoryKeyStore();
     final controller = DatabaseKeyController(store);
 
-    final first = await controller.provisionNewDatabase();
-    final second = await controller.provisionNewDatabase();
+    final first = await controller.provisionNewDatabase(databaseExists: false);
+    final second = await controller.provisionNewDatabase(databaseExists: false);
 
     expect(first, matches(RegExp(r'^[0-9a-f]{64}$')));
     expect(second, first);
@@ -26,7 +26,7 @@ void main() {
       );
       expect(store.writes, 0);
 
-      await controller.provisionNewDatabase();
+      await controller.provisionNewDatabase(databaseExists: false);
       store.value =
           null; // Simulates a secure-store reset while DB still exists.
       await expectLater(
@@ -34,6 +34,19 @@ void main() {
         throwsA(isA<MissingDatabaseKeyException>()),
       );
       expect(store.writes, 1);
+    },
+  );
+
+  test(
+    'provisioning refuses to replace a missing key when ciphertext exists',
+    () async {
+      final store = MemoryKeyStore();
+
+      await expectLater(
+        DatabaseKeyController(store).provisionNewDatabase(databaseExists: true),
+        throwsA(isA<MissingDatabaseKeyException>()),
+      );
+      expect(store.writes, 0);
     },
   );
 

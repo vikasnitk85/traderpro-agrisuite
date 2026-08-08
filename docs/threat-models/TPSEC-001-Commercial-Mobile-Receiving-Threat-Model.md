@@ -36,10 +36,21 @@ Hardware attestation, MFA, remote wipe, production key-rotation operations,
 mobile integrity APIs, and PostgreSQL RLS implementation are deferred. RLS is
 still a mandatory pre-production gate under ADR-0001.
 
+ADR-0011 accepts SQLite3MultipleCiphers 2.3.6 for V1. The tested artifact does
+not expose effective enhanced memory wiping/locking equivalent to SQLCipher's
+verified memory-security control. Database encryption protects data at rest;
+it does not protect plaintext or keys from a rooted device, an attached
+debugger or instrumentation, arbitrary memory inspection, or another
+compromised live process. Task 7C2B2 must use the shortest practical raw-key
+lifetime in Dart memory, avoid string/log serialization, best-effort wipe
+mutable key buffers, exclude keys from exception messages and database
+payloads from diagnostics, use `temp_store=MEMORY`, configure Android backup
+and data-extraction exclusions, and enforce a non-debuggable release posture.
+
 ## Authoritative sources
 
 - `AGENTS.md`
-- ADR-0001, ADR-0002, ADR-0004, ADR-0005, ADR-0008, and ADR-0009
+- ADR-0001, ADR-0002, ADR-0004, ADR-0005, ADR-0008, ADR-0009, and ADR-0011
 - TPTECH-001.13 through TPTECH-001.21
 - TPRC-101 baseline/open questions
 - Task 7C0 binding direction
@@ -86,7 +97,7 @@ networking, subject to server validation.
 | T-01 | Stolen access token | Short Task 7A expiry, signature/issuer/audience checks, HTTPS, zero skew, database revalidation of workspace/user/device/credential/family/company/branch/role on every commercial request. | Revocation/status/version mismatch returns 401 without tenant detail; safe correlation only. | Token may be used until expiry/revocation if all current state remains valid. |
 | T-02 | Stolen refresh token | Store only in OS-backed secure storage; server stores hash only; rotate each use; serialize refresh; detect predecessor reuse and revoke family. | `REFRESH_TOKEN_REUSE_DETECTED`, one audit, family revocation, forced login. | Rooted live extraction; MFA deferred. |
 | T-03 | Stolen Device secret | OS-backed secure storage, never SQLite/logs; login also needs valid workspace/user password; reactivation rotates secret/version and revokes families. | Database revalidation rejects old secret-version access; activation/reactivation audited. | Compromised password plus Device secret until response. Hardware attestation deferred. |
-| T-04 | Copied encrypted database | Full database/page encryption; DEK outside DB and protected by OS; backup/cross-device restore fails closed; WAL/journal verification. | Wrong/missing key cannot open; retain ciphertext; never fall back plaintext. | Offline brute-force depends on engine/KDF/key strength; package spike required. |
+| T-04 | Copied encrypted database | ADR-0011 SQLite3MultipleCiphers ChaCha20-Poly1305 full database/page encryption; true random raw 256-bit key outside DB and protected by OS; backup/cross-device restore fails closed; WAL/journal verification. | Wrong/missing/malformed/unavailable key cannot open; retain ciphertext; never fall back plaintext or generate a replacement key. | Production opener and backup exclusions require Task 7C2B2 verification. |
 | T-05 | Plaintext fallback or debug database accidentally used commercially | Separate production file/schema/opener; release guard requires encrypted executor; startup self-test; no POC migration. | Fail startup/open and block capture; explicit safe error/diagnostic without key. | Implementation assurance must be tested on supported Android builds. |
 | T-06 | Old Device submits queued operations after ownership transfer | Operation binds authenticated Device and immutable ownership generation; transfer increments generation and invalidates lease under PostgreSQL lock. | `RECEIVING_OWNERSHIP_GENERATION_STALE`; retain local fact/attention. | Business reconciliation of old facts awaits approved recovery workflow. |
 | T-07 | Different Device takes over after lease expiry | Durable editor is distinct from lease; only same Device/same generation reacquires; different Device requires the implemented explicit Owner-only audited transfer command. | `RECEIVING_OWNERSHIP_DEVICE_MISMATCH`; no generation/lease mutation unless the separately authorized transfer succeeds. | Mobile transfer UI and later escalation/reconciliation policy remain deferred. |
@@ -103,7 +114,7 @@ networking, subject to server validation.
 | T-18 | Event cursor advances past malformed known event | Inbox insert, projection, apply state, and cursor share one encrypted SQLite transaction. | Roll back and stop at event; safe diagnostic. Unknown compatible type retained as skipped. | Long-lived poison-event operations/retention policy deferred. |
 | T-19 | PII leaks through events/logs/diagnostics | Versioned event allowlist contains operational safe snapshots only; Supplier contact/email/address/tax/notes and all credentials/lease IDs are prohibited; central redaction. | Contract tests inspect exact payload/log fields; security review for new versions. | Product names/supplier names are still customer data protected by auth/encryption. |
 | T-20 | Debug HTTP or cleartext release traffic | Task 7A production HTTPS enforcement; commercial client accepts HTTPS only outside explicit test harness; POC cleartext stays debug-only. | Release/static tests and startup failure; certificate/network errors do not downgrade. | Certificate pinning not required by current source; may be reviewed later. |
-| T-21 | Rooted Device reads runtime secrets or tampers with client | Minimize token lifetime/in-memory exposure, OS-backed keys, database revalidation, server recomputation, generation, audit, optional future integrity signal. | Revoke Device/family and investigate audit/attention anomalies. | Root can defeat at-rest/runtime controls; hardware attestation/integrity API deferred. |
+| T-21 | Rooted Device or live-process compromise reads runtime secrets or tampers with client | Minimize token and raw-key lifetime/in-memory exposure; never stringify/log keys; best-effort wipe mutable key buffers; exclude keys and payloads from diagnostics; use memory-only temp storage, OS-backed keys, database revalidation, server recomputation, non-debuggable release, generation, audit, and optional future integrity signal. | Revoke Device/family and investigate audit/attention anomalies; no diagnostic or recovery path emits key/database payload material. | SQLite3MultipleCiphers lacks the tested SQLCipher-equivalent memory locking/wiping control; root, debugger/instrumentation, or arbitrary live-memory access can defeat at-rest/runtime controls. Hardware attestation/integrity API deferred. |
 | T-22 | Local clock extends lease or reorders facts | Server clock controls lease and accepted timestamps; exact local sequence controls order; captured Device time is evidence only. | Expired lease/reacquisition response; invalid UTC rejected locally/server-side. | User may falsify capture time; policy for extreme skew may be added without making it authority. |
 | T-23 | Database key loss causes silent data destruction | No auto-delete or plaintext recreation; preserve ciphertext; show blocking recovery/discard flow; warn about unsynced facts. | `COMMERCIAL_DATABASE_KEY_UNAVAILABLE`; capture/sync blocked. | Without recoverable key/backup, unsynced physical facts may be unrecoverable. Remote escrow not approved. |
 | T-24 | Backup restores credentials/database to another Device | Exclude secrets; bind encrypted DB/profile/outbox to Workspace/Company/Device; Keystore keys non-exportable/non-restorable where supported; revalidate `/auth/me`. | Cross-Device/context mismatch fails closed and requires reactivation/rehydration. | OEM backup behavior must be verified in Task 7C2. |
@@ -167,8 +178,9 @@ review, and PostgreSQL RLS. A field test does not waive these blockers.
 
 Task 7C1 migration must add production ownership/generation/state constraints,
 new commercial event audience metadata, and no-delete/immutable triggers.
-Task 7C2 must start a separate encrypted schema, disable plaintext fallback and
-backup leakage, and test wrong-key/reinstall/restore. Existing POC schema/data
+Task 7C2B2 must start a separate SQLite3MultipleCiphers encrypted schema,
+disable plaintext fallback and backup leakage, enforce ADR-0011 configuration
+assertions, and test wrong-key/reinstall/restore. Existing POC schema/data
 remains unchanged.
 
 ## Future implementation dependencies

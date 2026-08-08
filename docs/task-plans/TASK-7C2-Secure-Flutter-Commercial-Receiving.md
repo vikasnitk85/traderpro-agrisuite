@@ -1,6 +1,6 @@
 # Task 7C2: Secure Flutter Commercial Receiving and Offline Sync
 
-- Status: Planned; not implemented
+- Status: Task 7C2B1 selected/complete subject to commit review; Task 7C2B2 not started
 - Date: 2026-08-01
 - Scope: Task 7A mobile identity, encrypted local-first Commercial Receiving,
   authenticated sync, and read-only Owner monitoring
@@ -13,11 +13,39 @@ implemented. Task 7C2A does not implement the production client.
 The encrypted-storage compatibility evidence and explicit no-selection result
 are recorded in
 `docs/assessments/TASK-7C2A-Encrypted-Storage-Compatibility-Spike.md`.
+Task 7C2B1 then froze candidate configuration/key syntax and added host
+tamper, interruption, API-24/API-35 engine, repeated physical performance,
+native-provenance, notice, SBOM, and reviewed SCA evidence. It also corrected
+the pinned secure-store clean-install bootstrap and passed its fail-closed,
+force-stop, and same-data replacement matrix on API 24 and physical API 35
+with both candidates. ADR-0011 accepted SQLite3MultipleCiphers 2.3.6 through
+`sqlite3` 3.5.0 with explicit ChaCha20-Poly1305 and a true random 256-bit raw
+key. Task 7C2B1 is complete subject to commit review; Task 7C2B2 is next and
+has not started. Remaining B2, legal, lifecycle, and pilot gates stay open; see
+`docs/assessments/TASK-7C2B1-Production-Storage-Selection.md`.
 
 ## Status
 
-Planned and not implemented. No mobile package or plaintext pilot path is
-approved by this plan.
+Task 7C2B1 is selected and complete subject to commit review. The production
+client remains planned and not implemented: Task 7C2B2 has not started, no
+production mobile package has changed, and no plaintext pilot path is approved.
+
+## Reviewed milestone split
+
+The implementation sequence is deliberately separated from the full Receiving
+client:
+
+| Milestone | Entry gate | Deliverables | Exit gate |
+| --- | --- | --- | --- |
+| Task 7C2B1: Production encrypted-storage selection | Merged 7C2A evidence and unchanged production dependency graph | Frozen candidate parameters/key syntax, API/runtime/lifecycle/performance evidence, provenance, notices, locked SBOM, SCA review, and ADR-0011 only after one candidate passes every gate | **Complete subject to commit review:** SQLite3MultipleCiphers accepted in ADR-0011 |
+| Task 7C2B2: Secure Android/Flutter foundation | Accepted ADR-0011 and approved Android backup/release policy | Pinned production packages, narrow OS secure-store and database-key ports, separate encrypted Commercial database/opener, fail-closed startup, binding metadata schema 1, backup/data-extraction controls, redaction, runtime ownership, and architecture/test seams | API-24/API-35 release tests prove encrypted create/reopen/failure behavior and the production dependency/security boundary is reviewed |
+| Task 7C2B3: Production authentication and context binding | Accepted B2 foundation and stable Task 7A contracts | Activation, credential storage, workspace login, `/auth/me` binding, serialized refresh, logout/reactivation/context rules, and HTTPS-only authenticated client foundation | Identity/context/key-loss matrices pass without introducing Receiving capture or sync |
+| Later Task 7C2 delivery slices | Accepted B3 and relevant product gates | Master sync, local Receiving/outbox, capture UI, operation sync, event projections, Owner monitoring, and field validation in separately reviewed slices | Existing backlog acceptance criteria and final pilot gates pass |
+
+B2 schema 1 contains only immutable installation/database/account binding and
+schema metadata needed to prove the secure opener. Receiving Sessions, Entries,
+outbox, masters, cursors, projections, attention, Inventory, and Finance do not
+belong in the secure-foundation milestone. No POC schema/data is migrated.
 
 ## Outcome
 
@@ -94,7 +122,7 @@ or official purchase finalization.
 
 | ID | Artifact/work | Acceptance criteria | Dependencies |
 | --- | --- | --- | --- |
-| 7C2-01 | Encrypted SQLite/secure-storage compatibility spike | Evaluate at least a Drift-compatible SQLCipher/page-encrypted option and OS-backed secure-storage abstraction on supported Android; verify build/release ABI, licensing, performance, wrong-key failure, WAL/journal encryption, known-plaintext absence, restart, rekey feasibility, backup behavior, and test injection. Document package decision before dependency change. | ADR-0009; TPSEC-001; Android matrix. |
+| 7C2-01 | Encrypted SQLite/secure-storage compatibility and selection | Evaluate SQLCipher Community and SQLite3MultipleCiphers with OS-backed secure storage; freeze key/cipher parameters; verify API 24/35, build/release ABI, licensing, performance, wrong-key/tamper failure, WAL/journal encryption, known-plaintext absence, restart/interruption, backup behavior, provenance, SBOM, SCA, and test injection. Automatic/in-place rekey is explicitly deferred from V1 and is not a selection gate. Accept ADR-0011 before any production dependency change. | ADR-0009; TPSEC-001; TPRUN-006; Android matrix. |
 | 7C2-02 | Secure key/secret services | Narrow abstractions store Device secret, rotating refresh token, and DEK/key reference outside SQLite; redact logs; no production default key; key loss fails closed; cross-device restore is unsupported in V1; test fake is explicit. | 7C2-01. |
 | 7C2-03 | Encrypted commercial database opener | Open a separate production file only with the reviewed encrypted executor/key; release startup proves encryption; no plaintext fallback; POC file/schema is untouched; ciphertext is retained on key failure. Destructive discard/reinitialization is a separate approved recovery workflow that must first classify/preserve unsynced facts. | 7C2-01/02. |
 | 7C2-04 | Production Drift schema version 1 | Implement isolated tables/constraints/triggers for account/credential metadata, typed masters, Sessions, immutable Entries, immutable outbox, cloud state, event inbox, cursor, Owner projection, recent Entries, attention; exact weights use TEXT/BigInt, never REAL; generated source checked in. | 7C2-03; TPTECH-001.21. |
@@ -144,7 +172,9 @@ plaintext storage.
 
 Encrypted SQLite, OS-backed secrets, HTTPS, serialized refresh, context binding,
 event/master isolation, and release redaction are pilot gates. Rooted Devices
-remain a documented limitation. No package is added before the spike.
+and compromised live-process memory remain documented limitations. ADR-0011
+completed the technical selection, but no package is added to production until
+the separately reviewed Task 7C2B2 implementation.
 
 ## Migration implications
 
@@ -161,10 +191,11 @@ correction require later reviewed work.
 
 ## Unresolved questions
 
-Package choice, supported Android/backup matrix, production lease anomaly
-thresholds, and all remaining TPRC-101 business gaps remain unresolved until
-their entry gates are satisfied. Positive Entry/submission validation and
-lease timing are already frozen by Task 7C1; Owner transfer UI is deferred.
+Encrypted engine choice is resolved by ADR-0011. Supported Android/OEM backup
+behavior beyond the validated B1 matrix, production lease anomaly thresholds,
+and all remaining TPRC-101 business gaps remain unresolved until their entry
+gates are satisfied. Positive Entry/submission validation and lease timing are
+already frozen by Task 7C1; Owner transfer UI is deferred.
 
 ## Exit criteria
 

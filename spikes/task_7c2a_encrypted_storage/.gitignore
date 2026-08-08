@@ -44,3 +44,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Synthetic storage evidence must never become commit material.
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
