@@ -1,19 +1,28 @@
 # ADR-0009: Authenticated commercial mobile sync and storage
 
-- Status: Accepted for Task 7C0 design; package selection deferred to a Task 7C2 spike
+- Status: Accepted for Task 7C0 design; storage selection completed by ADR-0011
 - Date: 2026-08-01
 - Scope: Commercial operation/event/master sync, mobile Task 7A integration,
   encrypted storage, and production local-schema isolation
 
 ## Status
 
-Accepted for Task 7C0 design. Encrypted SQLite and OS secure-storage packages
-remain unselected until the Task 7C2 compatibility spike is approved.
+Accepted for Task 7C0 design. ADR-0011 now selects SQLite3MultipleCiphers 2.3.6
+through `sqlite3` 3.5.0 with SQLite 3.53.3, explicit ChaCha20-Poly1305, and a
+true random 256-bit raw key for TraderPro V1. `flutter_secure_storage` 10.3.1
+is the frozen B2 secure-store input; neither package has been added to
+production Flutter.
 Task 7C2A produced passing host and physical Android 15/API-35 evidence for
 SQLite3MultipleCiphers, SQLCipher, OS secure storage, and force-stop/process-
-restart recovery. It made no selection because physical API-24, destructive
-lifecycle/actual Keystore invalidation, restore/transfer, crash-safe rekey,
-repeated performance, and supply-chain gates remain open.
+restart recovery. Task 7C2B1 froze raw-key/cipher parameters and added passing
+host tamper/interruption, API-24/API-35 engine, repeated physical performance,
+native provenance, candidate notice, locked SBOM, and reviewed SCA evidence.
+It corrected the pinned secure-store clean-install bootstrap and passed the
+fail-closed, force-stop, and same-data replacement matrix on API 24 and
+physical API 35 with both candidates. The final static comparison accepted
+SQLite3MultipleCiphers in ADR-0011, making Task 7C2B1 complete subject to
+commit review. Task 7C2B2 is next and has not started; other B2/review/pilot
+gates remain open. Automatic/in-place rekey is explicitly outside V1.
 
 ## Context
 
@@ -212,14 +221,17 @@ and must not inherit debug cleartext configuration.
 Task 7C1 adds the commercial event stream/audience metadata and scoped commit-
 order lock, deterministic master-change table/backfill/high-water protocol, and
 endpoints without reclassifying existing events.
-Task 7C2 adds a new encrypted database schema version 1 after a compatibility
-spike. Existing POC tables and unencrypted files remain untouched; no automatic
-data import occurs. V1 does not implement automatic rekey. Future schema or key
-upgrades require a separate explicit, non-destructive, reviewed workflow.
+Task 7C2B2 may add a new encrypted database schema version 1 using the single
+engine accepted by ADR-0011. Existing POC tables and unencrypted files remain
+untouched; no automatic data import occurs. V1 does not implement automatic or
+in-place rekey, engine switching, cloud key escrow, or cross-device database
+restore. Key loss fails closed and retains ciphertext; destructive recovery is
+a separate authorized workflow. Any future schema, key, cipher, or engine
+change requires a separately approved, fault-injected migration design.
 
 ## Future implementation dependencies
 
-- Reviewed encrypted SQLite and OS secure-storage compatibility spike
+- Accepted ADR-0011 and reviewed encrypted SQLite/OS secure-storage evidence
 - Task 7A endpoint contracts and persistent Data Protection key ring
 - Task 7C1 operation/event/master contracts
 - Android release/backup policy and two-device commercial field test
@@ -227,10 +239,13 @@ upgrades require a separate explicit, non-destructive, reviewed workflow.
 
 ## Unresolved questions
 
-The exact encrypted SQLite and secure-storage packages, key-rotation operations,
-backup policy details for supported Android versions, production background
-execution, and hardware/mobile integrity controls remain deferred. Business
-open questions remain in TPRC-101.
+SQLite3MultipleCiphers 2.3.6 through `sqlite3` 3.5.0 is selected by ADR-0011.
+The secret-store B2 input is `flutter_secure_storage` 10.3.1 with explicitly
+frozen Android algorithms and migration/reset options, but neither is yet a
+production dependency. The production secure-store namespace/alias,
+key-rotation operations, backup policy details for supported Android versions,
+production background execution, and hardware/mobile integrity controls
+remain deferred. Business open questions remain in TPRC-101.
 
 Owner monitoring is read-only. Owner transfer UI, voice selection, BLE/scale,
 settlement, Purchase Bill, Inventory, Finance, Sales, Production,

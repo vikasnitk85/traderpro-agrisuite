@@ -1,0 +1,4097 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:36fa3f4e-d92c-4ef4-a623-7c2b10000001",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-03T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "TraderPro Task 7C2B1 deterministic SBOM generator",
+          "version": "1"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:generic/traderpro-7c2b1-storage-evidence@1",
+      "name": "TraderPro Task 7C2B1 encrypted-storage evidence harness",
+      "version": "1",
+      "properties": [
+        {
+          "name": "traderpro:scope",
+          "value": "isolated spike only; not the production mobile app"
+        },
+        {
+          "name": "traderpro:sca-status",
+          "value": "not executed; approved scanner unavailable"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "file",
+      "bom-ref": "native:sqlcipher:android:arm64-v8a",
+      "name": "libsqlcipher.so (arm64-v8a)",
+      "version": "4.17.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "434b5862737328d913964bd5eefac7db8748cd979ac863b3dfc09952e89f9cbd"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:elf-machine",
+          "value": "AArch64"
+        },
+        {
+          "name": "traderpro:bytes",
+          "value": "5080752"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "native:sqlcipher:android:armeabi-v7a",
+      "name": "libsqlcipher.so (armeabi-v7a)",
+      "version": "4.17.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e82f4ccf192bdd8fa5c1f996618fe70362bdeb7a4cec4f3e98d10da51f49a27d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:elf-machine",
+          "value": "ARM"
+        },
+        {
+          "name": "traderpro:bytes",
+          "value": "4094016"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "native:sqlcipher:android:x86_64",
+      "name": "libsqlcipher.so (x86_64)",
+      "version": "4.17.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1bca6e2a4db6e39004f1933bc10b5b6e95ee371c70c1d16a920c787ee57afaed"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:elf-machine",
+          "value": "Advanced Micro Devices X86-64"
+        },
+        {
+          "name": "traderpro:bytes",
+          "value": "5939008"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "native:sqlite3mc:android:arm64-v8a",
+      "name": "libsqlite3mc.so (arm64-v8a)",
+      "version": "2.3.6",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3500da95ebda57b2a749cfaf74258d9bb7b94702f14e435505d302942d869403"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:elf-machine",
+          "value": "AArch64"
+        },
+        {
+          "name": "traderpro:bytes",
+          "value": "2043872"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "native:sqlite3mc:android:armeabi-v7a",
+      "name": "libsqlite3mc.so (armeabi-v7a)",
+      "version": "2.3.6",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7e90f4263ae214925f945054a5ec514f5182ee3dedf2576c7bec1142f67040a6"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:elf-machine",
+          "value": "ARM"
+        },
+        {
+          "name": "traderpro:bytes",
+          "value": "2037668"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "native:sqlite3mc:android:x86_64",
+      "name": "libsqlite3mc.so (x86_64)",
+      "version": "2.3.6",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "88be4bd4ceb1e65e84d04916489f33d8b08b566950a5e1311ac94a47ced90d28"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:elf-machine",
+          "value": "Advanced Micro Devices X86-64"
+        },
+        {
+          "name": "traderpro:bytes",
+          "value": "2139576"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/openssl@3.6.2",
+      "name": "OpenSSL",
+      "version": "3.6.2",
+      "purl": "pkg:generic/openssl@3.6.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:linkage",
+          "value": "statically linked into SQLCipher Android ELF"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/sqlcipher@4.17.0",
+      "name": "SQLCipher Community",
+      "version": "4.17.0",
+      "purl": "pkg:generic/sqlcipher@4.17.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/sqlite3mc@2.3.6",
+      "name": "SQLite3MultipleCiphers",
+      "version": "2.3.6",
+      "purl": "pkg:generic/sqlite3mc@2.3.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/sqlite@3.53.3",
+      "name": "SQLite",
+      "version": "3.53.3",
+      "purl": "pkg:generic/sqlite@3.53.3",
+      "licenses": [
+        {
+          "license": {
+            "name": "Public Domain"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.activity/activity@1.8.1",
+      "group": "androidx.activity",
+      "name": "activity",
+      "version": "1.8.1",
+      "purl": "pkg:maven/androidx.activity/activity@1.8.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.annotation/annotation-experimental@1.4.0",
+      "group": "androidx.annotation",
+      "name": "annotation-experimental",
+      "version": "1.4.0",
+      "purl": "pkg:maven/androidx.annotation/annotation-experimental@1.4.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.annotation/annotation-jvm@1.8.2",
+      "group": "androidx.annotation",
+      "name": "annotation-jvm",
+      "version": "1.8.2",
+      "purl": "pkg:maven/androidx.annotation/annotation-jvm@1.8.2",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.annotation/annotation@1.8.1",
+      "group": "androidx.annotation",
+      "name": "annotation",
+      "version": "1.8.1",
+      "purl": "pkg:maven/androidx.annotation/annotation@1.8.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.arch.core/core-common@2.2.0",
+      "group": "androidx.arch.core",
+      "name": "core-common",
+      "version": "2.2.0",
+      "purl": "pkg:maven/androidx.arch.core/core-common@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.arch.core/core-runtime@2.2.0",
+      "group": "androidx.arch.core",
+      "name": "core-runtime",
+      "version": "2.2.0",
+      "purl": "pkg:maven/androidx.arch.core/core-runtime@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.collection/collection@1.1.0",
+      "group": "androidx.collection",
+      "name": "collection",
+      "version": "1.1.0",
+      "purl": "pkg:maven/androidx.collection/collection@1.1.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.concurrent/concurrent-futures@1.1.0",
+      "group": "androidx.concurrent",
+      "name": "concurrent-futures",
+      "version": "1.1.0",
+      "purl": "pkg:maven/androidx.concurrent/concurrent-futures@1.1.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.core/core-ktx@1.13.1",
+      "group": "androidx.core",
+      "name": "core-ktx",
+      "version": "1.13.1",
+      "purl": "pkg:maven/androidx.core/core-ktx@1.13.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.core/core@1.13.1",
+      "group": "androidx.core",
+      "name": "core",
+      "version": "1.13.1",
+      "purl": "pkg:maven/androidx.core/core@1.13.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.customview/customview@1.0.0",
+      "group": "androidx.customview",
+      "name": "customview",
+      "version": "1.0.0",
+      "purl": "pkg:maven/androidx.customview/customview@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.exifinterface/exifinterface@1.4.1",
+      "group": "androidx.exifinterface",
+      "name": "exifinterface",
+      "version": "1.4.1",
+      "purl": "pkg:maven/androidx.exifinterface/exifinterface@1.4.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.fragment/fragment@1.7.1",
+      "group": "androidx.fragment",
+      "name": "fragment",
+      "version": "1.7.1",
+      "purl": "pkg:maven/androidx.fragment/fragment@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.interpolator/interpolator@1.0.0",
+      "group": "androidx.interpolator",
+      "name": "interpolator",
+      "version": "1.0.0",
+      "purl": "pkg:maven/androidx.interpolator/interpolator@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-common-java8@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-common-java8",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-common-java8@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-common@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-common",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-common@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core-ktx@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core-ktx",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core-ktx@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-livedata@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-livedata@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-process@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-process",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-process@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-runtime@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-runtime",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-runtime@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel-savedstate@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-viewmodel-savedstate",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel-savedstate@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-viewmodel",
+      "version": "2.7.0",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.loader/loader@1.0.0",
+      "group": "androidx.loader",
+      "name": "loader",
+      "version": "1.0.0",
+      "purl": "pkg:maven/androidx.loader/loader@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.profileinstaller/profileinstaller@1.3.1",
+      "group": "androidx.profileinstaller",
+      "name": "profileinstaller",
+      "version": "1.3.1",
+      "purl": "pkg:maven/androidx.profileinstaller/profileinstaller@1.3.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.savedstate/savedstate@1.2.1",
+      "group": "androidx.savedstate",
+      "name": "savedstate",
+      "version": "1.2.1",
+      "purl": "pkg:maven/androidx.savedstate/savedstate@1.2.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.startup/startup-runtime@1.1.1",
+      "group": "androidx.startup",
+      "name": "startup-runtime",
+      "version": "1.1.1",
+      "purl": "pkg:maven/androidx.startup/startup-runtime@1.1.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.tracing/tracing@1.2.0",
+      "group": "androidx.tracing",
+      "name": "tracing",
+      "version": "1.2.0",
+      "purl": "pkg:maven/androidx.tracing/tracing@1.2.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.versionedparcelable/versionedparcelable@1.1.1",
+      "group": "androidx.versionedparcelable",
+      "name": "versionedparcelable",
+      "version": "1.1.1",
+      "purl": "pkg:maven/androidx.versionedparcelable/versionedparcelable@1.1.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.viewpager/viewpager@1.0.0",
+      "group": "androidx.viewpager",
+      "name": "viewpager",
+      "version": "1.0.0",
+      "purl": "pkg:maven/androidx.viewpager/viewpager@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.window.extensions.core/core@1.0.0",
+      "group": "androidx.window.extensions.core",
+      "name": "core",
+      "version": "1.0.0",
+      "purl": "pkg:maven/androidx.window.extensions.core/core@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.window/window-java@1.2.0",
+      "group": "androidx.window",
+      "name": "window-java",
+      "version": "1.2.0",
+      "purl": "pkg:maven/androidx.window/window-java@1.2.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.window/window@1.2.0",
+      "group": "androidx.window",
+      "name": "window",
+      "version": "1.2.0",
+      "purl": "pkg:maven/androidx.window/window@1.2.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.getkeepsafe.relinker/relinker@1.4.5",
+      "group": "com.getkeepsafe.relinker",
+      "name": "relinker",
+      "version": "1.4.5",
+      "purl": "pkg:maven/com.getkeepsafe.relinker/relinker@1.4.5",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.code.findbugs/jsr305@3.0.2",
+      "group": "com.google.code.findbugs",
+      "name": "jsr305",
+      "version": "3.0.2",
+      "purl": "pkg:maven/com.google.code.findbugs/jsr305@3.0.2",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.code.gson/gson@2.13.2",
+      "group": "com.google.code.gson",
+      "name": "gson",
+      "version": "2.13.2",
+      "purl": "pkg:maven/com.google.code.gson/gson@2.13.2",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.crypto.tink/tink-android@1.21.0",
+      "group": "com.google.crypto.tink",
+      "name": "tink-android",
+      "version": "1.21.0",
+      "purl": "pkg:maven/com.google.crypto.tink/tink-android@1.21.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.errorprone/error_prone_annotations@2.41.0",
+      "group": "com.google.errorprone",
+      "name": "error_prone_annotations",
+      "version": "2.41.0",
+      "purl": "pkg:maven/com.google.errorprone/error_prone_annotations@2.41.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.guava/listenablefuture@1.0",
+      "group": "com.google.guava",
+      "name": "listenablefuture",
+      "version": "1.0",
+      "purl": "pkg:maven/com.google.guava/listenablefuture@1.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/arm64_v8a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "arm64_v8a_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "purl": "pkg:maven/io.flutter/arm64_v8a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/armeabi_v7a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "armeabi_v7a_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "purl": "pkg:maven/io.flutter/armeabi_v7a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/flutter_embedding_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "flutter_embedding_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "purl": "pkg:maven/io.flutter/flutter_embedding_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/x86_64_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "x86_64_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "purl": "pkg:maven/io.flutter/x86_64_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-common@2.3.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib-common",
+      "version": "2.3.20",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-common@2.3.20",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk7@1.8.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib-jdk7",
+      "version": "1.8.20",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk7@1.8.20",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk8@1.8.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib-jdk8",
+      "version": "1.8.20",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk8@1.8.20",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib",
+      "version": "2.3.20",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.20",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-android@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-android",
+      "version": "1.7.1",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-android@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-bom@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-bom",
+      "version": "1.7.1",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-bom@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-core-jvm",
+      "version": "1.7.1",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-core",
+      "version": "1.7.1",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains/annotations@23.0.0",
+      "group": "org.jetbrains",
+      "name": "annotations",
+      "version": "23.0.0",
+      "purl": "pkg:maven/org.jetbrains/annotations@23.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jspecify/jspecify@1.0.0",
+      "group": "org.jspecify",
+      "name": "jspecify",
+      "version": "1.0.0",
+      "purl": "pkg:maven/org.jspecify/jspecify@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Android/Gradle"
+        },
+        {
+          "name": "traderpro:resolution",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/_fe_analyzer_shared@100.0.0",
+      "name": "_fe_analyzer_shared",
+      "version": "100.0.0",
+      "purl": "pkg:pub/_fe_analyzer_shared@100.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cd6add6f846f35fb79f3c315296703c1a24f3cfd7f4739d91a74961c1c7e9f1b"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/analyzer@13.0.0",
+      "name": "analyzer",
+      "version": "13.0.0",
+      "purl": "pkg:pub/analyzer@13.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6ba98576948803398b69e3a444df24eacdbe12ed699c7014e120ea38552debbf"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/args@2.7.0",
+      "name": "args",
+      "version": "2.7.0",
+      "purl": "pkg:pub/args@2.7.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d0481093c50b1da8910eb0bb301626d4d8eb7284aa739614d2b394ee09e3ea04"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/async@2.13.1",
+      "name": "async",
+      "version": "2.13.1",
+      "purl": "pkg:pub/async@2.13.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e2eb0491ba5ddb6177742d2da23904574082139b07c1e33b8503b9f46f3e1a37"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/boolean_selector@2.1.2",
+      "name": "boolean_selector",
+      "version": "2.1.2",
+      "purl": "pkg:pub/boolean_selector@2.1.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8aab1771e1243a5063b8b0ff68042d67334e3feab9e95b9490f9a6ebf73b42ea"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/build@4.0.7",
+      "name": "build",
+      "version": "4.0.7",
+      "purl": "pkg:pub/build@4.0.7",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "45d14a0fb23e018d8287c32fc98d726ce466b231928ed9b9200f29bd3ccd39ae"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/build_config@1.3.2",
+      "name": "build_config",
+      "version": "1.3.2",
+      "purl": "pkg:pub/build_config@1.3.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "94eaf6708fe64408c632ef2689ca3777b112f9421306ccf4f8c84d7c5c9f83f8"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/build_daemon@4.1.3",
+      "name": "build_daemon",
+      "version": "4.1.3",
+      "purl": "pkg:pub/build_daemon@4.1.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8c0535c3b2f625619f4dd1036ef1127f2e77bfedf89ed2eb2676ef076e0b6712"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/build_runner@2.15.1",
+      "name": "build_runner",
+      "version": "2.15.1",
+      "purl": "pkg:pub/build_runner@2.15.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5367e521935b102bdf1e735d2aab461e36b2edca6517662d088dd04cc39f8d16"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct dev"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/built_collection@5.1.1",
+      "name": "built_collection",
+      "version": "5.1.1",
+      "purl": "pkg:pub/built_collection@5.1.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "376e3dd27b51ea877c28d525560790aee2e6fbb5f20e2f85d5081027d94e2100"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/built_value@8.12.6",
+      "name": "built_value",
+      "version": "8.12.6",
+      "purl": "pkg:pub/built_value@8.12.6",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "34e4067d30ce212937df995f03b69992eea683539ceeac7f679a1f1eba055b56"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/characters@1.4.1",
+      "name": "characters",
+      "version": "1.4.1",
+      "purl": "pkg:pub/characters@1.4.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "faf38497bda5ead2a8c7615f4f7939df04333478bf32e4173fcb06d428b5716b"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/charcode@1.4.0",
+      "name": "charcode",
+      "version": "1.4.0",
+      "purl": "pkg:pub/charcode@1.4.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fb0f1107cac15a5ea6ef0a6ef71a807b9e4267c713bb93e00e92d737cc8dbd8a"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/checked_yaml@2.0.4",
+      "name": "checked_yaml",
+      "version": "2.0.4",
+      "purl": "pkg:pub/checked_yaml@2.0.4",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "959525d3162f249993882720d52b7e0c833978df229be20702b33d48d91de70f"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/cli_util@0.5.2",
+      "name": "cli_util",
+      "version": "0.5.2",
+      "purl": "pkg:pub/cli_util@0.5.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "71e43f1976c3eae2d9468a5b4d6600bf8cae61508b87f27fa1799228935d48ab"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/clock@1.1.2",
+      "name": "clock",
+      "version": "1.1.2",
+      "purl": "pkg:pub/clock@1.1.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fddb70d9b5277016c77a80201021d40a2247104d9f4aa7bab7157b7e3f05b84b"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/code_assets@1.2.1",
+      "name": "code_assets",
+      "version": "1.2.1",
+      "purl": "pkg:pub/code_assets@1.2.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bf394f466ba9205f1812a0433b392d6af280f155f56651eda7c18cc32ed493b8"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/collection@1.19.1",
+      "name": "collection",
+      "version": "1.19.1",
+      "purl": "pkg:pub/collection@1.19.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2f5709ae4d3d59dd8f7cd309b4e023046b57d8a6c82130785d2b0e5868084e76"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/convert@3.1.2",
+      "name": "convert",
+      "version": "3.1.2",
+      "purl": "pkg:pub/convert@3.1.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b30acd5944035672bc15c6b7a8b47d773e41e2f17de064350988c5d02adb1c68"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/crypto@3.0.7",
+      "name": "crypto",
+      "version": "3.0.7",
+      "purl": "pkg:pub/crypto@3.0.7",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/dart_style@3.1.9",
+      "name": "dart_style",
+      "version": "3.1.9",
+      "purl": "pkg:pub/dart_style@3.1.9",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "59d53ef8eaed9d288ed9767618e2b31c4fa0383a127db59d5eb2e737a7638a60"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/drift@2.34.3",
+      "name": "drift",
+      "version": "2.34.3",
+      "purl": "pkg:pub/drift@2.34.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3a3f1f6f905037d7426e4c445854139fd6a3d592135f7c96d7931682b73d16f4"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct main"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/drift_dev@2.34.5",
+      "name": "drift_dev",
+      "version": "2.34.5",
+      "purl": "pkg:pub/drift_dev@2.34.5",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "735aad3c34215805c66bd518c8812fa4f83b5534b2c13c4092c970c04a7e9983"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct dev"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/fake_async@1.3.3",
+      "name": "fake_async",
+      "version": "1.3.3",
+      "purl": "pkg:pub/fake_async@1.3.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5368f224a74523e8d2e7399ea1638b37aecfca824a3cc4dfdf77bf1fa905ac44"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/ffi@2.2.0",
+      "name": "ffi",
+      "version": "2.2.0",
+      "purl": "pkg:pub/ffi@2.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6d7fd89431262d8f3125e81b50d3847a091d846eafcd4fdb88dd06f36d705a45"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/ffi_leak_tracker@0.1.2",
+      "name": "ffi_leak_tracker",
+      "version": "0.1.2",
+      "purl": "pkg:pub/ffi_leak_tracker@0.1.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4093d4ef9ca06ffe2786e73bfb25e22aa92112b9bb4ec941f11e3e6b61489a97"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/file@7.0.1",
+      "name": "file",
+      "version": "7.0.1",
+      "purl": "pkg:pub/file@7.0.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a3b4f84adafef897088c160faf7dfffb7696046cb13ae90b508c2cbc95d3b8d4"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/fixnum@1.1.1",
+      "name": "fixnum",
+      "version": "1.1.1",
+      "purl": "pkg:pub/fixnum@1.1.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b6dc7065e46c974bc7c5f143080a6764ec7a4be6da1285ececdc37be96de53be"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter@0.0.0",
+      "name": "flutter",
+      "version": "0.0.0",
+      "purl": "pkg:pub/flutter@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct main"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_driver@0.0.0",
+      "name": "flutter_driver",
+      "version": "0.0.0",
+      "purl": "pkg:pub/flutter_driver@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_lints@6.0.0",
+      "name": "flutter_lints",
+      "version": "6.0.0",
+      "purl": "pkg:pub/flutter_lints@6.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3105dc8492f6183fb076ccf1f351ac3d60564bff92e20bfc4af9cc1651f4e7e1"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct dev"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage@10.3.1",
+      "name": "flutter_secure_storage",
+      "version": "10.3.1",
+      "purl": "pkg:pub/flutter_secure_storage@10.3.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7686b1d6a29985dcbb808c59518226e603e3bfa7c0ddfd1a0d00e4cda77c868e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct main"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+      "name": "flutter_secure_storage_darwin",
+      "version": "0.3.2",
+      "purl": "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "82329fa5cdf343773b1b6897dea959105a29f092454259edff92f9f6637e8149"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_linux@3.0.1",
+      "name": "flutter_secure_storage_linux",
+      "version": "3.0.1",
+      "purl": "pkg:pub/flutter_secure_storage_linux@3.0.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a5f35ddab43cf5c8215d2feb4ce1957851f28c5c37e6f04335066a0602087bf5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_platform_interface@2.0.2",
+      "name": "flutter_secure_storage_platform_interface",
+      "version": "2.0.2",
+      "purl": "pkg:pub/flutter_secure_storage_platform_interface@2.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "06686df417f34fe9f963ed217b7fdce250e2f637ddd6c374d7eb054549770633"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_web@2.1.1",
+      "name": "flutter_secure_storage_web",
+      "version": "2.1.1",
+      "purl": "pkg:pub/flutter_secure_storage_web@2.1.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "073a62b3aeb866ab4ce795f960413948e51e5a42a9b0c8333b6daf5bb3208a1c"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_windows@4.2.2",
+      "name": "flutter_secure_storage_windows",
+      "version": "4.2.2",
+      "purl": "pkg:pub/flutter_secure_storage_windows@4.2.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "471951813a97006d899db4948acc654a4f28c440083ea08178935ce20b173ec1"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_test@0.0.0",
+      "name": "flutter_test",
+      "version": "0.0.0",
+      "purl": "pkg:pub/flutter_test@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct dev"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_web_plugins@0.0.0",
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "purl": "pkg:pub/flutter_web_plugins@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/fuchsia_remote_debug_protocol@0.0.0",
+      "name": "fuchsia_remote_debug_protocol",
+      "version": "0.0.0",
+      "purl": "pkg:pub/fuchsia_remote_debug_protocol@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/glob@2.1.3",
+      "name": "glob",
+      "version": "2.1.3",
+      "purl": "pkg:pub/glob@2.1.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c3f1ee72c96f8f78935e18aa8cecced9ab132419e8625dc187e1c2408efc20de"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/graphs@2.3.2",
+      "name": "graphs",
+      "version": "2.3.2",
+      "purl": "pkg:pub/graphs@2.3.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "741bbf84165310a68ff28fe9e727332eef1407342fca52759cb21ad8177bb8d0"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/hooks@2.0.2",
+      "name": "hooks",
+      "version": "2.0.2",
+      "purl": "pkg:pub/hooks@2.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "9a62a50b50b769a737bc0a8ff381f333529df3ab746b2f6b02e83760231455ba"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/http_multi_server@3.2.2",
+      "name": "http_multi_server",
+      "version": "3.2.2",
+      "purl": "pkg:pub/http_multi_server@3.2.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "aa6199f908078bb1c5efb8d8638d4ae191aac11b311132c3ef48ce352fb52ef8"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/http_parser@4.1.2",
+      "name": "http_parser",
+      "version": "4.1.2",
+      "purl": "pkg:pub/http_parser@4.1.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "178d74305e7866013777bab2c3d8726205dc5a4dd935297175b19a23a2e66571"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/integration_test@0.0.0",
+      "name": "integration_test",
+      "version": "0.0.0",
+      "purl": "pkg:pub/integration_test@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct dev"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/io@1.0.5",
+      "name": "io",
+      "version": "1.0.5",
+      "purl": "pkg:pub/io@1.0.5",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "dfd5a80599cf0165756e3181807ed3e77daf6dd4137caaad72d0b7931597650b"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/jni@1.0.3",
+      "name": "jni",
+      "version": "1.0.3",
+      "purl": "pkg:pub/jni@1.0.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f038e58b4dc2c9037f50e233175086337e0b305e356d28211bf55f21c504cbd3"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/jni_flutter@1.0.2",
+      "name": "jni_flutter",
+      "version": "1.0.2",
+      "purl": "pkg:pub/jni_flutter@1.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7b717011ea40d04fd47c2731d3d1d36eb99eba3435c2753d62489e8c3c9991d5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/jni_util@1.0.0",
+      "name": "jni_util",
+      "version": "1.0.0",
+      "purl": "pkg:pub/jni_util@1.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1ba86da04a5f2bf18fde2edb235587e70c5b0fc5bd4ba955f46b00942c3fc35f"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/json_annotation@4.12.0",
+      "name": "json_annotation",
+      "version": "4.12.0",
+      "purl": "pkg:pub/json_annotation@4.12.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2a743920d81b7910627f68ee2c9ac1fc0bfee32b9fc3403587d7c6791ca12f80"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/leak_tracker@11.0.2",
+      "name": "leak_tracker",
+      "version": "11.0.2",
+      "purl": "pkg:pub/leak_tracker@11.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "33e2e26bdd85a0112ec15400c8cbffea70d0f9c3407491f672a2fad47915e2de"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/leak_tracker_flutter_testing@3.0.10",
+      "name": "leak_tracker_flutter_testing",
+      "version": "3.0.10",
+      "purl": "pkg:pub/leak_tracker_flutter_testing@3.0.10",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1dbc140bb5a23c75ea9c4811222756104fbcd1a27173f0c34ca01e16bea473c1"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/leak_tracker_testing@3.0.2",
+      "name": "leak_tracker_testing",
+      "version": "3.0.2",
+      "purl": "pkg:pub/leak_tracker_testing@3.0.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8d5a2d49f4a66b49744b23b018848400d23e54caf9463f4eb20df3eb8acb2eb1"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/lints@6.1.0",
+      "name": "lints",
+      "version": "6.1.0",
+      "purl": "pkg:pub/lints@6.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "12f842a479589fea194fe5c5a3095abc7be0c1f2ddfa9a0e76aed1dbd26a87df"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/logging@1.3.0",
+      "name": "logging",
+      "version": "1.3.0",
+      "purl": "pkg:pub/logging@1.3.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c8245ada5f1717ed44271ed1c26b8ce85ca3228fd2ffdb75468ab01979309d61"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/matcher@0.12.19",
+      "name": "matcher",
+      "version": "0.12.19",
+      "purl": "pkg:pub/matcher@0.12.19",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "dc0b7dc7651697ea4ff3e69ef44b0407ea32c487a39fff6a4004fa585e901861"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/material_color_utilities@0.13.0",
+      "name": "material_color_utilities",
+      "version": "0.13.0",
+      "purl": "pkg:pub/material_color_utilities@0.13.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "9c337007e82b1889149c82ed242ed1cb24a66044e30979c44912381e9be4c48b"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/meta@1.18.0",
+      "name": "meta",
+      "version": "1.18.0",
+      "purl": "pkg:pub/meta@1.18.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1741988757a65eb6b36abe716829688cf01910bbf91c34354ff7ec1c3de2b349"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/mime@2.0.0",
+      "name": "mime",
+      "version": "2.0.0",
+      "purl": "pkg:pub/mime@2.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "41a20518f0cb1256669420fdba0cd90d21561e560ac240f26ef8322e45bb7ed6"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/native_toolchain_c@0.19.2",
+      "name": "native_toolchain_c",
+      "version": "0.19.2",
+      "purl": "pkg:pub/native_toolchain_c@0.19.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f9c168717100ae6d9fee9ffb0be379bf1f8b26b0f6bcbd4fdddcd931993a6a72"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/objective_c@9.5.0",
+      "name": "objective_c",
+      "version": "9.5.0",
+      "purl": "pkg:pub/objective_c@9.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b7fb95a6d9a4f009edd63dc5ac69f07420b23a16161c6dd8660290b59c602e8e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/package_config@2.2.0",
+      "name": "package_config",
+      "version": "2.2.0",
+      "purl": "pkg:pub/package_config@2.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f096c55ebb7deb7e384101542bfba8c52696c1b56fca2eb62827989ef2353bbc"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path@1.9.1",
+      "name": "path",
+      "version": "1.9.1",
+      "purl": "pkg:pub/path@1.9.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "75cca69d1490965be98c73ceaea117e8a04dd21217b37b292c9ddbec0d955bc5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct main"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider@2.1.6",
+      "name": "path_provider",
+      "version": "2.1.6",
+      "purl": "pkg:pub/path_provider@2.1.6",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct main"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_android@2.3.1",
+      "name": "path_provider_android",
+      "version": "2.3.1",
+      "purl": "pkg:pub/path_provider_android@2.3.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "69cbd515a62b94d32a7944f086b2f82b4ac40a1d45bebfc00813a430ab2dabcd"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_foundation@2.6.0",
+      "name": "path_provider_foundation",
+      "version": "2.6.0",
+      "purl": "pkg:pub/path_provider_foundation@2.6.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2a376b7d6392d80cd3705782d2caa734ca4727776db0b6ec36ef3f1855197699"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_linux@2.2.2",
+      "name": "path_provider_linux",
+      "version": "2.2.2",
+      "purl": "pkg:pub/path_provider_linux@2.2.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "58c2005f147315b11e9b4a7bc889cd5203e250cba8e3f012dae259b4972b5c16"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_platform_interface@2.1.3",
+      "name": "path_provider_platform_interface",
+      "version": "2.1.3",
+      "purl": "pkg:pub/path_provider_platform_interface@2.1.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "484838772624c3a4b94f1e44a3e19897fee738f2d5c4ce448443b0417f7c9dda"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_windows@2.3.0",
+      "name": "path_provider_windows",
+      "version": "2.3.0",
+      "purl": "pkg:pub/path_provider_windows@2.3.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bd6f00dbd873bfb70d0761682da2b3a2c2fccc2b9e84c495821639601d81afe7"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/platform@3.1.6",
+      "name": "platform",
+      "version": "3.1.6",
+      "purl": "pkg:pub/platform@3.1.6",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5d6b1b0036a5f331ebc77c850ebc8506cbc1e9416c27e59b439f917a902a4984"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/plugin_platform_interface@2.1.8",
+      "name": "plugin_platform_interface",
+      "version": "2.1.8",
+      "purl": "pkg:pub/plugin_platform_interface@2.1.8",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4820fbfdb9478b1ebae27888254d445073732dae3d6ea81f0b7e06d5dedc3f02"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/pool@1.5.2",
+      "name": "pool",
+      "version": "1.5.2",
+      "purl": "pkg:pub/pool@1.5.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "978783255c543aa3586a1b3c21f6e9d720eb315376a915872c61ef8b5c20177d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/process@5.0.5",
+      "name": "process",
+      "version": "5.0.5",
+      "purl": "pkg:pub/process@5.0.5",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c6248e4526673988586e8c00bb22a49210c258dc91df5227d5da9748ecf79744"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/pub_semver@2.2.0",
+      "name": "pub_semver",
+      "version": "2.2.0",
+      "purl": "pkg:pub/pub_semver@2.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5bfcf68ca79ef689f8990d1160781b4bad40a3bd5e5218ad4076ddb7f4081585"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/pubspec_parse@1.5.0",
+      "name": "pubspec_parse",
+      "version": "1.5.0",
+      "purl": "pkg:pub/pubspec_parse@1.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0560ba233314abbed0a48a2956f7f022cce7c3e1e73df540277da7544cad4082"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/recase@4.1.0",
+      "name": "recase",
+      "version": "4.1.0",
+      "purl": "pkg:pub/recase@4.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e4eb4ec2dcdee52dcf99cb4ceabaffc631d7424ee55e56f280bc039737f89213"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/record_use@0.6.0",
+      "name": "record_use",
+      "version": "0.6.0",
+      "purl": "pkg:pub/record_use@0.6.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2551bd8eecfe95d14ae75f6021ad0248be5c27f138c2ec12fcb52b500b3ba1ed"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/shelf@1.4.2",
+      "name": "shelf",
+      "version": "1.4.2",
+      "purl": "pkg:pub/shelf@1.4.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e7dd780a7ffb623c57850b33f43309312fc863fb6aa3d276a754bb299839ef12"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/shelf_web_socket@3.0.0",
+      "name": "shelf_web_socket",
+      "version": "3.0.0",
+      "purl": "pkg:pub/shelf_web_socket@3.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3632775c8e90d6c9712f883e633716432a27758216dfb61bd86a8321c0580925"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/sky_engine@0.0.0",
+      "name": "sky_engine",
+      "version": "0.0.0",
+      "purl": "pkg:pub/sky_engine@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/source_gen@4.2.4",
+      "name": "source_gen",
+      "version": "4.2.4",
+      "purl": "pkg:pub/source_gen@4.2.4",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a603f1fb984a7391ae5978d1b92bfaaa08b350dca5c825256f925818f7943bf5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/source_span@1.10.2",
+      "name": "source_span",
+      "version": "1.10.2",
+      "purl": "pkg:pub/source_span@1.10.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "56a02f1f4cd1a2d96303c0144c93bd6d909eea6bee6bf5a0e0b685edbd4c47ab"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/sqlite3@3.5.0",
+      "name": "sqlite3",
+      "version": "3.5.0",
+      "purl": "pkg:pub/sqlite3@3.5.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c73fd75df1332d76a6257f4823ae4df9c791f522b97e4a60cbcad214de1becf4"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct main"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/sqlparser@0.45.0",
+      "name": "sqlparser",
+      "version": "0.45.0",
+      "purl": "pkg:pub/sqlparser@0.45.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "772bb2f6f5bce0631a60f26b57d6e8882e1105c22345b05c163ee6ee5d7ba32d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/stack_trace@1.12.1",
+      "name": "stack_trace",
+      "version": "1.12.1",
+      "purl": "pkg:pub/stack_trace@1.12.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8b27215b45d22309b5cddda1aa2b19bdfec9df0e765f2de506401c071d38d1b1"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/stream_channel@2.1.4",
+      "name": "stream_channel",
+      "version": "2.1.4",
+      "purl": "pkg:pub/stream_channel@2.1.4",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "969e04c80b8bcdf826f8f16579c7b14d780458bd97f56d107d3950fdbeef059d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/stream_transform@2.1.1",
+      "name": "stream_transform",
+      "version": "2.1.1",
+      "purl": "pkg:pub/stream_transform@2.1.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ad47125e588cfd37a9a7f86c7d6356dde8dfe89d071d293f80ca9e9273a33871"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/string_scanner@1.4.1",
+      "name": "string_scanner",
+      "version": "1.4.1",
+      "purl": "pkg:pub/string_scanner@1.4.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "921cd31725b72fe181906c6a94d987c78e3b98c2e205b397ea399d4054872b43"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/sync_http@0.3.1",
+      "name": "sync_http",
+      "version": "0.3.1",
+      "purl": "pkg:pub/sync_http@0.3.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7f0cd72eca000d2e026bcd6f990b81d0ca06022ef4e32fb257b30d3d1014a961"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/term_glyph@1.2.2",
+      "name": "term_glyph",
+      "version": "1.2.2",
+      "purl": "pkg:pub/term_glyph@1.2.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7f554798625ea768a7518313e58f83891c7f5024f88e46e7182a4558850a4b8e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/test_api@0.7.11",
+      "name": "test_api",
+      "version": "0.7.11",
+      "purl": "pkg:pub/test_api@0.7.11",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "949a932224383300f01be9221c39180316445ecb8e7547f70a41a35bf421fb9e"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/typed_data@1.4.0",
+      "name": "typed_data",
+      "version": "1.4.0",
+      "purl": "pkg:pub/typed_data@1.4.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "f9049c039ebfeb4cf7a7104a675823cd72dba8297f264b6637062516699fa006"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/vector_math@2.2.0",
+      "name": "vector_math",
+      "version": "2.2.0",
+      "purl": "pkg:pub/vector_math@2.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d530bd74fea330e6e364cda7a85019c434070188383e1cd8d9777ee586914c5b"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/vm_service@15.2.0",
+      "name": "vm_service",
+      "version": "15.2.0",
+      "purl": "pkg:pub/vm_service@15.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0016aef94fc66495ac78af5859181e3f3bf2026bd8eecc72b9565601e19ab360"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/watcher@1.2.1",
+      "name": "watcher",
+      "version": "1.2.1",
+      "purl": "pkg:pub/watcher@1.2.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1398c9f081a753f9226febe8900fce8f7d0a67163334e1c94a2438339d79d635"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/web@1.1.1",
+      "name": "web",
+      "version": "1.1.1",
+      "purl": "pkg:pub/web@1.1.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/web_socket@1.0.1",
+      "name": "web_socket",
+      "version": "1.0.1",
+      "purl": "pkg:pub/web_socket@1.0.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "34d64019aa8e36bf9842ac014bb5d2f5586ca73df5e4d9bf5c936975cae6982c"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/web_socket_channel@3.0.3",
+      "name": "web_socket_channel",
+      "version": "3.0.3",
+      "purl": "pkg:pub/web_socket_channel@3.0.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d645757fb0f4773d602444000a8131ff5d48c9e47adfe9772652dd1a4f2d45c8"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/webdriver@3.1.0",
+      "name": "webdriver",
+      "version": "3.1.0",
+      "purl": "pkg:pub/webdriver@3.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2f3a14ca026957870cfd9c635b83507e0e51d8091568e90129fbf805aba7cade"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/win32@6.3.0",
+      "name": "win32",
+      "version": "6.3.0",
+      "purl": "pkg:pub/win32@6.3.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ba6f4bba816c8d7e3c1580e170f3786d216951cc6b94babc3b814c08d2cb2738"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/xdg_directories@1.1.0",
+      "name": "xdg_directories",
+      "version": "1.1.0",
+      "purl": "pkg:pub/xdg_directories@1.1.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7a3f37b05d989967cdddcbb571f1ea834867ae2faa29725fd085180e0883aa15"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "transitive"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/yaml@3.1.3",
+      "name": "yaml",
+      "version": "3.1.3",
+      "purl": "pkg:pub/yaml@3.1.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b9da305ac7c39faa3f030eccd175340f968459dae4af175130b3fc47e40d76ce"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:ecosystem",
+          "value": "Dart/pub"
+        },
+        {
+          "name": "traderpro:dependency-class",
+          "value": "direct dev"
+        },
+        {
+          "name": "traderpro:lock-source",
+          "value": "hosted"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:generic/traderpro-7c2b1-storage-evidence@1",
+      "dependsOn": [
+        "native:sqlcipher:android:arm64-v8a",
+        "native:sqlcipher:android:armeabi-v7a",
+        "native:sqlcipher:android:x86_64",
+        "native:sqlite3mc:android:arm64-v8a",
+        "native:sqlite3mc:android:armeabi-v7a",
+        "native:sqlite3mc:android:x86_64",
+        "pkg:generic/openssl@3.6.2",
+        "pkg:generic/sqlcipher@4.17.0",
+        "pkg:generic/sqlite3mc@2.3.6",
+        "pkg:generic/sqlite@3.53.3",
+        "pkg:maven/androidx.activity/activity@1.8.1",
+        "pkg:maven/androidx.annotation/annotation-experimental@1.4.0",
+        "pkg:maven/androidx.annotation/annotation-jvm@1.8.2",
+        "pkg:maven/androidx.annotation/annotation@1.8.1",
+        "pkg:maven/androidx.arch.core/core-common@2.2.0",
+        "pkg:maven/androidx.arch.core/core-runtime@2.2.0",
+        "pkg:maven/androidx.collection/collection@1.1.0",
+        "pkg:maven/androidx.concurrent/concurrent-futures@1.1.0",
+        "pkg:maven/androidx.core/core-ktx@1.13.1",
+        "pkg:maven/androidx.core/core@1.13.1",
+        "pkg:maven/androidx.customview/customview@1.0.0",
+        "pkg:maven/androidx.exifinterface/exifinterface@1.4.1",
+        "pkg:maven/androidx.fragment/fragment@1.7.1",
+        "pkg:maven/androidx.interpolator/interpolator@1.0.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-common-java8@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-common@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-livedata-core-ktx@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-livedata-core@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-livedata@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-process@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-runtime@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-viewmodel-savedstate@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-viewmodel@2.7.0",
+        "pkg:maven/androidx.loader/loader@1.0.0",
+        "pkg:maven/androidx.profileinstaller/profileinstaller@1.3.1",
+        "pkg:maven/androidx.savedstate/savedstate@1.2.1",
+        "pkg:maven/androidx.startup/startup-runtime@1.1.1",
+        "pkg:maven/androidx.tracing/tracing@1.2.0",
+        "pkg:maven/androidx.versionedparcelable/versionedparcelable@1.1.1",
+        "pkg:maven/androidx.viewpager/viewpager@1.0.0",
+        "pkg:maven/androidx.window.extensions.core/core@1.0.0",
+        "pkg:maven/androidx.window/window-java@1.2.0",
+        "pkg:maven/androidx.window/window@1.2.0",
+        "pkg:maven/com.getkeepsafe.relinker/relinker@1.4.5",
+        "pkg:maven/com.google.code.findbugs/jsr305@3.0.2",
+        "pkg:maven/com.google.code.gson/gson@2.13.2",
+        "pkg:maven/com.google.crypto.tink/tink-android@1.21.0",
+        "pkg:maven/com.google.errorprone/error_prone_annotations@2.41.0",
+        "pkg:maven/com.google.guava/listenablefuture@1.0",
+        "pkg:maven/io.flutter/arm64_v8a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/io.flutter/armeabi_v7a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/io.flutter/flutter_embedding_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/io.flutter/x86_64_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-common@2.3.20",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk7@1.8.20",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk8@1.8.20",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.20",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-android@1.7.1",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-bom@1.7.1",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm@1.7.1",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.7.1",
+        "pkg:maven/org.jetbrains/annotations@23.0.0",
+        "pkg:maven/org.jspecify/jspecify@1.0.0",
+        "pkg:pub/_fe_analyzer_shared@100.0.0",
+        "pkg:pub/analyzer@13.0.0",
+        "pkg:pub/args@2.7.0",
+        "pkg:pub/async@2.13.1",
+        "pkg:pub/boolean_selector@2.1.2",
+        "pkg:pub/build@4.0.7",
+        "pkg:pub/build_config@1.3.2",
+        "pkg:pub/build_daemon@4.1.3",
+        "pkg:pub/build_runner@2.15.1",
+        "pkg:pub/built_collection@5.1.1",
+        "pkg:pub/built_value@8.12.6",
+        "pkg:pub/characters@1.4.1",
+        "pkg:pub/charcode@1.4.0",
+        "pkg:pub/checked_yaml@2.0.4",
+        "pkg:pub/cli_util@0.5.2",
+        "pkg:pub/clock@1.1.2",
+        "pkg:pub/code_assets@1.2.1",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/convert@3.1.2",
+        "pkg:pub/crypto@3.0.7",
+        "pkg:pub/dart_style@3.1.9",
+        "pkg:pub/drift@2.34.3",
+        "pkg:pub/drift_dev@2.34.5",
+        "pkg:pub/fake_async@1.3.3",
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/ffi_leak_tracker@0.1.2",
+        "pkg:pub/file@7.0.1",
+        "pkg:pub/fixnum@1.1.1",
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/flutter_driver@0.0.0",
+        "pkg:pub/flutter_lints@6.0.0",
+        "pkg:pub/flutter_secure_storage@10.3.1",
+        "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+        "pkg:pub/flutter_secure_storage_linux@3.0.1",
+        "pkg:pub/flutter_secure_storage_platform_interface@2.0.2",
+        "pkg:pub/flutter_secure_storage_web@2.1.1",
+        "pkg:pub/flutter_secure_storage_windows@4.2.2",
+        "pkg:pub/flutter_test@0.0.0",
+        "pkg:pub/flutter_web_plugins@0.0.0",
+        "pkg:pub/fuchsia_remote_debug_protocol@0.0.0",
+        "pkg:pub/glob@2.1.3",
+        "pkg:pub/graphs@2.3.2",
+        "pkg:pub/hooks@2.0.2",
+        "pkg:pub/http_multi_server@3.2.2",
+        "pkg:pub/http_parser@4.1.2",
+        "pkg:pub/integration_test@0.0.0",
+        "pkg:pub/io@1.0.5",
+        "pkg:pub/jni@1.0.3",
+        "pkg:pub/jni_flutter@1.0.2",
+        "pkg:pub/jni_util@1.0.0",
+        "pkg:pub/json_annotation@4.12.0",
+        "pkg:pub/leak_tracker@11.0.2",
+        "pkg:pub/leak_tracker_flutter_testing@3.0.10",
+        "pkg:pub/leak_tracker_testing@3.0.2",
+        "pkg:pub/lints@6.1.0",
+        "pkg:pub/logging@1.3.0",
+        "pkg:pub/matcher@0.12.19",
+        "pkg:pub/material_color_utilities@0.13.0",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/mime@2.0.0",
+        "pkg:pub/native_toolchain_c@0.19.2",
+        "pkg:pub/objective_c@9.5.0",
+        "pkg:pub/package_config@2.2.0",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/path_provider@2.1.6",
+        "pkg:pub/path_provider_android@2.3.1",
+        "pkg:pub/path_provider_foundation@2.6.0",
+        "pkg:pub/path_provider_linux@2.2.2",
+        "pkg:pub/path_provider_platform_interface@2.1.3",
+        "pkg:pub/path_provider_windows@2.3.0",
+        "pkg:pub/platform@3.1.6",
+        "pkg:pub/plugin_platform_interface@2.1.8",
+        "pkg:pub/pool@1.5.2",
+        "pkg:pub/process@5.0.5",
+        "pkg:pub/pub_semver@2.2.0",
+        "pkg:pub/pubspec_parse@1.5.0",
+        "pkg:pub/recase@4.1.0",
+        "pkg:pub/record_use@0.6.0",
+        "pkg:pub/shelf@1.4.2",
+        "pkg:pub/shelf_web_socket@3.0.0",
+        "pkg:pub/sky_engine@0.0.0",
+        "pkg:pub/source_gen@4.2.4",
+        "pkg:pub/source_span@1.10.2",
+        "pkg:pub/sqlite3@3.5.0",
+        "pkg:pub/sqlparser@0.45.0",
+        "pkg:pub/stack_trace@1.12.1",
+        "pkg:pub/stream_channel@2.1.4",
+        "pkg:pub/stream_transform@2.1.1",
+        "pkg:pub/string_scanner@1.4.1",
+        "pkg:pub/sync_http@0.3.1",
+        "pkg:pub/term_glyph@1.2.2",
+        "pkg:pub/test_api@0.7.11",
+        "pkg:pub/typed_data@1.4.0",
+        "pkg:pub/vector_math@2.2.0",
+        "pkg:pub/vm_service@15.2.0",
+        "pkg:pub/watcher@1.2.1",
+        "pkg:pub/web@1.1.1",
+        "pkg:pub/web_socket@1.0.1",
+        "pkg:pub/web_socket_channel@3.0.3",
+        "pkg:pub/webdriver@3.1.0",
+        "pkg:pub/win32@6.3.0",
+        "pkg:pub/xdg_directories@1.1.0",
+        "pkg:pub/yaml@3.1.3"
+      ]
+    }
+  ]
+}
