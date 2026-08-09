@@ -1,0 +1,2197 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-08T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "TraderPro Task 7C2B2 production SBOM generator",
+          "version": "1"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:pub/traderpro_agrisuite_mobile@1.0.0%2B1",
+      "group": "com.traderpro.agrisuite",
+      "name": "traderpro_agrisuite_mobile",
+      "version": "1.0.0+1",
+      "purl": "pkg:pub/traderpro_agrisuite_mobile@1.0.0%2B1"
+    },
+    "properties": [
+      {
+        "name": "traderpro:task",
+        "value": "7C2B2 secure commercial local foundation"
+      },
+      {
+        "name": "traderpro:production-abis",
+        "value": "armeabi-v7a,arm64-v8a"
+      },
+      {
+        "name": "traderpro:x86_64-policy",
+        "value": "emulator/test-only; excluded from production APKs"
+      },
+      {
+        "name": "traderpro:flutter-engine-revision",
+        "value": "a10d8ac38de835021c8d2f920dbf50a920ccc030"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "file",
+      "bom-ref": "native:sqlite3mc:android:arm64-v8a",
+      "name": "libsqlite3mc.so (arm64-v8a)",
+      "version": "2.3.6+sqlite-3.53.3",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3500da95ebda57b2a749cfaf74258d9bb7b94702f14e435505d302942d869403"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:abi",
+          "value": "arm64-v8a"
+        },
+        {
+          "name": "traderpro:size-bytes",
+          "value": "2043872"
+        },
+        {
+          "name": "traderpro:dynamic-dependencies",
+          "value": "libm.so,libdl.so,libc.so"
+        },
+        {
+          "name": "traderpro:stripped",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "bom-ref": "native:sqlite3mc:android:armeabi-v7a",
+      "name": "libsqlite3mc.so (armeabi-v7a)",
+      "version": "2.3.6+sqlite-3.53.3",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7e90f4263ae214925f945054a5ec514f5182ee3dedf2576c7bec1142f67040a6"
+        }
+      ],
+      "properties": [
+        {
+          "name": "traderpro:abi",
+          "value": "armeabi-v7a"
+        },
+        {
+          "name": "traderpro:size-bytes",
+          "value": "2037668"
+        },
+        {
+          "name": "traderpro:dynamic-dependencies",
+          "value": "libm.so,libdl.so,libc.so"
+        },
+        {
+          "name": "traderpro:stripped",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/sqlite3mc@2.3.6",
+      "name": "SQLite3 Multiple Ciphers",
+      "version": "2.3.6",
+      "scope": "required",
+      "purl": "pkg:generic/sqlite3mc@2.3.6",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://utelle.github.io/SQLite3MultipleCiphers/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/sqlite@3.53.3",
+      "name": "SQLite",
+      "version": "3.53.3",
+      "scope": "required",
+      "purl": "pkg:generic/sqlite@3.53.3",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://sqlite.org/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.activity/activity@1.8.1",
+      "group": "androidx.activity",
+      "name": "activity",
+      "version": "1.8.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.activity/activity@1.8.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.annotation/annotation-experimental@1.4.0",
+      "group": "androidx.annotation",
+      "name": "annotation-experimental",
+      "version": "1.4.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.annotation/annotation-experimental@1.4.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.annotation/annotation-jvm@1.8.2",
+      "group": "androidx.annotation",
+      "name": "annotation-jvm",
+      "version": "1.8.2",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.annotation/annotation-jvm@1.8.2",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.annotation/annotation@1.8.1",
+      "group": "androidx.annotation",
+      "name": "annotation",
+      "version": "1.8.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.annotation/annotation@1.8.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.arch.core/core-common@2.2.0",
+      "group": "androidx.arch.core",
+      "name": "core-common",
+      "version": "2.2.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.arch.core/core-common@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.arch.core/core-runtime@2.2.0",
+      "group": "androidx.arch.core",
+      "name": "core-runtime",
+      "version": "2.2.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.arch.core/core-runtime@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.collection/collection@1.1.0",
+      "group": "androidx.collection",
+      "name": "collection",
+      "version": "1.1.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.collection/collection@1.1.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.concurrent/concurrent-futures@1.1.0",
+      "group": "androidx.concurrent",
+      "name": "concurrent-futures",
+      "version": "1.1.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.concurrent/concurrent-futures@1.1.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.core/core-ktx@1.13.1",
+      "group": "androidx.core",
+      "name": "core-ktx",
+      "version": "1.13.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.core/core-ktx@1.13.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.core/core@1.13.1",
+      "group": "androidx.core",
+      "name": "core",
+      "version": "1.13.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.core/core@1.13.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.customview/customview@1.0.0",
+      "group": "androidx.customview",
+      "name": "customview",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.customview/customview@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.exifinterface/exifinterface@1.4.1",
+      "group": "androidx.exifinterface",
+      "name": "exifinterface",
+      "version": "1.4.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.exifinterface/exifinterface@1.4.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.fragment/fragment@1.7.1",
+      "group": "androidx.fragment",
+      "name": "fragment",
+      "version": "1.7.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.fragment/fragment@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.interpolator/interpolator@1.0.0",
+      "group": "androidx.interpolator",
+      "name": "interpolator",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.interpolator/interpolator@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-common-java8@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-common-java8",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-common-java8@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-common@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-common",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-common@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core-ktx@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core-ktx",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core-ktx@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-livedata-core@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-livedata@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-livedata@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-process@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-process",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-process@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-runtime@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-runtime",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-runtime@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel-savedstate@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-viewmodel-savedstate",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel-savedstate@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel@2.7.0",
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-viewmodel",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.lifecycle/lifecycle-viewmodel@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.loader/loader@1.0.0",
+      "group": "androidx.loader",
+      "name": "loader",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.loader/loader@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.profileinstaller/profileinstaller@1.3.1",
+      "group": "androidx.profileinstaller",
+      "name": "profileinstaller",
+      "version": "1.3.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.profileinstaller/profileinstaller@1.3.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.savedstate/savedstate@1.2.1",
+      "group": "androidx.savedstate",
+      "name": "savedstate",
+      "version": "1.2.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.savedstate/savedstate@1.2.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.startup/startup-runtime@1.1.1",
+      "group": "androidx.startup",
+      "name": "startup-runtime",
+      "version": "1.1.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.startup/startup-runtime@1.1.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.tracing/tracing@1.2.0",
+      "group": "androidx.tracing",
+      "name": "tracing",
+      "version": "1.2.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.tracing/tracing@1.2.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.versionedparcelable/versionedparcelable@1.1.1",
+      "group": "androidx.versionedparcelable",
+      "name": "versionedparcelable",
+      "version": "1.1.1",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.versionedparcelable/versionedparcelable@1.1.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.viewpager/viewpager@1.0.0",
+      "group": "androidx.viewpager",
+      "name": "viewpager",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.viewpager/viewpager@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.window.extensions.core/core@1.0.0",
+      "group": "androidx.window.extensions.core",
+      "name": "core",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.window.extensions.core/core@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.window/window-java@1.2.0",
+      "group": "androidx.window",
+      "name": "window-java",
+      "version": "1.2.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.window/window-java@1.2.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/androidx.window/window@1.2.0",
+      "group": "androidx.window",
+      "name": "window",
+      "version": "1.2.0",
+      "scope": "required",
+      "purl": "pkg:maven/androidx.window/window@1.2.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.getkeepsafe.relinker/relinker@1.4.5",
+      "group": "com.getkeepsafe.relinker",
+      "name": "relinker",
+      "version": "1.4.5",
+      "scope": "required",
+      "purl": "pkg:maven/com.getkeepsafe.relinker/relinker@1.4.5",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.code.findbugs/jsr305@3.0.2",
+      "group": "com.google.code.findbugs",
+      "name": "jsr305",
+      "version": "3.0.2",
+      "scope": "required",
+      "purl": "pkg:maven/com.google.code.findbugs/jsr305@3.0.2",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.code.gson/gson@2.13.2",
+      "group": "com.google.code.gson",
+      "name": "gson",
+      "version": "2.13.2",
+      "scope": "required",
+      "purl": "pkg:maven/com.google.code.gson/gson@2.13.2",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.crypto.tink/tink-android@1.21.0",
+      "group": "com.google.crypto.tink",
+      "name": "tink-android",
+      "version": "1.21.0",
+      "scope": "required",
+      "purl": "pkg:maven/com.google.crypto.tink/tink-android@1.21.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.errorprone/error_prone_annotations@2.41.0",
+      "group": "com.google.errorprone",
+      "name": "error_prone_annotations",
+      "version": "2.41.0",
+      "scope": "required",
+      "purl": "pkg:maven/com.google.errorprone/error_prone_annotations@2.41.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.google.guava/listenablefuture@1.0",
+      "group": "com.google.guava",
+      "name": "listenablefuture",
+      "version": "1.0",
+      "scope": "required",
+      "purl": "pkg:maven/com.google.guava/listenablefuture@1.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/arm64_v8a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "arm64_v8a_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "scope": "required",
+      "purl": "pkg:maven/io.flutter/arm64_v8a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/armeabi_v7a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "armeabi_v7a_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "scope": "required",
+      "purl": "pkg:maven/io.flutter/armeabi_v7a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/io.flutter/flutter_embedding_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "group": "io.flutter",
+      "name": "flutter_embedding_release",
+      "version": "1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "scope": "required",
+      "purl": "pkg:maven/io.flutter/flutter_embedding_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-common@2.3.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib-common",
+      "version": "2.3.20",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-common@2.3.20",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk7@1.8.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib-jdk7",
+      "version": "1.8.20",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk7@1.8.20",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk8@1.8.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib-jdk8",
+      "version": "1.8.20",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk8@1.8.20",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.20",
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib",
+      "version": "2.3.20",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.20",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-android@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-android",
+      "version": "1.7.1",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-android@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-bom@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-bom",
+      "version": "1.7.1",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-bom@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-core-jvm",
+      "version": "1.7.1",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.7.1",
+      "group": "org.jetbrains.kotlinx",
+      "name": "kotlinx-coroutines-core",
+      "version": "1.7.1",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.7.1",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jetbrains/annotations@23.0.0",
+      "group": "org.jetbrains",
+      "name": "annotations",
+      "version": "23.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/org.jetbrains/annotations@23.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.jspecify/jspecify@1.0.0",
+      "group": "org.jspecify",
+      "name": "jspecify",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:maven/org.jspecify/jspecify@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:gradle-configuration",
+          "value": "releaseRuntimeClasspath"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/args@2.7.0",
+      "name": "args",
+      "version": "2.7.0",
+      "scope": "required",
+      "purl": "pkg:pub/args@2.7.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/async@2.13.1",
+      "name": "async",
+      "version": "2.13.1",
+      "scope": "required",
+      "purl": "pkg:pub/async@2.13.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/characters@1.4.1",
+      "name": "characters",
+      "version": "1.4.1",
+      "scope": "required",
+      "purl": "pkg:pub/characters@1.4.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/code_assets@1.2.1",
+      "name": "code_assets",
+      "version": "1.2.1",
+      "scope": "required",
+      "purl": "pkg:pub/code_assets@1.2.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/collection@1.19.1",
+      "name": "collection",
+      "version": "1.19.1",
+      "scope": "required",
+      "purl": "pkg:pub/collection@1.19.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/convert@3.1.2",
+      "name": "convert",
+      "version": "3.1.2",
+      "scope": "required",
+      "purl": "pkg:pub/convert@3.1.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/crypto@3.0.7",
+      "name": "crypto",
+      "version": "3.0.7",
+      "scope": "required",
+      "purl": "pkg:pub/crypto@3.0.7",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/drift@2.34.3",
+      "name": "drift",
+      "version": "2.34.3",
+      "scope": "required",
+      "purl": "pkg:pub/drift@2.34.3",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/ffi@2.2.0",
+      "name": "ffi",
+      "version": "2.2.0",
+      "scope": "required",
+      "purl": "pkg:pub/ffi@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/ffi_leak_tracker@0.1.2",
+      "name": "ffi_leak_tracker",
+      "version": "0.1.2",
+      "scope": "required",
+      "purl": "pkg:pub/ffi_leak_tracker@0.1.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/file@7.0.1",
+      "name": "file",
+      "version": "7.0.1",
+      "scope": "required",
+      "purl": "pkg:pub/file@7.0.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/fixnum@1.1.1",
+      "name": "fixnum",
+      "version": "1.1.1",
+      "scope": "required",
+      "purl": "pkg:pub/fixnum@1.1.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter@0.0.0",
+      "name": "flutter",
+      "version": "0.0.0",
+      "scope": "required",
+      "purl": "pkg:pub/flutter@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage@10.3.1",
+      "name": "flutter_secure_storage",
+      "version": "10.3.1",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_secure_storage@10.3.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+      "name": "flutter_secure_storage_darwin",
+      "version": "0.3.2",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_linux@3.0.2",
+      "name": "flutter_secure_storage_linux",
+      "version": "3.0.2",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_secure_storage_linux@3.0.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_platform_interface@2.0.3",
+      "name": "flutter_secure_storage_platform_interface",
+      "version": "2.0.3",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_secure_storage_platform_interface@2.0.3",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_web@2.1.1",
+      "name": "flutter_secure_storage_web",
+      "version": "2.1.1",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_secure_storage_web@2.1.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_secure_storage_windows@4.2.2",
+      "name": "flutter_secure_storage_windows",
+      "version": "4.2.2",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_secure_storage_windows@4.2.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/flutter_web_plugins@0.0.0",
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "scope": "required",
+      "purl": "pkg:pub/flutter_web_plugins@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/glob@2.1.3",
+      "name": "glob",
+      "version": "2.1.3",
+      "scope": "required",
+      "purl": "pkg:pub/glob@2.1.3",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/hooks@2.0.2",
+      "name": "hooks",
+      "version": "2.0.2",
+      "scope": "required",
+      "purl": "pkg:pub/hooks@2.0.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/jni@1.0.2",
+      "name": "jni",
+      "version": "1.0.2",
+      "scope": "required",
+      "purl": "pkg:pub/jni@1.0.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/jni_flutter@1.0.2",
+      "name": "jni_flutter",
+      "version": "1.0.2",
+      "scope": "required",
+      "purl": "pkg:pub/jni_flutter@1.0.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/jni_util@1.0.0",
+      "name": "jni_util",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:pub/jni_util@1.0.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/logging@1.3.0",
+      "name": "logging",
+      "version": "1.3.0",
+      "scope": "required",
+      "purl": "pkg:pub/logging@1.3.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/material_color_utilities@0.13.0",
+      "name": "material_color_utilities",
+      "version": "0.13.0",
+      "scope": "required",
+      "purl": "pkg:pub/material_color_utilities@0.13.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/meta@1.18.0",
+      "name": "meta",
+      "version": "1.18.0",
+      "scope": "required",
+      "purl": "pkg:pub/meta@1.18.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/native_toolchain_c@0.19.2",
+      "name": "native_toolchain_c",
+      "version": "0.19.2",
+      "scope": "required",
+      "purl": "pkg:pub/native_toolchain_c@0.19.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/objective_c@9.5.0",
+      "name": "objective_c",
+      "version": "9.5.0",
+      "scope": "required",
+      "purl": "pkg:pub/objective_c@9.5.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/package_config@2.2.0",
+      "name": "package_config",
+      "version": "2.2.0",
+      "scope": "required",
+      "purl": "pkg:pub/package_config@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path@1.9.1",
+      "name": "path",
+      "version": "1.9.1",
+      "scope": "required",
+      "purl": "pkg:pub/path@1.9.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider@2.1.6",
+      "name": "path_provider",
+      "version": "2.1.6",
+      "scope": "required",
+      "purl": "pkg:pub/path_provider@2.1.6",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_android@2.3.1",
+      "name": "path_provider_android",
+      "version": "2.3.1",
+      "scope": "required",
+      "purl": "pkg:pub/path_provider_android@2.3.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_foundation@2.6.0",
+      "name": "path_provider_foundation",
+      "version": "2.6.0",
+      "scope": "required",
+      "purl": "pkg:pub/path_provider_foundation@2.6.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_linux@2.2.2",
+      "name": "path_provider_linux",
+      "version": "2.2.2",
+      "scope": "required",
+      "purl": "pkg:pub/path_provider_linux@2.2.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_platform_interface@2.1.3",
+      "name": "path_provider_platform_interface",
+      "version": "2.1.3",
+      "scope": "required",
+      "purl": "pkg:pub/path_provider_platform_interface@2.1.3",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/path_provider_windows@2.3.0",
+      "name": "path_provider_windows",
+      "version": "2.3.0",
+      "scope": "required",
+      "purl": "pkg:pub/path_provider_windows@2.3.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/platform@3.1.6",
+      "name": "platform",
+      "version": "3.1.6",
+      "scope": "required",
+      "purl": "pkg:pub/platform@3.1.6",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/plugin_platform_interface@2.1.8",
+      "name": "plugin_platform_interface",
+      "version": "2.1.8",
+      "scope": "required",
+      "purl": "pkg:pub/plugin_platform_interface@2.1.8",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/pub_semver@2.2.0",
+      "name": "pub_semver",
+      "version": "2.2.0",
+      "scope": "required",
+      "purl": "pkg:pub/pub_semver@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/record_use@0.6.0",
+      "name": "record_use",
+      "version": "0.6.0",
+      "scope": "required",
+      "purl": "pkg:pub/record_use@0.6.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/sky_engine@0.0.0",
+      "name": "sky_engine",
+      "version": "0.0.0",
+      "scope": "required",
+      "purl": "pkg:pub/sky_engine@0.0.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "sdk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/source_span@1.10.2",
+      "name": "source_span",
+      "version": "1.10.2",
+      "scope": "required",
+      "purl": "pkg:pub/source_span@1.10.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/sqlite3@3.5.0",
+      "name": "sqlite3",
+      "version": "3.5.0",
+      "scope": "required",
+      "purl": "pkg:pub/sqlite3@3.5.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/stack_trace@1.12.1",
+      "name": "stack_trace",
+      "version": "1.12.1",
+      "scope": "required",
+      "purl": "pkg:pub/stack_trace@1.12.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/stream_channel@2.1.4",
+      "name": "stream_channel",
+      "version": "2.1.4",
+      "scope": "required",
+      "purl": "pkg:pub/stream_channel@2.1.4",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/string_scanner@1.4.1",
+      "name": "string_scanner",
+      "version": "1.4.1",
+      "scope": "required",
+      "purl": "pkg:pub/string_scanner@1.4.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/term_glyph@1.2.2",
+      "name": "term_glyph",
+      "version": "1.2.2",
+      "scope": "required",
+      "purl": "pkg:pub/term_glyph@1.2.2",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/typed_data@1.4.0",
+      "name": "typed_data",
+      "version": "1.4.0",
+      "scope": "required",
+      "purl": "pkg:pub/typed_data@1.4.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/uuid@4.6.0",
+      "name": "uuid",
+      "version": "4.6.0",
+      "scope": "required",
+      "purl": "pkg:pub/uuid@4.6.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/vector_math@2.2.0",
+      "name": "vector_math",
+      "version": "2.2.0",
+      "scope": "required",
+      "purl": "pkg:pub/vector_math@2.2.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/web@1.1.1",
+      "name": "web",
+      "version": "1.1.1",
+      "scope": "required",
+      "purl": "pkg:pub/web@1.1.1",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/win32@6.4.0",
+      "name": "win32",
+      "version": "6.4.0",
+      "scope": "required",
+      "purl": "pkg:pub/win32@6.4.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/xdg_directories@1.1.0",
+      "name": "xdg_directories",
+      "version": "1.1.0",
+      "scope": "required",
+      "purl": "pkg:pub/xdg_directories@1.1.0",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pub/yaml@3.1.3",
+      "name": "yaml",
+      "version": "3.1.3",
+      "scope": "required",
+      "purl": "pkg:pub/yaml@3.1.3",
+      "properties": [
+        {
+          "name": "traderpro:pub-source",
+          "value": "hosted"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pub/traderpro_agrisuite_mobile@1.0.0%2B1",
+      "dependsOn": [
+        "native:sqlite3mc:android:arm64-v8a",
+        "native:sqlite3mc:android:armeabi-v7a",
+        "pkg:generic/sqlite3mc@2.3.6",
+        "pkg:generic/sqlite@3.53.3",
+        "pkg:maven/androidx.activity/activity@1.8.1",
+        "pkg:maven/androidx.annotation/annotation-experimental@1.4.0",
+        "pkg:maven/androidx.annotation/annotation-jvm@1.8.2",
+        "pkg:maven/androidx.annotation/annotation@1.8.1",
+        "pkg:maven/androidx.arch.core/core-common@2.2.0",
+        "pkg:maven/androidx.arch.core/core-runtime@2.2.0",
+        "pkg:maven/androidx.collection/collection@1.1.0",
+        "pkg:maven/androidx.concurrent/concurrent-futures@1.1.0",
+        "pkg:maven/androidx.core/core-ktx@1.13.1",
+        "pkg:maven/androidx.core/core@1.13.1",
+        "pkg:maven/androidx.customview/customview@1.0.0",
+        "pkg:maven/androidx.exifinterface/exifinterface@1.4.1",
+        "pkg:maven/androidx.fragment/fragment@1.7.1",
+        "pkg:maven/androidx.interpolator/interpolator@1.0.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-common-java8@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-common@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-livedata-core-ktx@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-livedata-core@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-livedata@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-process@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-runtime@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-viewmodel-savedstate@2.7.0",
+        "pkg:maven/androidx.lifecycle/lifecycle-viewmodel@2.7.0",
+        "pkg:maven/androidx.loader/loader@1.0.0",
+        "pkg:maven/androidx.profileinstaller/profileinstaller@1.3.1",
+        "pkg:maven/androidx.savedstate/savedstate@1.2.1",
+        "pkg:maven/androidx.startup/startup-runtime@1.1.1",
+        "pkg:maven/androidx.tracing/tracing@1.2.0",
+        "pkg:maven/androidx.versionedparcelable/versionedparcelable@1.1.1",
+        "pkg:maven/androidx.viewpager/viewpager@1.0.0",
+        "pkg:maven/androidx.window.extensions.core/core@1.0.0",
+        "pkg:maven/androidx.window/window-java@1.2.0",
+        "pkg:maven/androidx.window/window@1.2.0",
+        "pkg:maven/com.getkeepsafe.relinker/relinker@1.4.5",
+        "pkg:maven/com.google.code.findbugs/jsr305@3.0.2",
+        "pkg:maven/com.google.code.gson/gson@2.13.2",
+        "pkg:maven/com.google.crypto.tink/tink-android@1.21.0",
+        "pkg:maven/com.google.errorprone/error_prone_annotations@2.41.0",
+        "pkg:maven/com.google.guava/listenablefuture@1.0",
+        "pkg:maven/io.flutter/arm64_v8a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/io.flutter/armeabi_v7a_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/io.flutter/flutter_embedding_release@1.0.0-a10d8ac38de835021c8d2f920dbf50a920ccc030",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-common@2.3.20",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk7@1.8.20",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib-jdk8@1.8.20",
+        "pkg:maven/org.jetbrains.kotlin/kotlin-stdlib@2.3.20",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-android@1.7.1",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-bom@1.7.1",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm@1.7.1",
+        "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.7.1",
+        "pkg:maven/org.jetbrains/annotations@23.0.0",
+        "pkg:maven/org.jspecify/jspecify@1.0.0",
+        "pkg:pub/crypto@3.0.7",
+        "pkg:pub/drift@2.34.3",
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/flutter_secure_storage@10.3.1",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/path_provider@2.1.6",
+        "pkg:pub/sqlite3@3.5.0",
+        "pkg:pub/uuid@4.6.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/args@2.7.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/async@2.13.1",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/meta@1.18.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/characters@1.4.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/code_assets@1.2.1",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/hooks@2.0.2"
+      ]
+    },
+    {
+      "ref": "pkg:pub/collection@1.19.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/convert@3.1.2",
+      "dependsOn": [
+        "pkg:pub/typed_data@1.4.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/crypto@3.0.7",
+      "dependsOn": [
+        "pkg:pub/typed_data@1.4.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/drift@2.34.3",
+      "dependsOn": [
+        "pkg:pub/async@2.13.1",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/convert@3.1.2",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/sqlite3@3.5.0",
+        "pkg:pub/stack_trace@1.12.1",
+        "pkg:pub/stream_channel@2.1.4",
+        "pkg:pub/web@1.1.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/ffi@2.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/ffi_leak_tracker@0.1.2",
+      "dependsOn": [
+        "pkg:pub/ffi@2.2.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/file@7.0.1",
+      "dependsOn": [
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/path@1.9.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/fixnum@1.1.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/flutter@0.0.0",
+      "dependsOn": [
+        "pkg:pub/characters@1.4.1",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/material_color_utilities@0.13.0",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/sky_engine@0.0.0",
+        "pkg:pub/vector_math@2.2.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_secure_storage@10.3.1",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+        "pkg:pub/flutter_secure_storage_linux@3.0.2",
+        "pkg:pub/flutter_secure_storage_platform_interface@2.0.3",
+        "pkg:pub/flutter_secure_storage_web@2.1.1",
+        "pkg:pub/flutter_secure_storage_windows@4.2.2",
+        "pkg:pub/meta@1.18.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_secure_storage_darwin@0.3.2",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/plugin_platform_interface@2.1.8"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_secure_storage_linux@3.0.2",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/flutter_secure_storage_platform_interface@2.0.3"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_secure_storage_platform_interface@2.0.3",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/plugin_platform_interface@2.1.8"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_secure_storage_web@2.1.1",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/flutter_secure_storage_platform_interface@2.0.3",
+        "pkg:pub/flutter_web_plugins@0.0.0",
+        "pkg:pub/web@1.1.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_secure_storage_windows@4.2.2",
+      "dependsOn": [
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/flutter_secure_storage_platform_interface@2.0.3",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/path_provider@2.1.6",
+        "pkg:pub/path_provider_platform_interface@2.1.3",
+        "pkg:pub/win32@6.4.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/flutter_web_plugins@0.0.0",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/glob@2.1.3",
+      "dependsOn": [
+        "pkg:pub/async@2.13.1",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/file@7.0.1",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/string_scanner@1.4.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/hooks@2.0.2",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/crypto@3.0.7",
+        "pkg:pub/logging@1.3.0",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/pub_semver@2.2.0",
+        "pkg:pub/record_use@0.6.0",
+        "pkg:pub/yaml@3.1.3"
+      ]
+    },
+    {
+      "ref": "pkg:pub/jni@1.0.2",
+      "dependsOn": [
+        "pkg:pub/args@2.7.0",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/jni_util@1.0.0",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/package_config@2.2.0",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/plugin_platform_interface@2.1.8"
+      ]
+    },
+    {
+      "ref": "pkg:pub/jni_flutter@1.0.2",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/jni@1.0.2"
+      ]
+    },
+    {
+      "ref": "pkg:pub/jni_util@1.0.0",
+      "dependsOn": [
+        "pkg:pub/path@1.9.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/logging@1.3.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/material_color_utilities@0.13.0",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/meta@1.18.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/native_toolchain_c@0.19.2",
+      "dependsOn": [
+        "pkg:pub/code_assets@1.2.1",
+        "pkg:pub/glob@2.1.3",
+        "pkg:pub/hooks@2.0.2",
+        "pkg:pub/logging@1.3.0",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/pub_semver@2.2.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/objective_c@9.5.0",
+      "dependsOn": [
+        "pkg:pub/code_assets@1.2.1",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/hooks@2.0.2",
+        "pkg:pub/logging@1.3.0",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/pub_semver@2.2.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/package_config@2.2.0",
+      "dependsOn": [
+        "pkg:pub/path@1.9.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/path@1.9.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/path_provider@2.1.6",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/path_provider_android@2.3.1",
+        "pkg:pub/path_provider_foundation@2.6.0",
+        "pkg:pub/path_provider_linux@2.2.2",
+        "pkg:pub/path_provider_platform_interface@2.1.3",
+        "pkg:pub/path_provider_windows@2.3.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/path_provider_android@2.3.1",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/jni@1.0.2",
+        "pkg:pub/jni_flutter@1.0.2",
+        "pkg:pub/path_provider_platform_interface@2.1.3"
+      ]
+    },
+    {
+      "ref": "pkg:pub/path_provider_foundation@2.6.0",
+      "dependsOn": [
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/objective_c@9.5.0",
+        "pkg:pub/path_provider_platform_interface@2.1.3"
+      ]
+    },
+    {
+      "ref": "pkg:pub/path_provider_linux@2.2.2",
+      "dependsOn": [
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/path_provider_platform_interface@2.1.3",
+        "pkg:pub/xdg_directories@1.1.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/path_provider_platform_interface@2.1.3",
+      "dependsOn": [
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/platform@3.1.6",
+        "pkg:pub/plugin_platform_interface@2.1.8"
+      ]
+    },
+    {
+      "ref": "pkg:pub/path_provider_windows@2.3.0",
+      "dependsOn": [
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/flutter@0.0.0",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/path_provider_platform_interface@2.1.3"
+      ]
+    },
+    {
+      "ref": "pkg:pub/platform@3.1.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/plugin_platform_interface@2.1.8",
+      "dependsOn": [
+        "pkg:pub/meta@1.18.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/pub_semver@2.2.0",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/record_use@0.6.0",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/pub_semver@2.2.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/sky_engine@0.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/source_span@1.10.2",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/term_glyph@1.2.2"
+      ]
+    },
+    {
+      "ref": "pkg:pub/sqlite3@3.5.0",
+      "dependsOn": [
+        "pkg:pub/code_assets@1.2.1",
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/crypto@3.0.7",
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/hooks@2.0.2",
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/native_toolchain_c@0.19.2",
+        "pkg:pub/path@1.9.1",
+        "pkg:pub/typed_data@1.4.0",
+        "pkg:pub/web@1.1.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/stack_trace@1.12.1",
+      "dependsOn": [
+        "pkg:pub/path@1.9.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/stream_channel@2.1.4",
+      "dependsOn": [
+        "pkg:pub/async@2.13.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/string_scanner@1.4.1",
+      "dependsOn": [
+        "pkg:pub/source_span@1.10.2"
+      ]
+    },
+    {
+      "ref": "pkg:pub/term_glyph@1.2.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/typed_data@1.4.0",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/uuid@4.6.0",
+      "dependsOn": [
+        "pkg:pub/crypto@3.0.7",
+        "pkg:pub/fixnum@1.1.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/vector_math@2.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/web@1.1.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:pub/win32@6.4.0",
+      "dependsOn": [
+        "pkg:pub/ffi@2.2.0",
+        "pkg:pub/ffi_leak_tracker@0.1.2",
+        "pkg:pub/meta@1.18.0"
+      ]
+    },
+    {
+      "ref": "pkg:pub/xdg_directories@1.1.0",
+      "dependsOn": [
+        "pkg:pub/meta@1.18.0",
+        "pkg:pub/path@1.9.1"
+      ]
+    },
+    {
+      "ref": "pkg:pub/yaml@3.1.3",
+      "dependsOn": [
+        "pkg:pub/collection@1.19.1",
+        "pkg:pub/source_span@1.10.2",
+        "pkg:pub/string_scanner@1.4.1"
+      ]
+    },
+    {
+      "ref": "native:sqlite3mc:android:arm64-v8a",
+      "dependsOn": [
+        "pkg:generic/sqlite3mc@2.3.6",
+        "pkg:generic/sqlite@3.53.3"
+      ]
+    },
+    {
+      "ref": "native:sqlite3mc:android:armeabi-v7a",
+      "dependsOn": [
+        "pkg:generic/sqlite3mc@2.3.6",
+        "pkg:generic/sqlite@3.53.3"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Task 7C2: Secure Flutter Commercial Receiving and Offline Sync
 
-- Status: Task 7C2B1 selected/complete subject to commit review; Task 7C2B2 not started
+- Status: `TASK 7C2B2 = COMPLETE`; Task 7C2B3 not started
 - Date: 2026-08-01
 - Scope: Task 7A mobile identity, encrypted local-first Commercial Receiving,
   authenticated sync, and read-only Owner monitoring
@@ -20,15 +20,26 @@ the pinned secure-store clean-install bootstrap and passed its fail-closed,
 force-stop, and same-data replacement matrix on API 24 and physical API 35
 with both candidates. ADR-0011 accepted SQLite3MultipleCiphers 2.3.6 through
 `sqlite3` 3.5.0 with explicit ChaCha20-Poly1305 and a true random 256-bit raw
-key. Task 7C2B1 is complete subject to commit review; Task 7C2B2 is next and
-has not started. Remaining B2, legal, lifecycle, and pilot gates stay open; see
-`docs/assessments/TASK-7C2B1-Production-Storage-Selection.md`.
+key. Task 7C2B2 now implements the isolated secure-store key, fail-closed
+provisioning state machine, encrypted Commercial schema 1, production runtime,
+Android backup/release controls, production SBOM/SCA, and separate POC
+entrypoint. API-24, force-stop, replacement, host, and unsigned ARM release
+gates pass. The production physical API-35 matrix, force-stop/replacement, and
+temporary externally signed release-posture checks also pass. The Project/Legal
+Owner approved the frozen exact-text notice bundle on 2026-08-08; see
+`docs/assessments/TASK-7C2B2-Secure-Commercial-Local-Foundation.md`.
 
 ## Status
 
-Task 7C2B1 is selected and complete subject to commit review. The production
-client remains planned and not implemented: Task 7C2B2 has not started, no
-production mobile package has changed, and no plaintext pilot path is approved.
+Task 7C2B2 secure local foundation and its required host, API-24, physical
+API-35, release, backup-declaration, native, SBOM, and SCA technical gates pass.
+Owner notice approval is recorded for the frozen B2 graph. The approved future
+surface is About / Legal / Third-Party Notices with the SQLite public-domain
+dedication/provenance included; that presentation UI is a later release
+requirement and is not implemented in B2. B3 authentication/context binding
+and all business tables/UI remain unimplemented. No plaintext pilot path is
+approved. ADR-0012 is accepted. `TASK 7C2B2 = COMPLETE`; Task 7C2B3 is `NOT
+STARTED`.
 
 ## Reviewed milestone split
 
@@ -38,12 +49,12 @@ client:
 | Milestone | Entry gate | Deliverables | Exit gate |
 | --- | --- | --- | --- |
 | Task 7C2B1: Production encrypted-storage selection | Merged 7C2A evidence and unchanged production dependency graph | Frozen candidate parameters/key syntax, API/runtime/lifecycle/performance evidence, provenance, notices, locked SBOM, SCA review, and ADR-0011 only after one candidate passes every gate | **Complete subject to commit review:** SQLite3MultipleCiphers accepted in ADR-0011 |
-| Task 7C2B2: Secure Android/Flutter foundation | Accepted ADR-0011 and approved Android backup/release policy | Pinned production packages, narrow OS secure-store and database-key ports, separate encrypted Commercial database/opener, fail-closed startup, binding metadata schema 1, backup/data-extraction controls, redaction, runtime ownership, and architecture/test seams | API-24/API-35 release tests prove encrypted create/reopen/failure behavior and the production dependency/security boundary is reviewed |
+| Task 7C2B2: Secure Android/Flutter foundation | Accepted ADR-0011 and approved Android backup/release policy | Pinned production packages, narrow OS secure-store and database-key ports, separate encrypted Commercial database/opener, fail-closed startup, foundation metadata schema 1, backup/data-extraction controls, redaction, runtime ownership, and architecture/test seams | **Complete:** host/API-24/API-35/release/SBOM/SCA/static review pass; Owner notice approval recorded 2026-08-08; ADR-0012 accepted |
 | Task 7C2B3: Production authentication and context binding | Accepted B2 foundation and stable Task 7A contracts | Activation, credential storage, workspace login, `/auth/me` binding, serialized refresh, logout/reactivation/context rules, and HTTPS-only authenticated client foundation | Identity/context/key-loss matrices pass without introducing Receiving capture or sync |
 | Later Task 7C2 delivery slices | Accepted B3 and relevant product gates | Master sync, local Receiving/outbox, capture UI, operation sync, event projections, Owner monitoring, and field validation in separately reviewed slices | Existing backlog acceptance criteria and final pilot gates pass |
 
-B2 schema 1 contains only immutable installation/database/account binding and
-schema metadata needed to prove the secure opener. Receiving Sessions, Entries,
+B2 schema 1 contains only immutable installation/database identity and schema
+metadata needed to prove the secure opener. Receiving Sessions, Entries,
 outbox, masters, cursors, projections, attention, Inventory, and Finance do not
 belong in the secure-foundation milestone. No POC schema/data is migrated.
 
@@ -173,8 +184,10 @@ plaintext storage.
 Encrypted SQLite, OS-backed secrets, HTTPS, serialized refresh, context binding,
 event/master isolation, and release redaction are pilot gates. Rooted Devices
 and compromised live-process memory remain documented limitations. ADR-0011
-completed the technical selection, but no package is added to production until
-the separately reviewed Task 7C2B2 implementation.
+completed the technical selection, and Task 7C2B2 implements only the reviewed
+secure local foundation. The Project/Legal Owner approved the frozen B2 notice
+bundle on 2026-08-08. Any production dependency or binary-graph change reopens
+the notice/SBOM review gate.
 
 ## Migration implications
 

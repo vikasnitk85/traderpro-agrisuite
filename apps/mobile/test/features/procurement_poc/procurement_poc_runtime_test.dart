@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:traderpro_agrisuite_mobile/app/app.dart';
+import 'package:traderpro_agrisuite_mobile/app/procurement_poc_app.dart';
 import 'package:traderpro_agrisuite_mobile/app/procurement_poc_runtime.dart';
 import 'package:traderpro_agrisuite_mobile/core/database/database.dart';
 import 'package:traderpro_agrisuite_mobile/core/measurements/weight_processing_method.dart';
@@ -221,14 +221,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        ProcurementPocRuntimeHost(
-          runtime: runtime,
-          child: TraderProAgriSuiteApp(
-            procurementPocFeature: _enabled,
-            procurementPocBuilder: (_) =>
-                ProcurementPocHome(controller: runtime.controller),
-          ),
-        ),
+        ProcurementPocApp(runtime: runtime, feature: _enabled),
       );
       await runtime.start();
       runtime.didChangeAppLifecycleState(AppLifecycleState.resumed);
@@ -239,7 +232,7 @@ void main() {
         'RS-OWNER-AUTO',
       );
 
-      await tester.tap(find.byKey(const Key('open-procurement-poc')));
+      await tester.tap(find.byKey(const Key('open-development-route')));
       await tester.pumpAndSettle();
       expect(find.textContaining('RS-OWNER-AUTO'), findsOneWidget);
       Navigator.of(tester.element(find.byType(ProcurementPocHome))).pop();
