@@ -125,6 +125,7 @@ networking, subject to server validation.
 | T-28 | Same-company Operator reads another Device's Session events | Operators receive only immutable `TargetDevice` rows issued to their authenticated active Device; they never inherit Owner broadcasts. A former editor can receive transfer-away history, while later events target the new editor. Session list/live and all mutations still revalidate current ownership. | Negative tests prove the old Device receives transfer-away, no future Entry/Submit rows target it, and unrelated Device event IDs/payloads remain absent. | Broader non-editor Operator discovery awaits OQ-12. |
 | T-29 | Master bootstrap races a mutation and skips or duplicates a record | Migration deterministically backfills all existing Active/Inactive 7B1/7B2 rows; high-water capture and mutation sequence allocation share the scoped master-stream lock; bootstrap pages unique sequences through `H`, then deltas use `> H`; client upsert/cursor apply is atomic. | Upgrade/concurrency tests start with existing commercial data and prove every safe kind/ID/version exactly once in traversal, later change after `H`, and no raw Internal field. | Change-log retention/compaction needs later operational policy. |
 | T-30 | One global event commit lock creates cross-company contention or incorrect cursor assumptions | Derive the `CommercialMobileSync` commit-order lock from stream contract version + Workspace + Company; same-company allocation holds it through commit and different companies proceed independently. | Concurrency tests prove same-company commit order, cross-company overlap, and valid sequence gaps. | Database-wide sequence exhaustion/retention remains an operational concern. |
+| T-31 | Activation commits but the only Device-secret response is lost | ADR-0013 requires a bounded client `Idempotency-Key`; the atomic redemption stores only key/request hashes, deadline, and time-limited Data Protection ciphertext bound to Workspace/code/Device/request/version/time. Exact retries serialize under PostgreSQL locks and verify the recovered secret against current hash/version. Cryptographic expiry, login, lazy cleanup, and reactivation retire ciphertext. | Response-loss, delay, concurrency, restart/key-ring, expiry, database-failure, disabled-Device, and reactivation tests require one logical result/rotation/audit. Wrong key ring is retryable unavailable; expiry requires a new Owner code. | During the live recovery window, server key-ring compromise plus database access can recover the Device secret. Persistent key-ring protection and operational access controls remain mandatory. |
 
 ## Abuse cases and security invariants
 
@@ -143,6 +144,8 @@ networking, subject to server validation.
    plaintext.
 8. Ordered mobile operations never use a mutable expected cloud version as
    immutable payload, hash input, or concurrency authority.
+9. One activation attempt cannot create a second Device-secret rotation or
+   duplicate activation audit after committed response loss.
 
 ## Data ownership
 

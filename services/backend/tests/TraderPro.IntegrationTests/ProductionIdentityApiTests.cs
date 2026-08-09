@@ -136,6 +136,53 @@ public sealed class ProductionIdentityApiTests(PostgreSqlFixture fixture)
                     'refresh_token_families',
                     'refresh_tokens')
                 """) >= 11);
+        Assert.Equal(
+            4,
+            await ScalarAsync<long>(
+                verification,
+                """
+                SELECT count(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'platform'
+                  AND table_name = 'device_activation_codes'
+                  AND column_name IN (
+                    'redemption_idempotency_key_hash',
+                    'redemption_request_hash',
+                    'replay_protected_result',
+                    'replay_allowed_until_utc')
+                """));
+        Assert.Equal(
+            1,
+            await ScalarAsync<long>(
+                verification,
+                """
+                SELECT count(*)
+                FROM pg_indexes
+                WHERE schemaname = 'platform'
+                  AND tablename = 'device_activation_codes'
+                  AND indexname =
+                    'ux_device_activation_codes_workspace_redemption_key'
+                """));
+        Assert.Equal(
+            1,
+            await ScalarAsync<long>(
+                verification,
+                """
+                SELECT count(*)
+                FROM pg_constraint
+                WHERE conname =
+                    'ck_device_activation_codes_replay_state'
+                """));
+        Assert.Equal(
+            1,
+            await ScalarAsync<long>(
+                verification,
+                """
+                SELECT count(*)
+                FROM platform.__ef_migrations_history
+                WHERE "MigrationId" =
+                    '20260809090000_CrashSafeDeviceActivation'
+                """));
         var expectedCode =
             $"TP-{workspaceId.ToString("N").ToUpperInvariant()}";
         Assert.Equal(
@@ -1302,39 +1349,621 @@ public sealed class ProductionIdentityApiTests(PostgreSqlFixture fixture)
     }
 
     [Fact]
-    public async Task Concurrent_activation_redemption_has_one_winner_and_one_credential()
+    public async Task Committed_activation_with_lost_response_is_recovered_without_rotation_or_duplicate_audit()
     {
         await using var database = await fixture.CreateDatabaseAsync();
         await using var factory = IdentityFactory(database, UtcNow);
         var setup = await BootstrapAsync(factory);
+        var previousSecret = await ActivateAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode);
+        var previousLogin = await LoginAsync(
+            factory,
+            setup.WorkspaceCode,
+            "owner",
+            OwnerPassword,
+            setup.OwnerDeviceId,
+            previousSecret);
+        using var issue = BearerRequest(
+            HttpMethod.Post,
+            $"/api/v1/devices/{setup.OwnerDeviceId:D}/activation-codes",
+            previousLogin.AccessToken);
+        issue.Headers.Add(
+            "Idempotency-Key",
+            "lost-response-reactivation-code");
+        using var client = factory.CreateClient();
+        using var issueResponse = await client.SendAsync(
+            issue,
+            CancellationToken);
+        using var issueJson = await ReadJsonAsync(issueResponse);
+        Assert.Equal(HttpStatusCode.Created, issueResponse.StatusCode);
+        var reactivationCode = issueJson.RootElement
+            .GetProperty("activationCode")
+            .GetString()!;
+        const string idempotencyKey = "lost-activation-response";
+
+        using (var lostResponse = await SendActivationAsync(
+                   factory,
+                   setup.WorkspaceCode,
+                   setup.OwnerDeviceId,
+                   reactivationCode,
+                   idempotencyKey))
+        {
+            Assert.Equal(HttpStatusCode.OK, lostResponse.StatusCode);
+        }
+
+        using var recovered = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            reactivationCode,
+            idempotencyKey);
+        using var recoveredJson = await ReadJsonAsync(recovered);
+        Assert.Equal(HttpStatusCode.OK, recovered.StatusCode);
+        AssertNoStore(recovered);
+        var recoveredSecret = recoveredJson.RootElement
+            .GetProperty("deviceSecret")
+            .GetString()!;
+
+        await using var context = database.CreateContext(setup.WorkspaceId);
+        var credential = await context.DeviceCredentials.SingleAsync(
+            item => item.DeviceId == setup.OwnerDeviceId,
+            CancellationToken);
+        var code = await context.DeviceActivationCodes.SingleAsync(
+            item => item.RedemptionIdempotencyKeyHash ==
+                IdentitySecretCryptography.Hash(idempotencyKey),
+            CancellationToken);
+        Assert.Equal(2, credential.SecretVersion);
+        Assert.True(
+            IdentitySecretCryptography.VerifyHash(
+                recoveredSecret,
+                credential.DeviceSecretHash));
+        Assert.Equal(
+            IdentitySecretCryptography.Hash(idempotencyKey),
+            code.RedemptionIdempotencyKeyHash);
+        Assert.Equal(64, code.RedemptionRequestHash!.Length);
+        Assert.NotEqual(reactivationCode, code.CodeHash);
+        Assert.NotNull(code.ReplayProtectedResult);
+        Assert.DoesNotContain(
+            recoveredSecret,
+            code.ReplayProtectedResult!,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            reactivationCode,
+            code.ReplayProtectedResult!,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            idempotencyKey,
+            code.ReplayProtectedResult!,
+            StringComparison.Ordinal);
+        var reactivationAudit = await context.AuditEvents.SingleAsync(
+            item =>
+                item.AggregateId == setup.OwnerDeviceId &&
+                item.Action == "Platform.Identity.DeviceReactivated",
+            CancellationToken);
+        var persistedAudit = JsonSerializer.Serialize(reactivationAudit);
+        Assert.DoesNotContain(
+            recoveredSecret,
+            persistedAudit,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            reactivationCode,
+            persistedAudit,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            idempotencyKey,
+            persistedAudit,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            code.ReplayProtectedResult!,
+            persistedAudit,
+            StringComparison.Ordinal);
+        var predecessorFamily = await context.RefreshTokenFamilies.SingleAsync(
+            item => item.DeviceId == setup.OwnerDeviceId,
+            CancellationToken);
+        Assert.NotNull(predecessorFamily.RevokedAtUtc);
+        Assert.Equal("DeviceReactivated", predecessorFamily.RevocationReason);
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            await MeStatusAsync(factory, previousLogin.AccessToken));
+        await AssertSqlRejectedAsync(
+            database,
+            """
+            UPDATE platform.device_activation_codes
+            SET redemption_request_hash = repeat('0', 64),
+                version = version + 1
+            WHERE id = @id
+            """,
+            ("id", code.Id));
+        await AssertSqlRejectedAsync(
+            database,
+            """
+            UPDATE platform.device_activation_codes
+            SET replay_protected_result = 'replacement-ciphertext',
+                version = version + 1
+            WHERE id = @id
+            """,
+            ("id", code.Id));
+        await AssertSqlRejectedAsync(
+            database,
+            """
+            UPDATE platform.device_activation_codes
+            SET replay_allowed_until_utc =
+                    replay_allowed_until_utc + interval '1 second',
+                version = version + 1
+            WHERE id = @id
+            """,
+            ("id", code.Id));
+        await AssertSqlRejectedAsync(
+            database,
+            """
+            INSERT INTO platform.device_activation_codes (
+                id, workspace_id, device_id, code_hash, expires_at_utc,
+                used_at_utc, revoked_at_utc,
+                redemption_idempotency_key_hash,
+                redemption_request_hash, replay_protected_result,
+                replay_allowed_until_utc, issued_by_user_id,
+                created_at_utc, version)
+            SELECT
+                @new_id, workspace_id, device_id, repeat('1', 64),
+                expires_at_utc, used_at_utc, NULL, repeat('2', 64),
+                NULL, 'ciphertext', replay_allowed_until_utc,
+                issued_by_user_id, created_at_utc, 1
+            FROM platform.device_activation_codes
+            WHERE id = @id
+            """,
+            ("new_id", Uuid7.NewGuid()),
+            ("id", code.Id));
+        await AssertSqlRejectedAsync(
+            database,
+            """
+            INSERT INTO platform.device_activation_codes (
+                id, workspace_id, device_id, code_hash, expires_at_utc,
+                used_at_utc, revoked_at_utc,
+                redemption_idempotency_key_hash,
+                redemption_request_hash, replay_protected_result,
+                replay_allowed_until_utc, issued_by_user_id,
+                created_at_utc, version)
+            SELECT
+                @new_id, workspace_id, device_id, repeat('3', 64),
+                expires_at_utc, used_at_utc, NULL, repeat('4', 64),
+                repeat('5', 64), 'ciphertext',
+                used_at_utc + interval '2 days', issued_by_user_id,
+                created_at_utc, 1
+            FROM platform.device_activation_codes
+            WHERE id = @id
+            """,
+            ("new_id", Uuid7.NewGuid()),
+            ("id", code.Id));
+        await AssertSqlRejectedAsync(
+            database,
+            """
+            INSERT INTO platform.device_activation_codes (
+                id, workspace_id, device_id, code_hash, expires_at_utc,
+                used_at_utc, revoked_at_utc,
+                redemption_idempotency_key_hash,
+                redemption_request_hash, replay_protected_result,
+                replay_allowed_until_utc, issued_by_user_id,
+                created_at_utc, version)
+            SELECT
+                @new_id, workspace_id, device_id, repeat('6', 64),
+                expires_at_utc, used_at_utc, NULL,
+                redemption_idempotency_key_hash, repeat('7', 64),
+                'ciphertext', replay_allowed_until_utc,
+                issued_by_user_id, created_at_utc, 1
+            FROM platform.device_activation_codes
+            WHERE id = @id
+            """,
+            ("new_id", Uuid7.NewGuid()),
+            ("id", code.Id));
+    }
+
+    [Fact]
+    public async Task Activation_exact_retry_survives_delay_and_server_restart()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        var clock = new TestClock(UtcNow);
+        var firstFactory = new TraderProApiFactory(
+            database.ConnectionString,
+            spikesEnabled: false,
+            identityBootstrapEnabled: true,
+            testClock: clock);
+        var setup = await BootstrapAsync(firstFactory);
+        const string idempotencyKey = "restart-safe-activation";
+        using var first = await SendActivationAsync(
+            firstFactory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+        using var firstJson = await ReadJsonAsync(first);
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        var firstSecret = firstJson.RootElement
+            .GetProperty("deviceSecret")
+            .GetString()!;
+        var keyRingPath = firstFactory.DataProtectionKeyRingPath;
+        var signingKey = firstFactory.SigningKey;
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await firstFactory.DisposeAsync();
+
+        await using (var wrongKeyFactory = new TraderProApiFactory(
+                         database.ConnectionString,
+                         spikesEnabled: false,
+                         identityBootstrapEnabled: true,
+                         testClock: clock,
+                         signingKey: signingKey))
+        using (var unavailable = await SendActivationAsync(
+                   wrongKeyFactory,
+                   setup.WorkspaceCode,
+                   setup.OwnerDeviceId,
+                   setup.OwnerActivationCode,
+                   idempotencyKey))
+        using (var unavailableJson = await ReadJsonAsync(unavailable))
+        {
+            Assert.Equal(
+                HttpStatusCode.ServiceUnavailable,
+                unavailable.StatusCode);
+            Assert.Equal(
+                "DEVICE_ACTIVATION_RECOVERY_UNAVAILABLE",
+                ErrorCode(unavailableJson));
+        }
+
+        await using var restartedFactory = new TraderProApiFactory(
+            database.ConnectionString,
+            spikesEnabled: false,
+            identityBootstrapEnabled: true,
+            testClock: clock,
+            signingKey: signingKey,
+            dataProtectionKeyRingPath: keyRingPath);
+        using var replay = await SendActivationAsync(
+            restartedFactory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+        using var replayJson = await ReadJsonAsync(replay);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal(
+            firstSecret,
+            replayJson.RootElement.GetProperty("deviceSecret").GetString());
+        Assert.Equal(
+            firstJson.RootElement.GetProperty("activatedAtUtc").GetString(),
+            replayJson.RootElement.GetProperty("activatedAtUtc").GetString());
+        Assert.Equal(
+            firstJson.RootElement.GetProperty("secretVersion").GetInt32(),
+            replayJson.RootElement.GetProperty("secretVersion").GetInt32());
+    }
+
+    [Fact]
+    public async Task Activation_attempt_conflicts_are_precise_and_do_not_rotate()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        await using var factory = IdentityFactory(database, UtcNow);
+        var setup = await BootstrapAsync(factory);
+        const string idempotencyKey = "activation-attempt-one";
+        var firstSecret = await ActivateAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+
+        using var differentAttempt = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            "activation-attempt-two");
+        using var differentAttemptJson = await ReadJsonAsync(
+            differentAttempt);
+        Assert.Equal(HttpStatusCode.Conflict, differentAttempt.StatusCode);
+        Assert.Equal(
+            "DEVICE_ACTIVATION_ALREADY_USED",
+            ErrorCode(differentAttemptJson));
+
+        using var changedPayload = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey,
+            deviceLabel: "Changed device label");
+        using var changedPayloadJson = await ReadJsonAsync(changedPayload);
+        Assert.Equal(HttpStatusCode.Conflict, changedPayload.StatusCode);
+        Assert.Equal(
+            "IDEMPOTENCY_PAYLOAD_CONFLICT",
+            ErrorCode(changedPayloadJson));
+
+        using var reusedForAnotherCode = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OperatorDeviceId,
+            setup.OperatorActivationCode,
+            idempotencyKey);
+        using var reusedForAnotherCodeJson = await ReadJsonAsync(
+            reusedForAnotherCode);
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            reusedForAnotherCode.StatusCode);
+        Assert.Equal(
+            "IDEMPOTENCY_PAYLOAD_CONFLICT",
+            ErrorCode(reusedForAnotherCodeJson));
+
+        await using var context = database.CreateContext(setup.WorkspaceId);
+        var credential = await context.DeviceCredentials.SingleAsync(
+            item => item.DeviceId == setup.OwnerDeviceId,
+            CancellationToken);
+        Assert.Equal(1, credential.SecretVersion);
+        Assert.True(
+            IdentitySecretCryptography.VerifyHash(
+                firstSecret,
+                credential.DeviceSecretHash));
+    }
+
+    [Fact]
+    public async Task Expired_activation_recovery_requires_new_owner_code_and_reactivation_rotates_once()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        var clock = new TestClock(UtcNow);
+        await using var factory = new TraderProApiFactory(
+            database.ConnectionString,
+            spikesEnabled: false,
+            identityBootstrapEnabled: true,
+            testClock: clock);
+        var setup = await BootstrapAsync(factory);
+        var ownerSecret = await ActivateAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode);
+        const string operatorAttempt = "operator-expiring-recovery";
+        var oldOperatorSecret = await ActivateAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OperatorDeviceId,
+            setup.OperatorActivationCode,
+            operatorAttempt);
+        clock.Advance(TimeSpan.FromMinutes(16));
+
+        using var expired = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OperatorDeviceId,
+            setup.OperatorActivationCode,
+            operatorAttempt);
+        using var expiredJson = await ReadJsonAsync(expired);
+        Assert.Equal(HttpStatusCode.Conflict, expired.StatusCode);
+        Assert.Equal(
+            "DEVICE_ACTIVATION_RECOVERY_EXPIRED",
+            ErrorCode(expiredJson));
+
+        var owner = await LoginAsync(
+            factory,
+            setup.WorkspaceCode,
+            "owner",
+            OwnerPassword,
+            setup.OwnerDeviceId,
+            ownerSecret);
+        var replacementCode = await IssueActivationCodeAsync(
+            factory,
+            setup.OperatorDeviceId,
+            owner.AccessToken,
+            "operator-recovery-replacement-code");
+        var replacementSecret = await ActivateAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OperatorDeviceId,
+            replacementCode,
+            "operator-recovery-replacement-redemption");
+
+        Assert.NotEqual(oldOperatorSecret, replacementSecret);
+        await using var context = database.CreateContext(setup.WorkspaceId);
+        var credential = await context.DeviceCredentials.SingleAsync(
+            item => item.DeviceId == setup.OperatorDeviceId,
+            CancellationToken);
+        var oldCode = await context.DeviceActivationCodes.SingleAsync(
+            item => item.CodeHash == IdentitySecretCryptography.Hash(
+                setup.OperatorActivationCode),
+            CancellationToken);
+        Assert.Equal(2, credential.SecretVersion);
+        Assert.Null(oldCode.ReplayProtectedResult);
+        Assert.True(
+            IdentitySecretCryptography.VerifyHash(
+                replacementSecret,
+                credential.DeviceSecretHash));
+        Assert.Equal(
+            1,
+            await context.AuditEvents.CountAsync(
+                item =>
+                    item.AggregateId == setup.OperatorDeviceId &&
+                    item.Action == "Platform.Identity.DeviceReactivated",
+                CancellationToken));
+    }
+
+    [Fact]
+    public async Task Disabled_device_blocks_activation_without_consuming_code()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        await using var factory = IdentityFactory(database, UtcNow);
+        var setup = await BootstrapAsync(factory);
+        await using (var context = database.CreateContext(setup.WorkspaceId))
+        {
+            var device = await context.Devices.SingleAsync(
+                item => item.Id == setup.OwnerDeviceId,
+                CancellationToken);
+            device.SetStatus(DeviceStatus.Disabled);
+            await context.SaveChangesAsync(CancellationToken);
+        }
+
+        using var response = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            "disabled-device-activation");
+        using var json = await ReadJsonAsync(response);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("DEVICE_NOT_ACTIVE", ErrorCode(json));
+        await using var verification = database.CreateContext(
+            setup.WorkspaceId);
+        Assert.Null(
+            (await verification.DeviceActivationCodes.SingleAsync(
+                item => item.DeviceId == setup.OwnerDeviceId,
+                CancellationToken)).UsedAtUtc);
+        Assert.False(
+            await verification.DeviceCredentials.AnyAsync(
+                item => item.DeviceId == setup.OwnerDeviceId,
+                CancellationToken));
+    }
+
+    [Fact]
+    public async Task Wrong_and_expired_activation_codes_have_frozen_errors()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        var clock = new TestClock(UtcNow);
+        await using var factory = new TraderProApiFactory(
+            database.ConnectionString,
+            spikesEnabled: false,
+            identityBootstrapEnabled: true,
+            testClock: clock);
+        var setup = await BootstrapAsync(factory);
+
+        using var wrong = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            "synthetic-wrong-activation-code",
+            "wrong-activation-code-attempt");
+        using var wrongJson = await ReadJsonAsync(wrong);
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+        Assert.Equal("DEVICE_ACTIVATION_INVALID", ErrorCode(wrongJson));
+
+        clock.Advance(TimeSpan.FromMinutes(16));
+        using var expired = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            "expired-unused-activation-code-attempt");
+        using var expiredJson = await ReadJsonAsync(expired);
+        Assert.Equal(HttpStatusCode.Conflict, expired.StatusCode);
+        Assert.Equal("DEVICE_ACTIVATION_EXPIRED", ErrorCode(expiredJson));
+    }
+
+    [Fact]
+    public async Task Temporary_database_failure_rolls_back_activation_and_same_attempt_retries_safely()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        await using var factory = IdentityFactory(database, UtcNow);
+        var setup = await BootstrapAsync(factory);
+        await using (var connection = await database.OpenConnectionAsync())
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                """
+                CREATE FUNCTION platform.fail_activation_once()
+                RETURNS trigger LANGUAGE plpgsql AS $function$
+                BEGIN
+                    IF OLD.used_at_utc IS NULL AND
+                       NEW.used_at_utc IS NOT NULL THEN
+                        RAISE EXCEPTION 'synthetic activation failure';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $function$;
+                CREATE TRIGGER synthetic_activation_failure
+                BEFORE UPDATE ON platform.device_activation_codes
+                FOR EACH ROW EXECUTE FUNCTION
+                    platform.fail_activation_once();
+                """;
+            await command.ExecuteNonQueryAsync(CancellationToken);
+        }
+
+        const string idempotencyKey = "database-failure-activation";
+        using var failed = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+        using var failedJson = await ReadJsonAsync(failed);
+
+        await using (var connection = await database.OpenConnectionAsync())
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText =
+                """
+                DROP TRIGGER synthetic_activation_failure
+                    ON platform.device_activation_codes;
+                DROP FUNCTION platform.fail_activation_once();
+                """;
+            await command.ExecuteNonQueryAsync(CancellationToken);
+        }
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, failed.StatusCode);
+        Assert.Equal("TEMPORARY_COMMAND_FAILURE", ErrorCode(failedJson));
+        using var retried = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+        using var retriedJson = await ReadJsonAsync(retried);
+        Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
+        var secret = retriedJson.RootElement
+            .GetProperty("deviceSecret")
+            .GetString()!;
+        await using var context = database.CreateContext(setup.WorkspaceId);
+        var credential = await context.DeviceCredentials.SingleAsync(
+            item => item.DeviceId == setup.OwnerDeviceId,
+            CancellationToken);
+        Assert.Equal(1, credential.SecretVersion);
+        Assert.True(
+            IdentitySecretCryptography.VerifyHash(
+                secret,
+                credential.DeviceSecretHash));
+    }
+
+    [Fact]
+    public async Task Concurrent_identical_activation_redemption_has_one_logical_result()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        await using var factory = IdentityFactory(database, UtcNow);
+        var setup = await BootstrapAsync(factory);
+        const string idempotencyKey =
+            "concurrent-identical-activation-redemption";
 
         var firstTask = SendActivationAsync(
             factory,
             setup.WorkspaceCode,
             setup.OwnerDeviceId,
-            setup.OwnerActivationCode);
+            setup.OwnerActivationCode,
+            idempotencyKey);
         var secondTask = SendActivationAsync(
             factory,
             setup.WorkspaceCode,
             setup.OwnerDeviceId,
-            setup.OwnerActivationCode);
+            setup.OwnerActivationCode,
+            idempotencyKey);
         var responses = await Task.WhenAll(firstTask, secondTask);
         using var first = responses[0];
         using var second = responses[1];
-        Assert.Equal(
-            1,
-            responses.Count(response =>
-                response.StatusCode == HttpStatusCode.OK));
-        Assert.Equal(
-            1,
-            responses.Count(response =>
-                response.StatusCode == HttpStatusCode.Conflict));
-        var winner = responses.Single(response =>
-            response.StatusCode == HttpStatusCode.OK);
-        using var winnerJson = await ReadJsonAsync(winner);
-        var winningSecret = winnerJson.RootElement
+        Assert.All(
+            responses,
+            response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        using var firstJson = await ReadJsonAsync(first);
+        using var secondJson = await ReadJsonAsync(second);
+        var winningSecret = firstJson.RootElement
             .GetProperty("deviceSecret")
             .GetString()!;
+        Assert.Equal(
+            winningSecret,
+            secondJson.RootElement.GetProperty("deviceSecret").GetString());
+        Assert.Equal(
+            firstJson.RootElement.GetProperty("secretVersion").GetInt32(),
+            secondJson.RootElement.GetProperty("secretVersion").GetInt32());
 
         await using var context = database.CreateContext(setup.WorkspaceId);
         Assert.Equal(2, await context.Devices.CountAsync(CancellationToken));
@@ -1740,13 +2369,15 @@ public sealed class ProductionIdentityApiTests(PostgreSqlFixture fixture)
         TraderProApiFactory factory,
         string workspaceCode,
         Guid deviceId,
-        string activationCode)
+        string activationCode,
+        string? idempotencyKey = null)
     {
         using var response = await SendActivationAsync(
             factory,
             workspaceCode,
             deviceId,
-            activationCode);
+            activationCode,
+            idempotencyKey);
         using var json = await ReadJsonAsync(response);
         if (!response.IsSuccessStatusCode)
         {
@@ -1764,20 +2395,33 @@ public sealed class ProductionIdentityApiTests(PostgreSqlFixture fixture)
         TraderProApiFactory factory,
         string workspaceCode,
         Guid deviceId,
-        string activationCode)
+        string activationCode,
+        string? idempotencyKey = null,
+        string? deviceLabel = null,
+        string? clientInstallationReference = null)
     {
         var client = factory.CreateClient();
-        return client.PostAsJsonAsync(
-            "/api/v1/auth/device-activations/redeem",
-            new
-            {
-                workspaceCode,
-                activationCode,
-                clientInstallationReference =
-                    $"test-installation-{deviceId:D}",
-                deviceLabel = $"Device {deviceId:D}",
-                platform = "Android",
-            },
+        var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/v1/auth/device-activations/redeem")
+        {
+            Content = JsonContent.Create(
+                new
+                {
+                    workspaceCode,
+                    activationCode,
+                    clientInstallationReference =
+                        clientInstallationReference ??
+                        $"test-installation-{deviceId:D}",
+                    deviceLabel = deviceLabel ?? $"Device {deviceId:D}",
+                    platform = "Android",
+                }),
+        };
+        request.Headers.Add(
+            "Idempotency-Key",
+            idempotencyKey ?? $"test-activation-{Guid.NewGuid():N}");
+        return client.SendAsync(
+            request,
             CancellationToken);
     }
 
@@ -2226,6 +2870,11 @@ public sealed class ProductionIdentityApiTests(PostgreSqlFixture fixture)
     private sealed class TestClock(DateTimeOffset utcNow) :
         TraderPro.Application.Common.Time.IClock
     {
-        public DateTimeOffset UtcNow { get; } = utcNow;
+        public DateTimeOffset UtcNow { get; private set; } = utcNow;
+
+        public void Advance(TimeSpan duration)
+        {
+            UtcNow = UtcNow.Add(duration);
+        }
     }
 }

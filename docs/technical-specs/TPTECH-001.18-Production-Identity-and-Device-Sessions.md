@@ -78,6 +78,15 @@ Before the activation index is created, duplicate active codes are resolved
 deterministically: expired or older rows are revoked and the newest valid row
 is retained.
 
+The forward-only `CrashSafeDeviceActivation` migration adds four nullable
+recovery columns to `platform.device_activation_codes`, a filtered unique
+`(workspace_id, redemption_idempotency_key_hash)` index, a maximum one-day
+database replay bound (configuration defaults to 15 minutes), and controlled
+transition rules. Historical consumed rows remain valid without recovery
+material; new consumption must create the complete hashed/protected state in
+one transition. Hashes/deadline are immutable, and ciphertext can only move
+from present to retired.
+
 ## Workspace code
 
 Commercial login uses a 3-64 character code containing uppercase letters,
@@ -114,9 +123,9 @@ device, or device secret was wrong.
 
 An Owner issues a one-time activation code only for an existing Device in the
 current workspace. Public redemption cannot create a Device row. The code and
-workspace identify exactly one active row, activation returns a random device
-secret once, and only a lowercase SHA-256 hash is stored. Secret comparison is
-constant-time.
+workspace identify exactly one active row. Redemption requires a bounded
+`Idempotency-Key`, returns a random Device secret, and stores only its
+lowercase SHA-256 hash as the credential. Secret comparison is constant-time.
 
 Reinstall/reactivation rotates the credential on that same Device row,
 increments `SecretVersion`, clears credential revocation, updates safe device
@@ -140,6 +149,28 @@ reloads and revalidates it, then consumes it, rotates the single current
 must be between creation and expiry, revoked timestamps cannot predate
 creation, used and revoked remain exclusive, and terminal timestamps cannot
 be rewritten.
+
+ADR-0013 closes the committed-response-loss gap. The redemption transaction
+also stores the SHA-256 idempotency-key hash, a canonical request hash, a UTC
+replay deadline, and an ASP.NET Core time-limited Data Protection ciphertext
+containing the exact activation result. The protected payload binds Workspace, activation
+code, Device, idempotency/request hashes, secret version, activation time, and
+deadline. The default recovery window is 15 minutes after redemption, using
+the configured activation-code duration. An exact retry under the same lock
+returns the same logical result without another rotation, family revocation,
+or audit. Another key sees `DEVICE_ACTIVATION_ALREADY_USED`; the same key with
+changed input sees `IDEMPOTENCY_PAYLOAD_CONFLICT`; expiry sees
+`DEVICE_ACTIVATION_RECOVERY_EXPIRED`; and a live result that cannot be
+unprotected sees retryable `DEVICE_ACTIVATION_RECOVERY_UNAVAILABLE`.
+
+The raw Device secret and raw idempotency key are never stored in PostgreSQL.
+The ciphertext embeds the same bounded cryptographic lifetime, so an abandoned
+row or restored backup cannot be unprotected indefinitely even with old keys.
+Successful login confirms possession and clears the ciphertext. Expired retry
+and later reactivation retire it. The stored deadline remains authoritative
+after backup restore, so backup age cannot extend replay. A disabled Device
+blocks both first redemption and recovery. Database failure rolls back the
+whole attempt, allowing the same key/request to retry safely.
 
 ## Login and access token
 
@@ -231,7 +262,7 @@ acquired in this common order:
 Collections of family IDs are distinct and sorted by UUID before locking.
 Login and logout-all share the user-session lock, so logout-all observes and
 revokes every family created before its serialization point. Login and
-reactivation share the device-credential lock. Refresh, logout, logout-all,
+reactivation share the activation-device and device-credential locks. Refresh, logout, logout-all,
 reactivation, and suspicious-reuse handling share family locks, so logout
 cannot leave a concurrently rotated token usable and reactivation cannot leave
 an old device-secret-version family usable. Token-identity locks additionally
@@ -331,6 +362,9 @@ LoginSucceeded, RefreshTokenReuseDetected, SessionLoggedOut,
 AllSessionsLoggedOut, and DeviceActivationCodeIssued. Audits include only
 minimal identifiers/correlation. They never include raw credentials or
 tokens. Routine refresh is intentionally not noisy.
+Activation-result recovery is also intentionally not audited as a second
+logical activation; the first committed activation/reactivation has exactly
+one material audit.
 
 ## Threat boundary and limitations
 

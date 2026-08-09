@@ -1,6 +1,6 @@
 # Task 7C2: Secure Flutter Commercial Receiving and Offline Sync
 
-- Status: `TASK 7C2B2 = COMPLETE`; Task 7C2B3 not started
+- Status: `TASK 7C2B2 = COMPLETE`; Task 7C2B3.0 backend prerequisite complete; mobile B3 not started
 - Date: 2026-08-01
 - Scope: Task 7A mobile identity, encrypted local-first Commercial Receiving,
   authenticated sync, and read-only Owner monitoring
@@ -38,8 +38,12 @@ surface is About / Legal / Third-Party Notices with the SQLite public-domain
 dedication/provenance included; that presentation UI is a later release
 requirement and is not implemented in B2. B3 authentication/context binding
 and all business tables/UI remain unimplemented. No plaintext pilot path is
-approved. ADR-0012 is accepted. `TASK 7C2B2 = COMPLETE`; Task 7C2B3 is `NOT
-STARTED`.
+approved. ADR-0012 is accepted. `TASK 7C2B2 = COMPLETE`; mobile Task 7C2B3 is
+`NOT STARTED`. Task 7C2B3.0 corrects and freezes the backend activation/identity
+contract before that mobile work: accepted ADR-0013, crash-safe exact activation
+replay, and executable positive/negative fixtures passed their disposable
+PostgreSQL response-loss, delay/expiry, restart/key-ring, concurrency, rollback,
+migration/security, and Commercial Receiving regression gates on 2026-08-09.
 
 ## Reviewed milestone split
 
@@ -138,11 +142,11 @@ or official purchase finalization.
 | 7C2-03 | Encrypted commercial database opener | Open a separate production file only with the reviewed encrypted executor/key; release startup proves encryption; no plaintext fallback; POC file/schema is untouched; ciphertext is retained on key failure. Destructive discard/reinitialization is a separate approved recovery workflow that must first classify/preserve unsynced facts. | 7C2-01/02. |
 | 7C2-04 | Production Drift schema version 1 | Implement isolated tables/constraints/triggers for account/credential metadata, typed masters, Sessions, immutable Entries, immutable outbox, cloud state, event inbox, cursor, Owner projection, recent Entries, attention; exact weights use TEXT/BigInt, never REAL; generated source checked in. | 7C2-03; TPTECH-001.21. |
 | 7C2-05 | Drift migration strategy | Explicit non-destructive future `onUpgrade`; schema-1 creation and reopen tests; no automatic POC import/in-place conversion; no automatic rekey in V1; backup/recovery hooks follow encrypted engine. | 7C2-04. |
-| 7C2-06 | Device activation UI/service | Redeem one-time Task 7A code for a pre-created Device; store returned Device secret once; no secret in SQLite/logs/screens after confirmation; reactivation uses same Device slot and explains local-data implications. | 7C2-02; Task 7A. |
-| 7C2-07 | Workspace-code login and context binding | Login using workspace code, credentials, Device ID/secret over HTTPS; store refresh safely; keep access token memory-scoped; call `/auth/me`; bind exact Workspace/Company/default Branch/User/Device/role; mismatch fails closed. | 7C2-02/06; Task 7A. |
-| 7C2-08 | Serialized refresh coordinator | One in-flight refresh shared by all API calls; rotating token stored durably before callers resume; lost response retries same predecessor in replay window; reuse/revocation forces login; business operation IDs remain unchanged. | 7C2-02/07. |
-| 7C2-09 | Logout/logout-all/reactivation/context refresh | Current/all family flows clear credentials appropriately but preserve encrypted pending work; re-login must match bound context; role/context refresh on login/refresh/resume/authorization failure; no silent commercial identity switch while work exists. | 7C2-07/08. |
-| 7C2-10 | Authenticated commercial API client | HTTPS-only release client for operation/event/master/list/live/reacquire routes; bearer injection after refresh; bounded timeouts; exact payload string/hash serialization; decimal strings; safe error/correlation parsing; no mutation auto-retry outside durable engines. | 7C2-08; Task 7C1 contracts. |
+| 7C2-06 | Device activation UI/service | Journal one activation attempt/`Idempotency-Key`; redeem a one-time code for a pre-created Device; exact lost-response retry recovers the same ADR-0013 result within 15 minutes; journal returned Device identity/secret; no secret in SQLite/logs/screens after confirmation; reactivation uses the same Device slot and explains local-data implications. | 7C2-02; Task 7A; ADR-0013. |
+| 7C2-07 | Workspace-code login and context binding | Login over HTTPS; journal refresh, keep access token memory-only, and call `/auth/me`; permanently bind exact API origin/Workspace/Company/default Branch/User/Device. V1 has no user/Company/Branch switching. B2 `installationId` is informational `clientInstallationReference` only. Mismatch blocks without mutation; offline state is `BOUND_OFFLINE_REVALIDATION_REQUIRED`. | 7C2-02/06; Task 7A. |
+| 7C2-08 | Serialized refresh coordinator | One in-flight refresh shared by all API calls with 60-second access-token skew; journal the rotating token before callers resume; lost response retries the exact predecessor during the backend 30-second window; later failure, reuse, or revocation forces explicit login; business operation IDs remain unchanged. | 7C2-02/07. |
+| 7C2-09 | Logout/logout-all/reactivation/context refresh | Secure-store namespace is `traderpro_commercial_identity_v1`. Device secret persists through normal logout; logout clears access/refresh only and preserves encrypted pending work. Re-login must match the permanent binding; there is no silent identity switch. | 7C2-07/08. |
+| 7C2-10 | Authenticated commercial API client | Use `dart:io`, required `TRADERPRO_API_BASE_URL`, HTTPS-only release behavior, no certificate pinning, production Android `INTERNET`, and global production `FLAG_SECURE`; bearer injection follows refresh; safe exact contract/error parsing; minimal identity-only B3 UI; no mutation auto-retry outside durable engines. | 7C2-08; Task 7C1 contracts. |
 | 7C2-11 | Commercial master cache engine | Bootstrap captures and persists server high-water `H`, applies unique change rows through `H`, then deltas strictly after `H`; page application and cursor are atomic/idempotent. Cache every required Active/Inactive master, association, and settings version; never consume raw `Internal`; cache refresh never rewrites Receiving snapshots. | 7C2-04/10; 7C1 master endpoint. |
 | 7C2-12 | Local Receiving repository | Create mobile UUIDv7 Session/Start op atomically with exact Procurement Settings ID/version and vehicle-mode snapshot; allow approved offline immutable Entry capture queued behind Start; capture Entry/Record and Submit/local close atomically. Immutable operation rows contain the operation-appropriate generation but never expected cloud version; cloud version remains mutable projection state. Start rejection preserves all facts in attention. | 7C2-04; Task 3; frozen Task 7C2A offline policy. |
 | 7C2-13 | Commercial capture UI | Select Active Supplier/Product/Bag/standard/optional vehicle from cache and use only the exact captured settings revision's configured default destination and Weight Policy; expose no override until OQ-11. Snapshot IDs/versions/safe facts, preserve raw text, send only `weightSource: "Manual"`, show exact preview/cache age, and keep widgets outside database access. | 7C2-11/12; frozen Task 7C2A capture contract; OQ-11 for any override. |

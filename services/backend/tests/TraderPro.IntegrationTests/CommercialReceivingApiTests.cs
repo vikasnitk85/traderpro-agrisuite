@@ -3585,10 +3585,17 @@ public sealed class CommercialReceivingApiTests(PostgreSqlFixture fixture)
 
     private static async Task<string> ActivateAsync(HttpClient client, string workspaceCode, Guid deviceId, string activationCode)
     {
-        using var response = await client.PostAsJsonAsync(
-            "/api/v1/auth/device-activations/redeem",
-            new { workspaceCode, activationCode, clientInstallationReference = $"receiving-{deviceId:D}", deviceLabel = "Receiving test device", platform = "Testing" },
-            CancellationToken);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/v1/auth/device-activations/redeem")
+        {
+            Content = JsonContent.Create(
+                new { workspaceCode, activationCode, clientInstallationReference = $"receiving-{deviceId:D}", deviceLabel = "Receiving test device", platform = "Testing" }),
+        };
+        request.Headers.Add(
+            "Idempotency-Key",
+            $"receiving-activation-{deviceId:D}");
+        using var response = await client.SendAsync(request, CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var json = await ReadJsonAsync(response);
         return json.RootElement.GetProperty("deviceSecret").GetString()!;

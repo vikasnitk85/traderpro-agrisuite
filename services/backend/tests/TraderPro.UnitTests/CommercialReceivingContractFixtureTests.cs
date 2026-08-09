@@ -169,8 +169,26 @@ public sealed partial class CommercialReceivingContractFixtureTests
             authentication.GetProperty("refresh").GetProperty("request"),
             typeof(RefreshRequest));
         AssertMatchesProductionDto(
+            authentication.GetProperty("refresh").GetProperty("response"),
+            typeof(AuthenticationTokenResult));
+        AssertMatchesProductionDto(
             authentication.GetProperty("me").GetProperty("response"),
             typeof(CurrentIdentityResult));
+        AssertMatchesProductionDto(
+            authentication.GetProperty("issueActivationCode")
+                .GetProperty("response"),
+            typeof(DeviceActivationCodeResult));
+        Assert.Equal(
+            ["Idempotency-Key"],
+            authentication.GetProperty("activation")
+                .GetProperty("headers")
+                .EnumerateObject()
+                .Select(property => property.Name));
+        Assert.Equal(
+            201,
+            authentication.GetProperty("issueActivationCode")
+                .GetProperty("responseStatus")
+                .GetInt32());
         var reference = root.GetProperty("referencePolicyExample");
         Assert.Equal(
             CommercialReceivingReferencePolicy.DefaultFormatTemplate,
@@ -187,6 +205,19 @@ public sealed partial class CommercialReceivingContractFixtureTests
         var serialized = root.GetRawText();
         Assert.Contains("<runtime-secret-or-capability-not-frozen>", serialized);
         Assert.DoesNotMatch(GuidCapabilityPattern(), serialized);
+        Assert.DoesNotContain(
+            "replayProtectedResult",
+            serialized,
+            StringComparison.OrdinalIgnoreCase);
+        foreach (Match match in SecretExamplePattern().Matches(serialized))
+        {
+            Assert.StartsWith(
+                "<",
+                match.Groups["value"].Value,
+                StringComparison.Ordinal);
+        }
+
+        AssertIdentityContract(root, routes);
 
     }
 
@@ -386,6 +417,190 @@ public sealed partial class CommercialReceivingContractFixtureTests
         ["updateReferencePolicy"] = "PUT /api/v1/procurement/receiving-reference-policy",
     };
 
+    private static readonly Dictionary<string, string>
+        ExpectedIdentityAuthorizations = new(StringComparer.Ordinal)
+        {
+            ["redeemActivation"] = "Anonymous",
+            ["login"] = "Anonymous",
+            ["refresh"] = "Anonymous",
+            ["logout"] = "CommercialUser",
+            ["logoutAll"] = "CommercialUser",
+            ["me"] = "CommercialUser",
+            ["issueActivationCode"] = "Owner",
+        };
+
+    private static readonly Dictionary<string, int>
+        ExpectedIdentitySuccessStatuses = new(StringComparer.Ordinal)
+        {
+            ["redeemActivation"] = 200,
+            ["login"] = 200,
+            ["refresh"] = 200,
+            ["logout"] = 204,
+            ["logoutAll"] = 204,
+            ["me"] = 200,
+            ["issueActivationCode"] = 201,
+        };
+
+    private static readonly Dictionary<string, string[]>
+        ExpectedIdentityHeaders = new(StringComparer.Ordinal)
+        {
+            ["redeemActivation"] = ["Idempotency-Key"],
+            ["login"] = [],
+            ["refresh"] = [],
+            ["logout"] = ["Authorization"],
+            ["logoutAll"] = ["Authorization"],
+            ["me"] = ["Authorization"],
+            ["issueActivationCode"] =
+                ["Authorization", "Idempotency-Key"],
+        };
+
+    private static readonly Dictionary<string, string[]>
+        ExpectedIdentityErrors = new(StringComparer.Ordinal)
+        {
+            ["redeemActivation"] =
+            [
+                "400:CORRELATION_ID_INVALID", "400:REQUEST_BODY_INVALID",
+                "400:WORKSPACE_CODE_INVALID", "401:AUTHENTICATION_FAILED",
+                "401:DEVICE_ACTIVATION_INVALID", "401:HTTPS_REQUIRED",
+                "409:DEVICE_ACTIVATION_ALREADY_USED",
+                "409:DEVICE_ACTIVATION_EXPIRED",
+                "409:DEVICE_ACTIVATION_RECOVERY_EXPIRED",
+                "409:DEVICE_NOT_ACTIVE", "409:IDEMPOTENCY_PAYLOAD_CONFLICT",
+                "429:RATE_LIMIT_EXCEEDED",
+                "503:DEVICE_ACTIVATION_RECOVERY_UNAVAILABLE",
+                "503:TEMPORARY_COMMAND_FAILURE",
+            ],
+            ["login"] =
+            [
+                "400:CORRELATION_ID_INVALID", "400:REQUEST_BODY_INVALID",
+                "400:WORKSPACE_CODE_INVALID", "401:AUTHENTICATION_FAILED",
+                "401:AUTHENTICATION_TEMPORARILY_LOCKED",
+                "401:HTTPS_REQUIRED", "409:WORKSPACE_CONFIGURATION_INVALID",
+                "429:RATE_LIMIT_EXCEEDED", "503:TEMPORARY_COMMAND_FAILURE",
+            ],
+            ["refresh"] =
+            [
+                "400:CORRELATION_ID_INVALID", "400:REQUEST_BODY_INVALID",
+                "401:AUTHENTICATION_FAILED", "401:DEVICE_NOT_ACTIVE",
+                "401:HTTPS_REQUIRED", "401:REFRESH_TOKEN_EXPIRED",
+                "401:REFRESH_TOKEN_FAMILY_REVOKED",
+                "401:REFRESH_TOKEN_INVALID", "401:USER_NOT_ACTIVE",
+                "409:REFRESH_TOKEN_REUSE_DETECTED",
+                "409:WORKSPACE_CONFIGURATION_INVALID",
+                "429:RATE_LIMIT_EXCEEDED", "503:TEMPORARY_COMMAND_FAILURE",
+            ],
+            ["logout"] = AuthenticatedIdentityErrors(),
+            ["logoutAll"] = AuthenticatedIdentityErrors(),
+            ["me"] = AuthenticatedIdentityErrors(),
+            ["issueActivationCode"] =
+            [
+                "400:CORRELATION_ID_INVALID", "400:REQUEST_BODY_INVALID",
+                "401:ACCESS_TOKEN_INVALID",
+                "401:AUTHENTICATED_CONTEXT_INVALID",
+                "401:DEVICE_NOT_ACTIVE", "401:HTTPS_REQUIRED",
+                "401:USER_NOT_ACTIVE", "401:WORKSPACE_CONFIGURATION_INVALID",
+                "403:OWNER_ROLE_REQUIRED", "404:DEVICE_NOT_FOUND",
+                "409:DEVICE_ACTIVATION_CODE_RESPONSE_NOT_REPLAYABLE",
+                "409:DEVICE_NOT_ACTIVE", "409:IDEMPOTENCY_PAYLOAD_CONFLICT",
+                "503:TEMPORARY_COMMAND_FAILURE",
+            ],
+        };
+
+    private static string[] AuthenticatedIdentityErrors() =>
+    [
+        "400:CORRELATION_ID_INVALID", "401:ACCESS_TOKEN_INVALID",
+        "401:AUTHENTICATED_CONTEXT_INVALID", "401:DEVICE_NOT_ACTIVE",
+        "401:HTTPS_REQUIRED", "401:USER_NOT_ACTIVE",
+        "401:WORKSPACE_CONFIGURATION_INVALID", "403:AUTHORIZATION_DENIED",
+        "503:TEMPORARY_COMMAND_FAILURE",
+    ];
+
+    private static void AssertIdentityContract(
+        JsonElement root,
+        IReadOnlyDictionary<string, string> routes)
+    {
+        var routeAuthorizations = root.GetProperty("routes")
+            .EnumerateArray()
+            .Where(item => ExpectedIdentityAuthorizations.ContainsKey(
+                RequiredString(item, "name")))
+            .ToDictionary(
+                item => RequiredString(item, "name"),
+                item => RequiredString(item, "authorization"),
+                StringComparer.Ordinal);
+        Assert.Equal(ExpectedIdentityAuthorizations, routeAuthorizations);
+
+        var identity = root.GetProperty("identityContract");
+        Assert.Equal(
+            900,
+            identity.GetProperty("defaultActivationReplayWindowSeconds")
+                .GetInt32());
+        Assert.Equal(
+            30,
+            identity.GetProperty("refreshPredecessorReplaySeconds").GetInt32());
+        var errorEnvelope = identity.GetProperty("errorEnvelope");
+        AssertNames(errorEnvelope, ["error", "meta"]);
+        AssertNames(
+            errorEnvelope.GetProperty("error"),
+            [
+                "code", "message", "category", "retryable",
+                "fieldErrors", "details",
+            ]);
+        AssertNames(
+            errorEnvelope.GetProperty("meta"),
+            ["correlationId"]);
+
+        var endpoints = identity.GetProperty("endpoints")
+            .EnumerateArray()
+            .ToDictionary(
+                item => RequiredString(item, "name"),
+                item => item,
+                StringComparer.Ordinal);
+        Assert.Equal(ExpectedIdentityAuthorizations.Keys, endpoints.Keys);
+        foreach (var (name, authorization) in
+                 ExpectedIdentityAuthorizations)
+        {
+            var endpoint = endpoints[name];
+            Assert.Equal(authorization, RequiredString(
+                endpoint,
+                "authorization"));
+            Assert.Equal(
+                routes[name],
+                $"{RequiredString(endpoint, "method")} " +
+                RequiredString(endpoint, "path"));
+            Assert.Equal(
+                ExpectedIdentitySuccessStatuses[name],
+                endpoint.GetProperty("successStatus").GetInt32());
+            Assert.Equal(
+                ExpectedIdentityHeaders[name],
+                Strings(endpoint.GetProperty("requiredHeaders")));
+            var errors = endpoint.GetProperty("errors")
+                .EnumerateArray()
+                .SelectMany(error =>
+                    Strings(error.GetProperty("codes"))
+                        .Select(code =>
+                            $"{error.GetProperty("status").GetInt32()}:{code}"))
+                .ToArray();
+            Assert.Equal(ExpectedIdentityErrors[name], errors);
+        }
+
+        var sourceCodes = Strings(identity.GetProperty("sourceErrorCodes"));
+        var endpointCodes = endpoints.Values
+            .SelectMany(endpoint => endpoint.GetProperty("errors")
+                .EnumerateArray())
+            .SelectMany(error => Strings(error.GetProperty("codes")))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(sourceCodes, endpointCodes);
+        var activeProductionCodes = IdentityErrorCodePattern()
+            .Matches(ReadProductionIdentitySource())
+            .Select(match => match.Groups["code"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(sourceCodes, activeProductionCodes);
+    }
+
     private static void AssertMatchesProductionDto(JsonElement fixture, Type dtoType)
     {
         var value = JsonSerializer.Deserialize(fixture.GetRawText(), dtoType, JsonOptions);
@@ -517,6 +732,38 @@ public sealed partial class CommercialReceivingContractFixtureTests
         return string.Join('\n', files.Select(File.ReadAllText));
     }
 
+    private static string ReadProductionIdentitySource()
+    {
+        var root = RepositoryRoot();
+        var relativePaths = new[]
+        {
+            Path.Combine(
+                "services", "backend", "src", "TraderPro.Infrastructure",
+                "Modules", "Platform", "Identity",
+                "ProductionIdentityService.cs"),
+            Path.Combine(
+                "services", "backend", "src", "TraderPro.Infrastructure",
+                "Modules", "Platform", "Identity",
+                "CommercialIdentityContextResolver.cs"),
+            Path.Combine(
+                "services", "backend", "src", "TraderPro.Api", "Http",
+                "CommercialIdentityRequestMiddleware.cs"),
+            Path.Combine(
+                "services", "backend", "src", "TraderPro.Api", "Http",
+                "IdentityEndpointRegistration.cs"),
+            Path.Combine(
+                "services", "backend", "src", "TraderPro.Api", "Http",
+                "ApiProblemMiddleware.cs"),
+            Path.Combine(
+                "services", "backend", "src", "TraderPro.Api",
+                "Program.cs"),
+        };
+        return string.Join(
+            '\n',
+            relativePaths.Select(path => File.ReadAllText(
+                Path.Combine(root, path))));
+    }
+
     private static JsonDocument LoadFixture(params string[] parts) =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(
             RepositoryRoot(),
@@ -554,6 +801,12 @@ public sealed partial class CommercialReceivingContractFixtureTests
 
     [GeneratedRegex("\\\"(?:leaseId|refreshToken|activationCode|accessToken)\\\"\\s*:\\s*\\\"[0-9a-f]{8}-[0-9a-f-]{27,}\\\"", RegexOptions.IgnoreCase)]
     private static partial Regex GuidCapabilityPattern();
+
+    [GeneratedRegex("\\\"(?:activationCode|deviceSecret|password|accessToken|refreshToken)\\\"\\s*:\\s*\\\"(?<value>[^\\\"]+)\\\"")]
+    private static partial Regex SecretExamplePattern();
+
+    [GeneratedRegex("\\\"(?<code>(?:ACCESS_TOKEN_INVALID|AUTHENTICATED_CONTEXT_INVALID|AUTHENTICATION_[A-Z0-9_]+|AUTHORIZATION_DENIED|CORRELATION_ID_INVALID|DEVICE_(?:ACTIVATION_[A-Z0-9_]+|NOT_ACTIVE|NOT_FOUND)|HTTPS_REQUIRED|IDEMPOTENCY_PAYLOAD_CONFLICT|OWNER_ROLE_REQUIRED|RATE_LIMIT_EXCEEDED|REFRESH_TOKEN_[A-Z0-9_]+|REQUEST_BODY_INVALID|TEMPORARY_COMMAND_FAILURE|USER_NOT_ACTIVE|WORKSPACE_(?:CODE_INVALID|CONFIGURATION_INVALID)))\\\"")]
+    private static partial Regex IdentityErrorCodePattern();
 
     [GeneratedRegex("\\\"(?<code>(?:AUTHORIZATION_DENIED|OWNER_ROLE_REQUIRED|REQUEST_BODY_INVALID|TEMPORARY_COMMAND_FAILURE|IDEMPOTENCY_[A-Z0-9_]+|COMMERCIAL_(?:MASTER|MOBILE|SYNC)_[A-Z0-9_]+|RECEIVING_[A-Z0-9_]+))\\\"")]
     private static partial Regex ProductionErrorCodePattern();

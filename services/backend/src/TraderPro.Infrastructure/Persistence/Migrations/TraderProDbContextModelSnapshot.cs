@@ -906,6 +906,25 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("issued_by_user_id");
 
+                    b.Property<string>("RedemptionIdempotencyKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("redemption_idempotency_key_hash");
+
+                    b.Property<string>("RedemptionRequestHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("redemption_request_hash");
+
+                    b.Property<DateTimeOffset?>("ReplayAllowedUntilUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("replay_allowed_until_utc");
+
+                    b.Property<string>("ReplayProtectedResult")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("replay_protected_result");
+
                     b.Property<DateTimeOffset?>("RevokedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at_utc");
@@ -935,6 +954,11 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_device_activation_codes_workspace_device_active")
                         .HasFilter("used_at_utc IS NULL AND revoked_at_utc IS NULL");
 
+                    b.HasIndex("WorkspaceId", "RedemptionIdempotencyKeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_device_activation_codes_workspace_redemption_key")
+                        .HasFilter("redemption_idempotency_key_hash IS NOT NULL");
+
                     b.HasIndex("WorkspaceId", "IssuedByUserId");
 
                     b.HasIndex("WorkspaceId", "DeviceId", "ExpiresAtUtc")
@@ -945,6 +969,8 @@ namespace TraderPro.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_device_activation_codes_expiry", "expires_at_utc > created_at_utc");
 
                             t.HasCheckConstraint("ck_device_activation_codes_one_time_state", "used_at_utc IS NULL OR revoked_at_utc IS NULL");
+
+                            t.HasCheckConstraint("ck_device_activation_codes_replay_state", "(\n    redemption_idempotency_key_hash IS NULL\n    AND redemption_request_hash IS NULL\n    AND replay_protected_result IS NULL\n    AND replay_allowed_until_utc IS NULL\n)\nOR\n(\n    used_at_utc IS NOT NULL\n    AND redemption_idempotency_key_hash IS NOT NULL\n    AND redemption_request_hash IS NOT NULL\n    AND replay_allowed_until_utc IS NOT NULL\n    AND redemption_idempotency_key_hash ~ '^[0-9a-f]{64}$'\n    AND redemption_request_hash ~ '^[0-9a-f]{64}$'\n    AND replay_allowed_until_utc > used_at_utc\n    AND replay_allowed_until_utc <=\n        used_at_utc + interval '1 day'\n)");
 
                             t.HasCheckConstraint("ck_device_activation_codes_terminal_timing", "(used_at_utc IS NULL OR (\n    used_at_utc >= created_at_utc\n    AND used_at_utc <= expires_at_utc\n))\nAND (revoked_at_utc IS NULL OR\n    revoked_at_utc >= created_at_utc)");
 

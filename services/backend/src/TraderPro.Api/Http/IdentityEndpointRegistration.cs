@@ -28,6 +28,7 @@ public static class IdentityEndpointRegistration
                             RedeemDeviceActivationRequest>(context);
                     var result = await service.RedeemDeviceActivationAsync(
                         request,
+                        GetHeader(context, "Idempotency-Key"),
                         CommercialIdentityRequestMiddleware.GetCorrelationId(
                             context),
                         context.RequestAborted);

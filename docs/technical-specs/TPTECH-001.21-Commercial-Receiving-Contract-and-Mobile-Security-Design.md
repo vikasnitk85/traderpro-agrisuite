@@ -732,19 +732,22 @@ sequenceDiagram
 Required flows:
 
 1. **Activation:** an Owner issues a Task 7A one-time code for a pre-created
-   Device. Mobile redeems workspace code + activation code, receives Device ID
-   and secret once, and stores the secret in OS-backed secure storage. Reinstall
+   Device. Mobile creates and journals one bounded `Idempotency-Key`, redeems
+   workspace code + activation code, and stores the returned Device ID/secret
+   in OS-backed secure storage. An exact retry during ADR-0013's 15-minute
+   recovery window receives the same logical activation result. Reinstall
    reactivates the same Device row; it does not consume another slot.
 2. **Login:** workspace code, login/password, Device ID, and Device secret are
    sent over HTTPS. The returned access token is held in memory (or secure
-   storage if process restoration requires it); refresh token is stored only in
-   secure storage. `/api/v1/auth/me` establishes the database-revalidated
+   memory only; the refresh token is stored only in secure storage.
+   `/api/v1/auth/me` establishes the database-revalidated
    Workspace/Company/default Branch/User/Device/role binding.
 3. **Refresh:** one coordinator serializes refresh. Every API call waits for the
    one in-flight refresh. After a normal response, replacement refresh token is
    durably stored before callers resume. After an ambiguous/lost response, the
    same predecessor is retried inside Task 7A's replay window. No Receiving
-   operation ID is regenerated.
+   operation ID is regenerated. The exact predecessor is recoverable for 30
+   seconds; after that the client requires explicit login.
 4. **Logout:** current-family logout is sent idempotently when possible; access
    and refresh material are cleared locally. Encrypted pending work remains and
    requires login to the same context to resume.
@@ -758,10 +761,34 @@ Required flows:
    absence, and authorization failure refresh `/auth/me`. Workspace/Company/
    Device mismatch fails closed.
 
-The POC profile/runtime remains isolated. Commercial profile identity cannot
-change while an open Session, unresolved operation, lease, attention record, or
-unapplied event exists. Switching requires successful synchronization and an
-explicit account transition; there is no silent rebinding.
+The POC profile/runtime remains isolated. Commercial V1 permanently binds one
+profile to the exact API origin, Workspace, Company, default Branch, User, and
+Device. User, Company, and Branch switching are not supported. Any mismatch
+blocks without mutating credentials, encrypted data, or offline facts.
+
+### Frozen B3 identity decisions
+
+Task 7C2B3.0 records these decisions for later B3 implementation and does not
+implement Flutter networking, storage, Android, or UI changes:
+
+- B2 `installationId` is only the non-secret informational
+  `clientInstallationReference`; it is never authentication authority.
+- The dedicated secure-store namespace is
+  `traderpro_commercial_identity_v1`. Device and refresh credential changes
+  use journaled replacement; the access token remains memory-only.
+- The Device secret persists through normal logout. Logout clears access and
+  refresh credentials only.
+- Context mismatch blocks without mutation. Offline startup is
+  `BOUND_OFFLINE_REVALIDATION_REQUIRED` until current cloud identity is
+  revalidated.
+- One serialized coordinator refreshes with a 60-second access-token skew.
+  Backend exact-predecessor replay remains 30 seconds; later failure requires
+  explicit login.
+- Networking uses `dart:io` and a required `TRADERPRO_API_BASE_URL` build
+  define. Certificate pinning is not required.
+- B3 adds Android production `INTERNET` permission and global production
+  `FLAG_SECURE`.
+- The B3 UI is minimal and identity-only.
 
 ## Secure mobile storage strategy
 
