@@ -5,10 +5,11 @@
 TraderPro AgriSuite is an Android-first agricultural trading and operations product. Its foundation combines a Flutter mobile application with a .NET 10 modular-monolith backend, PostgreSQL 18, one deployable API, and one background worker. Business data is cloud-authoritative; the mobile architecture will preserve locally captured physical facts before synchronisation.
 
 This repository contains a buildable foundation with the Platform database,
-production backend identity/device-session boundary, and focused mobile
-offline-store and two-device proofs of concept. It establishes project,
-module, dependency, test, and local-infrastructure boundaries without
-implementing complete production business workflows.
+production backend identity/device-session boundary, a secure encrypted
+Commercial mobile local foundation, and focused mobile offline-store and
+two-device proofs of concept. The production Flutter entrypoint provisions a
+separate SQLite3MultipleCiphers schema-1 metadata database with an Android
+OS-backed key; authentication and business workflows remain later tasks.
 
 ## Repository map
 
@@ -115,8 +116,14 @@ dotnet build .\TraderPro.sln --configuration Debug --no-restore
 
 Push-Location .\apps\mobile
 flutter build apk --debug
+flutter build apk --release --split-per-abi `
+  --target-platform android-arm,android-arm64
 Pop-Location
 ```
+
+`lib/main.dart` is the production secure-foundation entrypoint. The isolated
+development POC is run only with `-t lib/main_poc.dart`. Production release
+signing is intentionally not configured in this repository.
 
 Generate the checked-in Drift source after changing the local schema:
 
@@ -134,6 +141,8 @@ dotnet test .\TraderPro.sln --configuration Debug --no-build
 Push-Location .\apps\mobile
 flutter analyze
 flutter test
+flutter test .\integration_test\commercial_secure_foundation_test.dart `
+  -d <authorized-android-device>
 Pop-Location
 
 powershell -ExecutionPolicy Bypass `
@@ -163,8 +172,16 @@ tests can also be run directly:
 Push-Location .\apps\mobile
 flutter test .\test\core\database
 flutter test .\test\features\receiving
+flutter test .\test\infrastructure\database\commercial
+flutter test .\test\architecture
 Pop-Location
 ```
+
+The secure Commercial foundation contract, validation status, remaining pilot
+gates, and Owner-approved notice-distribution requirement are recorded in
+`docs/assessments/TASK-7C2B2-Secure-Commercial-Local-Foundation.md` and
+ADR-0012. Do not add account, Receiving, master, outbox, cursor, Inventory, or
+Finance tables to schema 1.
 
 Run the focused cloud-command, PostgreSQL 18 API, concurrency, rollback,
 cursor, and architecture suite with:
@@ -757,13 +774,14 @@ The implemented database foundation is documented in
 isolation decisions and the remaining RLS security gate are documented in
 `docs/decisions/ADR-0001-workspace-isolation-foundation.md`.
 
-The focused mobile store is documented in
+The focused POC mobile store is documented in
 `docs/technical-specs/TPTECH-001.14-Mobile-Offline-Store-Spike.md`.
 It currently uses ordinary, unencrypted SQLite and is **not production-ready
-for sensitive customer data**. ADR-0011 selects SQLite3MultipleCiphers for the
-future production Commercial store, but Task 7C2B2 implementation, key
-management, backup exclusions, migration controls, and pilot verification
-remain mandatory pre-pilot security work.
+for sensitive customer data**. Separately, ADR-0011 selects
+SQLite3MultipleCiphers and Task 7C2B2 implements the encrypted production
+Commercial schema-1 foundation, OS-backed key handling, and backup exclusions.
+Authentication, business workflows, and the remaining pilot gates are later
+reviewed work.
 
 These omissions are intentional. Future work should introduce each capability through reviewed specifications and tests while preserving the rules in `AGENTS.md`.
 

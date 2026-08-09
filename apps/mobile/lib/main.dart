@@ -1,30 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:traderpro_agrisuite_mobile/app/app.dart';
-import 'package:traderpro_agrisuite_mobile/app/procurement_poc_runtime.dart';
-import 'package:traderpro_agrisuite_mobile/features/procurement_poc/procurement_poc.dart';
+import 'package:traderpro_agrisuite_mobile/infrastructure/runtime/commercial_secure_runtime.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const feature = ProcurementPocFeatureConfiguration(
-    compileTimeEnabled: procurementPocCompileTimeEnabled,
-    releaseMode: kReleaseMode,
+  final supportDirectory = await getApplicationSupportDirectory();
+  final runtime = CommercialSecureRuntime.production(
+    applicationSupportDirectory: supportDirectory,
   );
-  if (!feature.isEnabled) {
-    runApp(const TraderProAgriSuiteApp());
-    return;
-  }
-
-  final runtime = await ProcurementPocRuntime.open(feature: feature);
-  await runtime.start();
-  runApp(
-    ProcurementPocRuntimeHost(
-      runtime: runtime,
-      child: TraderProAgriSuiteApp(
-        procurementPocFeature: feature,
-        procurementPocBuilder: (_) =>
-            ProcurementPocHome(controller: runtime.controller),
-      ),
-    ),
-  );
+  final startupState = await runtime.open();
+  runApp(TraderProAgriSuiteApp(startupState: startupState));
 }

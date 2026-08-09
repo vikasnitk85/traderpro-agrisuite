@@ -1,10 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:traderpro_agrisuite_mobile/app/app.dart';
-import 'package:traderpro_agrisuite_mobile/features/procurement_poc/procurement_poc.dart';
+import 'package:traderpro_agrisuite_mobile/app/commercial_secure_startup_state.dart';
 
 const expectedFoundationMessage =
     'Foundation scaffold \u2014 business modules not yet implemented.';
@@ -21,67 +19,39 @@ void main() {
     expect(foundationMessage, expectedFoundationMessage);
     expect(find.text(expectedFoundationMessage), findsOneWidget);
     expect(message.textAlign, TextAlign.center);
-    expect(find.byKey(const Key('open-procurement-poc')), findsNothing);
+    expect(find.byKey(const Key('open-development-route')), findsNothing);
   });
 
-  testWidgets('POC route is available only when explicitly enabled', (
+  testWidgets('development route is available only when injected', (
     tester,
   ) async {
     await tester.pumpWidget(
       TraderProAgriSuiteApp(
-        procurementPocFeature: const ProcurementPocFeatureConfiguration(
-          compileTimeEnabled: true,
-          releaseMode: false,
-        ),
-        procurementPocBuilder: (_) =>
-            const Scaffold(body: Text('Injected POC')),
+        developmentRouteName: '/development-test',
+        developmentActionLabel: 'Development Only',
+        developmentRouteBuilder: (_) =>
+            const Scaffold(body: Text('Injected development route')),
       ),
     );
-    await tester.tap(find.byKey(const Key('open-procurement-poc')));
+    await tester.tap(find.byKey(const Key('open-development-route')));
     await tester.pumpAndSettle();
-    expect(find.text('Injected POC'), findsOneWidget);
+    expect(find.text('Injected development route'), findsOneWidget);
   });
 
-  testWidgets('disabled configuration fails the POC route closed', (
-    tester,
-  ) async {
+  testWidgets('renders only safe Commercial startup state', (tester) async {
     await tester.pumpWidget(
-      TraderProAgriSuiteApp(
-        procurementPocFeature: const ProcurementPocFeatureConfiguration(
-          compileTimeEnabled: false,
-          releaseMode: false,
+      const TraderProAgriSuiteApp(
+        startupState: CommercialSecureStartupState.unavailable(
+          'COMMERCIAL_SECURE_STORE_UNAVAILABLE',
         ),
-        procurementPocBuilder: (_) =>
-            const Scaffold(body: Text('Must not render')),
       ),
     );
-    expect(find.byKey(const Key('open-procurement-poc')), findsNothing);
-    final context = tester.element(find.byType(FoundationScreen));
-    unawaited(Navigator.of(context).pushNamed(procurementPocRoute));
-    await tester.pumpAndSettle();
-    expect(find.text('Must not render'), findsNothing);
-    expect(find.text(expectedFoundationMessage), findsOneWidget);
-  });
 
-  testWidgets('release configuration fails the POC route closed', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      TraderProAgriSuiteApp(
-        procurementPocFeature: const ProcurementPocFeatureConfiguration(
-          compileTimeEnabled: true,
-          releaseMode: true,
-        ),
-        procurementPocBuilder: (_) =>
-            const Scaffold(body: Text('Must not render')),
-      ),
+    expect(
+      find.textContaining('COMMERCIAL_SECURE_STORE_UNAVAILABLE'),
+      findsOneWidget,
     );
-    expect(find.byKey(const Key('open-procurement-poc')), findsNothing);
-    final context = tester.element(find.byType(FoundationScreen));
-    unawaited(Navigator.of(context).pushNamed(procurementPocRoute));
-    await tester.pumpAndSettle();
-    expect(find.text('Must not render'), findsNothing);
-    expect(find.text(expectedFoundationMessage), findsOneWidget);
+    expect(find.textContaining('native'), findsNothing);
   });
 
   testWidgets('app composition leaves debug visual flags disabled', (

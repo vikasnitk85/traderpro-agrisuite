@@ -1,19 +1,78 @@
 # TPRUN-006: Encrypted mobile-storage validation
 
-- Status: Task 7C2B1 validation complete; SQLite3MultipleCiphers selected by ADR-0011
-- Applies to: isolated `spikes/task_7c2a_encrypted_storage` only
-- Prohibited target: `apps/mobile` and all production/customer data
+- Status: Task 7C2B1 selection complete; `TASK 7C2B2 = COMPLETE`; Task 7C2B3 not started
+- Applies to: isolated B1 spike and the reviewed `apps/mobile` B2 foundation
+- Prohibited target: production/customer data and any unreviewed business schema
 
 ## Purpose and safety
 
-Use this runbook to close the Task 7C2B1 API-24/API-35, lifecycle,
-performance, native-provenance, notice, SBOM, and SCA gates. Use synthetic data
-only. Never print, persist in reports, or pass a database key on a command
-line. Do not capture device serials in committed evidence. Do not keep APKs,
+Use the B1 sections to reproduce candidate selection and the B2 section below
+to validate the production secure foundation. Use synthetic data only. Never
+print, persist in reports, or pass a database key on a command line. Do not
+capture device serials in committed evidence. Do not keep APKs,
 databases, WAL/SHM/journal files, secure-store dumps, extracted ELFs, Gradle
 caches, scanner databases, or emulator snapshots in Git.
 
 Process termination is not power loss. Label the evidence accurately.
+
+## Task 7C2B2 production-foundation procedure
+
+From `apps/mobile`, keep `source: sqlite3mc` and run:
+
+```powershell
+flutter pub get
+dart run build_runner build
+flutter analyze
+flutter test
+flutter test integration_test/commercial_secure_foundation_test.dart `
+  -d <authorized-api-24-or-api-35-device>
+flutter build apk --debug
+flutter build apk --release --split-per-abi `
+  --target-platform android-arm,android-arm64
+dart run tool/generate_b2_production_sbom.dart
+```
+
+The integration test uses the real production secure-store composition for
+first provisioning/reopen and real missing/malformed/wrong stored-key cases.
+It uses separate synthetic app-support subtrees for unavailable/invalidated,
+interruption, and unreadable-final-file cases. It must restore the real test
+key after each controlled failure and must never delete or reset production
+ciphertext. Force-stop and replacement evidence must launch `lib/main.dart`,
+use `adb install -r` for a true data-preserving replacement, and confirm only
+the safe ready state. Flutter's `flutter install` may uninstall first and is
+not valid replacement-preservation evidence.
+
+For release evidence, accept an unsigned APK only when repository signing is
+absent. Verify the merged release manifest is non-debuggable, has no INTERNET,
+sets backup/cleartext false, and references both exclusion XML files. Package
+only ARM/ARM64 for production; classify x86_64 as emulator/test-only.
+
+Generate B2 supply-chain files with distinct B2 names. Scan the new SBOM, not
+the comparative B1 SBOM, and keep raw scanner JSON/cache outside the repository.
+The Project/Legal Owner approved the frozen B2 exact-text bundle on 2026-08-08.
+The future product surface is About / Legal / Third-Party Notices and includes
+the SQLite public-domain dedication/provenance; implementing that UI is a later
+distribution/release requirement, not B2 scope. Any graph change requires
+notice/SBOM regeneration and Owner review again.
+
+### Recorded B2 physical API-35 result
+
+On 2026-08-08, model 2311DRK48I running Android 15/API 35 on arm64-v8a passed
+the three-test production B2 integration matrix. Frozen SQLite3MC settings,
+metadata/key/identity continuity, real and simulated fail-closed states,
+unkeyed/wrong-key refusal, zero-length preservation, and both approved
+interruption resumes passed. A force-stop cold reopen and true `adb install -r`
+replacement retained identical database and marker hashes and returned only
+the safe ready state. No POC database or route appeared.
+
+An ARM64 release copy signed only with an external two-day evidence key also
+cold-launched successfully. Its installed flags excluded `DEBUGGABLE` and
+`ALLOW_BACKUP`, its requested permissions excluded INTERNET, and its merged
+manifest retained cleartext false and both backup resource references. The
+temporary signing key/APK, installed package/data, UI dumps, and rebuilt APKs
+were deleted after review. Rebuilt ARM native-library hashes matched the frozen
+B2 provenance exactly, so the production SBOM/SCA/native inventory did not
+require regeneration.
 
 ## Preconditions
 
@@ -237,8 +296,9 @@ unscannable native components. Manual review is not SCA. Do not record “no
 vulnerabilities” unless the approved scan completed successfully and its scope
 supports that statement.
 
-Legal Owner must review the third-party-notice document against the exact
-release SBOM and binary graph.
+The Project/Legal Owner approved the third-party-notice document on 2026-08-08
+against the exact frozen release SBOM and ARM binary graph. This records Owner
+approval, not external legal counsel advice.
 
 ## Completion checklist
 
@@ -249,12 +309,16 @@ release SBOM and binary graph.
 - [x] debug and unsigned release native provenance
 - [x] locked, JSON-valid comparative SBOM
 - [x] approved SCA run and reviewed findings
-- [ ] Legal Owner notice approval (B2/release gate; not claimed by B1)
+- [x] Project/Legal Owner notice approval for frozen B2 graph (2026-08-08; not claimed by B1)
 - [x] no plaintext/key/log leak in retained evidence
 - [x] production dependency graph unchanged
 - [x] no binary, database, cache, serial, key, local path, or raw scanner output retained
 
 ADR-0011 accepted SQLite3MultipleCiphers after all B1 selection gates passed.
-Task 7C2B1 is complete subject to commit review. Task 7C2B2 is next and has not
-started; its production, legal, backup, release, and pilot gates remain in
-force.
+Task 7C2B1 is complete subject to commit review; its historical selection text
+above is retained. For current B2 status use
+`docs/assessments/TASK-7C2B2-Secure-Commercial-Local-Foundation.md`: API-24,
+physical API-35, host, unsigned ARM release, backup declarations, SBOM, and SCA
+pass; Project/Legal Owner notice approval for the frozen graph is recorded,
+ADR-0012 is accepted, and the final static closeout review passes. Task 7C2B3
+has not started.
