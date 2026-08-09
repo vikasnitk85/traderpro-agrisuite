@@ -23,6 +23,9 @@
   ],
   "authenticationExamples": {
     "activation": {
+      "headers": {
+        "Idempotency-Key": "synthetic-activation-attempt-001"
+      },
       "request": {
         "workspaceCode": "DEMO-WORKSPACE",
         "activationCode": "<one-time-code-not-frozen>",
@@ -73,7 +76,29 @@
       "request": {
         "refreshToken": "<runtime-refresh-token-not-frozen>"
       },
-      "response": "same shape as authenticationExamples.login.response with newly rotated runtime tokens"
+      "response": {
+        "accessToken": "<runtime-access-token-not-frozen>",
+        "accessTokenExpiresAtUtc": "2026-08-02T07:15:30+00:00",
+        "refreshToken": "<runtime-refresh-token-not-frozen>",
+        "refreshTokenExpiresAtUtc": "2026-09-01T07:00:00+00:00",
+        "user": {
+          "userId": "33333333-3333-4333-8333-333333333333",
+          "displayName": "Receiving Operator",
+          "role": "Operator"
+        },
+        "workspace": {
+          "workspaceId": "11111111-1111-4111-8111-111111111111",
+          "workspaceCode": "DEMO-WORKSPACE"
+        },
+        "company": {
+          "companyId": "22222222-2222-4222-8222-222222222222",
+          "defaultBranchId": "019fc400-0000-7000-8000-000000000202"
+        },
+        "device": {
+          "deviceId": "019fc400-0000-7000-8000-000000000201",
+          "label": "Receiving device 1"
+        }
+      }
     },
     "logout": {
       "request": null,
@@ -105,7 +130,170 @@
         },
         "tokenFamilyId": "019fc400-0000-7000-8000-000000000203"
       }
+    },
+    "issueActivationCode": {
+      "headers": {
+        "Authorization": "Bearer <runtime-access-token-not-frozen>",
+        "Idempotency-Key": "synthetic-owner-activation-issue-001"
+      },
+      "responseStatus": 201,
+      "response": {
+        "deviceId": "019fc400-0000-7000-8000-000000000201",
+        "activationCode": "<one-time-code-not-frozen>",
+        "expiresAtUtc": "2026-08-02T07:15:00+00:00"
+      }
     }
+  },
+  "identityContract": {
+    "defaultActivationReplayWindowSeconds": 900,
+    "refreshPredecessorReplaySeconds": 30,
+    "errorEnvelope": {
+      "error": {
+        "code": "<documented-error-code>",
+        "message": "<safe-error-message>",
+        "category": "<documented-category>",
+        "retryable": false,
+        "fieldErrors": null,
+        "details": null
+      },
+      "meta": {
+        "correlationId": "019fc400-0000-7000-8000-000000000299"
+      }
+    },
+    "endpoints": [
+      {
+        "name": "redeemActivation",
+        "method": "POST",
+        "path": "/api/v1/auth/device-activations/redeem",
+        "authorization": "Anonymous",
+        "successStatus": 200,
+        "requiredHeaders": ["Idempotency-Key"],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID", "REQUEST_BODY_INVALID", "WORKSPACE_CODE_INVALID"] },
+          { "status": 401, "codes": ["AUTHENTICATION_FAILED", "DEVICE_ACTIVATION_INVALID", "HTTPS_REQUIRED"] },
+          { "status": 409, "codes": ["DEVICE_ACTIVATION_ALREADY_USED", "DEVICE_ACTIVATION_EXPIRED", "DEVICE_ACTIVATION_RECOVERY_EXPIRED", "DEVICE_NOT_ACTIVE", "IDEMPOTENCY_PAYLOAD_CONFLICT"] },
+          { "status": 429, "codes": ["RATE_LIMIT_EXCEEDED"] },
+          { "status": 503, "codes": ["DEVICE_ACTIVATION_RECOVERY_UNAVAILABLE", "TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      },
+      {
+        "name": "login",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "authorization": "Anonymous",
+        "successStatus": 200,
+        "requiredHeaders": [],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID", "REQUEST_BODY_INVALID", "WORKSPACE_CODE_INVALID"] },
+          { "status": 401, "codes": ["AUTHENTICATION_FAILED", "AUTHENTICATION_TEMPORARILY_LOCKED", "HTTPS_REQUIRED"] },
+          { "status": 409, "codes": ["WORKSPACE_CONFIGURATION_INVALID"] },
+          { "status": 429, "codes": ["RATE_LIMIT_EXCEEDED"] },
+          { "status": 503, "codes": ["TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      },
+      {
+        "name": "refresh",
+        "method": "POST",
+        "path": "/api/v1/auth/refresh",
+        "authorization": "Anonymous",
+        "successStatus": 200,
+        "requiredHeaders": [],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID", "REQUEST_BODY_INVALID"] },
+          { "status": 401, "codes": ["AUTHENTICATION_FAILED", "DEVICE_NOT_ACTIVE", "HTTPS_REQUIRED", "REFRESH_TOKEN_EXPIRED", "REFRESH_TOKEN_FAMILY_REVOKED", "REFRESH_TOKEN_INVALID", "USER_NOT_ACTIVE"] },
+          { "status": 409, "codes": ["REFRESH_TOKEN_REUSE_DETECTED", "WORKSPACE_CONFIGURATION_INVALID"] },
+          { "status": 429, "codes": ["RATE_LIMIT_EXCEEDED"] },
+          { "status": 503, "codes": ["TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      },
+      {
+        "name": "logout",
+        "method": "POST",
+        "path": "/api/v1/auth/logout",
+        "authorization": "CommercialUser",
+        "successStatus": 204,
+        "requiredHeaders": ["Authorization"],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID"] },
+          { "status": 401, "codes": ["ACCESS_TOKEN_INVALID", "AUTHENTICATED_CONTEXT_INVALID", "DEVICE_NOT_ACTIVE", "HTTPS_REQUIRED", "USER_NOT_ACTIVE", "WORKSPACE_CONFIGURATION_INVALID"] },
+          { "status": 403, "codes": ["AUTHORIZATION_DENIED"] },
+          { "status": 503, "codes": ["TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      },
+      {
+        "name": "logoutAll",
+        "method": "POST",
+        "path": "/api/v1/auth/logout-all",
+        "authorization": "CommercialUser",
+        "successStatus": 204,
+        "requiredHeaders": ["Authorization"],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID"] },
+          { "status": 401, "codes": ["ACCESS_TOKEN_INVALID", "AUTHENTICATED_CONTEXT_INVALID", "DEVICE_NOT_ACTIVE", "HTTPS_REQUIRED", "USER_NOT_ACTIVE", "WORKSPACE_CONFIGURATION_INVALID"] },
+          { "status": 403, "codes": ["AUTHORIZATION_DENIED"] },
+          { "status": 503, "codes": ["TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      },
+      {
+        "name": "me",
+        "method": "GET",
+        "path": "/api/v1/auth/me",
+        "authorization": "CommercialUser",
+        "successStatus": 200,
+        "requiredHeaders": ["Authorization"],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID"] },
+          { "status": 401, "codes": ["ACCESS_TOKEN_INVALID", "AUTHENTICATED_CONTEXT_INVALID", "DEVICE_NOT_ACTIVE", "HTTPS_REQUIRED", "USER_NOT_ACTIVE", "WORKSPACE_CONFIGURATION_INVALID"] },
+          { "status": 403, "codes": ["AUTHORIZATION_DENIED"] },
+          { "status": 503, "codes": ["TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      },
+      {
+        "name": "issueActivationCode",
+        "method": "POST",
+        "path": "/api/v1/devices/{deviceId:guid}/activation-codes",
+        "authorization": "Owner",
+        "successStatus": 201,
+        "requiredHeaders": ["Authorization", "Idempotency-Key"],
+        "errors": [
+          { "status": 400, "codes": ["CORRELATION_ID_INVALID", "REQUEST_BODY_INVALID"] },
+          { "status": 401, "codes": ["ACCESS_TOKEN_INVALID", "AUTHENTICATED_CONTEXT_INVALID", "DEVICE_NOT_ACTIVE", "HTTPS_REQUIRED", "USER_NOT_ACTIVE", "WORKSPACE_CONFIGURATION_INVALID"] },
+          { "status": 403, "codes": ["OWNER_ROLE_REQUIRED"] },
+          { "status": 404, "codes": ["DEVICE_NOT_FOUND"] },
+          { "status": 409, "codes": ["DEVICE_ACTIVATION_CODE_RESPONSE_NOT_REPLAYABLE", "DEVICE_NOT_ACTIVE", "IDEMPOTENCY_PAYLOAD_CONFLICT"] },
+          { "status": 503, "codes": ["TEMPORARY_COMMAND_FAILURE"] }
+        ]
+      }
+    ],
+    "sourceErrorCodes": [
+      "ACCESS_TOKEN_INVALID",
+      "AUTHENTICATED_CONTEXT_INVALID",
+      "AUTHENTICATION_FAILED",
+      "AUTHENTICATION_TEMPORARILY_LOCKED",
+      "AUTHORIZATION_DENIED",
+      "CORRELATION_ID_INVALID",
+      "DEVICE_ACTIVATION_ALREADY_USED",
+      "DEVICE_ACTIVATION_CODE_RESPONSE_NOT_REPLAYABLE",
+      "DEVICE_ACTIVATION_EXPIRED",
+      "DEVICE_ACTIVATION_INVALID",
+      "DEVICE_ACTIVATION_RECOVERY_EXPIRED",
+      "DEVICE_ACTIVATION_RECOVERY_UNAVAILABLE",
+      "DEVICE_NOT_ACTIVE",
+      "DEVICE_NOT_FOUND",
+      "HTTPS_REQUIRED",
+      "IDEMPOTENCY_PAYLOAD_CONFLICT",
+      "OWNER_ROLE_REQUIRED",
+      "RATE_LIMIT_EXCEEDED",
+      "REFRESH_TOKEN_EXPIRED",
+      "REFRESH_TOKEN_FAMILY_REVOKED",
+      "REFRESH_TOKEN_INVALID",
+      "REFRESH_TOKEN_REUSE_DETECTED",
+      "REQUEST_BODY_INVALID",
+      "TEMPORARY_COMMAND_FAILURE",
+      "USER_NOT_ACTIVE",
+      "WORKSPACE_CODE_INVALID",
+      "WORKSPACE_CONFIGURATION_INVALID"
+    ]
   },
   "ownershipExamples": {
     "heartbeat": {

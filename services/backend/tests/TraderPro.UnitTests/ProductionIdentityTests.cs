@@ -143,11 +143,21 @@ public sealed class ProductionIdentityTests
             UtcNow.AddMinutes(15),
             Uuid7.NewGuid(),
             UtcNow);
-        code.Consume(UtcNow.AddMinutes(1));
+        code.Consume(
+            UtcNow.AddMinutes(1),
+            new string('b', 64),
+            new string('c', 64),
+            "protected-result",
+            UtcNow.AddMinutes(16));
 
         Assert.NotNull(code.UsedAtUtc);
         Assert.Throws<InvalidOperationException>(
-            () => code.Consume(UtcNow.AddMinutes(2)));
+            () => code.Consume(
+                UtcNow.AddMinutes(2),
+                new string('b', 64),
+                new string('c', 64),
+                "protected-result",
+                UtcNow.AddMinutes(17)));
         Assert.False(code.IsExpired(UtcNow.AddMinutes(14)));
         Assert.True(code.IsExpired(UtcNow.AddMinutes(15)));
     }

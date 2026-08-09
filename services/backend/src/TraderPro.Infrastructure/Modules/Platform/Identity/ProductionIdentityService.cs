@@ -19,6 +19,8 @@ internal sealed class ProductionIdentityService :
 {
     private const string ActivationIssueCommand =
         "Platform.Identity.DeviceActivationCode.Issue";
+    private const string ActivationRedeemCommand =
+        "Platform.Identity.DeviceActivationCode.Redeem";
     private const int MaximumSecretLength = 512;
     private readonly TraderProDbContext _dbContext;
     private readonly CurrentWorkspaceAccessor _currentWorkspace;
@@ -28,7 +30,8 @@ internal sealed class ProductionIdentityService :
     private readonly IPasswordHasher<PlatformUser> _passwordHasher;
     private readonly JwtAccessTokenIssuer _accessTokenIssuer;
     private readonly PostgreSqlIdentitySessionLock _sessionLock;
-    private readonly IDataProtector _replayProtector;
+    private readonly IDataProtector _refreshReplayProtector;
+    private readonly ITimeLimitedDataProtector _activationReplayProtector;
     private readonly string _dummyPasswordHash;
 
     public ProductionIdentityService(
@@ -50,8 +53,11 @@ internal sealed class ProductionIdentityService :
         _passwordHasher = passwordHasher;
         _accessTokenIssuer = accessTokenIssuer;
         _sessionLock = sessionLock;
-        _replayProtector = dataProtectionProvider.CreateProtector(
+        _refreshReplayProtector = dataProtectionProvider.CreateProtector(
             "TraderPro.Identity.RefreshReplay.v1");
+        _activationReplayProtector = dataProtectionProvider.CreateProtector(
+                "TraderPro.Identity.DeviceActivationReplay.v1")
+            .ToTimeLimitedDataProtector();
         _dummyPasswordHash = passwordHasher.HashPassword(
             null!,
             IdentitySecretCryptography.GenerateUrlSafeToken());
@@ -60,10 +66,17 @@ internal sealed class ProductionIdentityService :
     public async Task<RedeemDeviceActivationResult>
         RedeemDeviceActivationAsync(
             RedeemDeviceActivationRequest request,
+            string idempotencyKey,
             string correlationId,
             CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var validatedKey = RequiredBounded(
+            idempotencyKey,
+            200,
+            "Idempotency-Key");
+        var idempotencyKeyHash = IdentitySecretCryptography.Hash(
+            validatedKey);
         var normalizedWorkspaceCode = NormalizeWorkspaceCode(
             request.WorkspaceCode);
         var activationCode = RequiredSecret(
@@ -71,6 +84,16 @@ internal sealed class ProductionIdentityService :
             "activationCode");
         var label = RequiredBounded(request.DeviceLabel, 200, "deviceLabel");
         var platform = RequiredBounded(request.Platform, 50, "platform");
+        var installationReference = string.IsNullOrWhiteSpace(
+            request.ClientInstallationReference)
+            ? null
+            : RequiredBounded(
+                request.ClientInstallationReference,
+                MaximumSecretLength,
+                "clientInstallationReference");
+        var installationHash = installationReference is null
+            ? null
+            : IdentitySecretCryptography.Hash(installationReference);
         var workspace = await FindWorkspaceAsync(
             normalizedWorkspaceCode,
             cancellationToken);
@@ -90,6 +113,15 @@ internal sealed class ProductionIdentityService :
         {
             throw DeviceActivationInvalid();
         }
+
+        var requestHash = IdentitySecretCryptography.Hash(
+            $"{ActivationRedeemCommand}\n" +
+            $"{workspace.Id:D}\n" +
+            $"{codeLocation.Id:D}\n" +
+            $"{codeLocation.DeviceId:D}\n" +
+            $"{installationHash ?? string.Empty}\n" +
+            $"{label}\n" +
+            platform);
 
         await using var transaction = await _dbContext.Database
             .BeginTransactionAsync(cancellationToken);
@@ -112,6 +144,11 @@ internal sealed class ProductionIdentityService :
             workspace.Id,
             familyIds,
             cancellationToken);
+        await _sessionLock.AcquireCommandIdempotencyAsync(
+            workspace.Id,
+            ActivationRedeemCommand,
+            idempotencyKeyHash,
+            cancellationToken);
         var code = await _dbContext.DeviceActivationCodes
             .SingleOrDefaultAsync(
                 item =>
@@ -124,21 +161,26 @@ internal sealed class ProductionIdentityService :
             throw DeviceActivationInvalid();
         }
 
-        var now = _clock.UtcNow;
-        if (code.UsedAtUtc is not null)
+        var existingAttempt = await _dbContext.DeviceActivationCodes
+            .SingleOrDefaultAsync(
+                item =>
+                    item.RedemptionIdempotencyKeyHash ==
+                    idempotencyKeyHash,
+                cancellationToken);
+        if (existingAttempt is not null &&
+            (existingAttempt.Id != code.Id ||
+                existingAttempt.RedemptionRequestHash != requestHash))
         {
-            throw Problem(
-                "DEVICE_ACTIVATION_ALREADY_USED",
-                "The device activation code was already used.",
-                ApplicationErrorCategory.Conflict);
+            throw IdempotencyPayloadConflict(code.DeviceId);
         }
 
+        var now = _clock.UtcNow;
         if (code.RevokedAtUtc is not null)
         {
             throw DeviceActivationInvalid();
         }
 
-        if (code.IsExpired(now))
+        if (code.UsedAtUtc is null && code.IsExpired(now))
         {
             throw Problem(
                 "DEVICE_ACTIVATION_EXPIRED",
@@ -157,18 +199,80 @@ internal sealed class ProductionIdentityService :
                 ApplicationErrorCategory.Conflict);
         }
 
+        if (code.UsedAtUtc is not null)
+        {
+            if (code.RedemptionIdempotencyKeyHash != idempotencyKeyHash)
+            {
+                throw DeviceActivationAlreadyUsed();
+            }
+
+            if (code.RedemptionRequestHash != requestHash)
+            {
+                throw IdempotencyPayloadConflict(code.DeviceId);
+            }
+
+            if (code.ReplayAllowedUntilUtc is null ||
+                code.ReplayAllowedUntilUtc <= now)
+            {
+                if (code.ReplayProtectedResult is not null)
+                {
+                    code.ClearReplayMaterial();
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+                throw DeviceActivationRecoveryExpired();
+            }
+
+            if (code.ReplayProtectedResult is null)
+            {
+                throw DeviceActivationAlreadyUsed();
+            }
+
+            if (!TryUnprotectActivationReplayResult(
+                    code.ReplayProtectedResult,
+                    out var replayedActivation))
+            {
+                throw Problem(
+                    "DEVICE_ACTIVATION_RECOVERY_UNAVAILABLE",
+                    "The activation result cannot be recovered temporarily.",
+                    ApplicationErrorCategory.Unavailable,
+                    retryable: true);
+            }
+
+            var replayCredential = await _dbContext.DeviceCredentials
+                .SingleOrDefaultAsync(
+                    item => item.DeviceId == device.Id,
+                    cancellationToken);
+            if (replayedActivation is null ||
+                replayedActivation.WorkspaceId != workspace.Id ||
+                replayedActivation.ActivationCodeId != code.Id ||
+                replayedActivation.DeviceId != device.Id ||
+                replayedActivation.IdempotencyKeyHash != idempotencyKeyHash ||
+                replayedActivation.RequestHash != requestHash ||
+                replayedActivation.ReplayAllowedUntilUtc !=
+                    code.ReplayAllowedUntilUtc ||
+                replayedActivation.ActivatedAtUtc != code.UsedAtUtc ||
+                replayCredential is null ||
+                replayCredential.SecretVersion !=
+                    replayedActivation.SecretVersion ||
+                !IdentitySecretCryptography.VerifyHash(
+                    replayedActivation.DeviceSecret,
+                    replayCredential.DeviceSecretHash))
+            {
+                throw DeviceActivationAlreadyUsed();
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return new RedeemDeviceActivationResult(
+                replayedActivation.DeviceId,
+                replayedActivation.DeviceSecret,
+                replayedActivation.ActivatedAtUtc,
+                replayedActivation.SecretVersion);
+        }
+
         var rawSecret = IdentitySecretCryptography.GenerateUrlSafeToken();
         var secretHash = IdentitySecretCryptography.Hash(rawSecret);
-        var installationReference = string.IsNullOrWhiteSpace(
-            request.ClientInstallationReference)
-            ? null
-            : RequiredBounded(
-                request.ClientInstallationReference,
-                MaximumSecretLength,
-                "clientInstallationReference");
-        var installationHash = installationReference is null
-            ? null
-            : IdentitySecretCryptography.Hash(installationReference);
         var credential = await _dbContext.DeviceCredentials
             .SingleOrDefaultAsync(
                 item => item.DeviceId == device.Id,
@@ -190,7 +294,30 @@ internal sealed class ProductionIdentityService :
         }
 
         device.UpdateActivationMetadata(label, platform);
-        code.Consume(now);
+        var replayAllowedUntilUtc = now.AddMinutes(
+            _options.ActivationCodeMinutes);
+        var replay = new ActivationReplayResult(
+            workspace.Id,
+            code.Id,
+            device.Id,
+            idempotencyKeyHash,
+            requestHash,
+            rawSecret,
+            credential.ActivatedAtUtc,
+            credential.SecretVersion,
+            replayAllowedUntilUtc);
+        code.Consume(
+            now,
+            idempotencyKeyHash,
+            requestHash,
+            _activationReplayProtector.Protect(
+                JsonSerializer.Serialize(replay),
+                TimeSpan.FromMinutes(_options.ActivationCodeMinutes)),
+            replayAllowedUntilUtc);
+        await ClearSupersededActivationReplayMaterialAsync(
+            device.Id,
+            code.Id,
+            cancellationToken);
         await RevokeDeviceFamiliesAsync(
             device.Id,
             now,
@@ -264,6 +391,10 @@ internal sealed class ProductionIdentityService :
             workspace.Id,
             credentialLocation.UserId,
             cancellationToken);
+        await _sessionLock.AcquireActivationDeviceAsync(
+            workspace.Id,
+            request.DeviceId,
+            cancellationToken);
         await _sessionLock.AcquireDeviceCredentialAsync(
             workspace.Id,
             request.DeviceId,
@@ -333,6 +464,9 @@ internal sealed class ProductionIdentityService :
         credential.RecordSuccessfulSignIn();
         deviceCredential!.MarkUsed(now);
         device!.MarkSeen(now);
+        await ClearActivationReplayMaterialAfterConfirmationAsync(
+            device.Id,
+            cancellationToken);
         var familyExpiry = now.AddDays(_options.RefreshTokenDays);
         var family = RefreshTokenFamily.Create(
             workspace.Id,
@@ -565,7 +699,7 @@ internal sealed class ProductionIdentityService :
             cancellationToken);
         token.RotateTo(
             replacement.Id,
-            _replayProtector.Protect(replacementRaw),
+            _refreshReplayProtector.Protect(replacementRaw),
             now,
             replayUntil);
         state.Family.MarkUsed(now);
@@ -735,6 +869,10 @@ internal sealed class ProductionIdentityService :
             _currentIdentity.WorkspaceId,
             ActivationIssueCommand,
             validatedKey,
+            cancellationToken);
+        await ClearExpiredActivationReplayMaterialAsync(
+            deviceId,
+            _clock.UtcNow,
             cancellationToken);
         var existing = await _dbContext.IdempotencyRecords
             .SingleOrDefaultAsync(
@@ -1265,6 +1403,55 @@ internal sealed class ProductionIdentityService :
         return expired.Count > 0;
     }
 
+    private async Task ClearExpiredActivationReplayMaterialAsync(
+        Guid deviceId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var expired = await _dbContext.DeviceActivationCodes
+            .Where(item =>
+                item.DeviceId == deviceId &&
+                item.ReplayProtectedResult != null &&
+                item.ReplayAllowedUntilUtc <= now)
+            .ToListAsync(cancellationToken);
+        foreach (var code in expired)
+        {
+            code.ClearReplayMaterial();
+        }
+    }
+
+    private async Task ClearActivationReplayMaterialAfterConfirmationAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken)
+    {
+        var confirmed = await _dbContext.DeviceActivationCodes
+            .Where(item =>
+                item.DeviceId == deviceId &&
+                item.ReplayProtectedResult != null)
+            .ToListAsync(cancellationToken);
+        foreach (var code in confirmed)
+        {
+            code.ClearReplayMaterial();
+        }
+    }
+
+    private async Task ClearSupersededActivationReplayMaterialAsync(
+        Guid deviceId,
+        Guid currentCodeId,
+        CancellationToken cancellationToken)
+    {
+        var superseded = await _dbContext.DeviceActivationCodes
+            .Where(item =>
+                item.DeviceId == deviceId &&
+                item.Id != currentCodeId &&
+                item.ReplayProtectedResult != null)
+            .ToListAsync(cancellationToken);
+        foreach (var code in superseded)
+        {
+            code.ClearReplayMaterial();
+        }
+    }
+
     private async Task ClearPredecessorReplayMaterialAsync(
         Guid replacementTokenId,
         Guid familyId,
@@ -1315,7 +1502,7 @@ internal sealed class ProductionIdentityService :
     {
         try
         {
-            rawToken = _replayProtector.Unprotect(protectedToken);
+            rawToken = _refreshReplayProtector.Unprotect(protectedToken);
             return true;
         }
         catch (Exception exception) when (
@@ -1326,12 +1513,64 @@ internal sealed class ProductionIdentityService :
         }
     }
 
+    private bool TryUnprotectActivationReplayResult(
+        string protectedResult,
+        out ActivationReplayResult? result)
+    {
+        try
+        {
+            result = JsonSerializer.Deserialize<ActivationReplayResult>(
+                _activationReplayProtector.Unprotect(
+                    protectedResult,
+                    out _));
+            return result is not null;
+        }
+        catch (Exception exception) when (
+            exception is CryptographicException or
+                FormatException or
+                JsonException)
+        {
+            result = null;
+            return false;
+        }
+    }
+
     private static ApplicationProblemException RefreshTokenReuseDetected()
     {
         return Problem(
             "REFRESH_TOKEN_REUSE_DETECTED",
             "Refresh-token reuse was detected and the session was revoked.",
             ApplicationErrorCategory.Conflict);
+    }
+
+    private static ApplicationProblemException DeviceActivationAlreadyUsed()
+    {
+        return Problem(
+            "DEVICE_ACTIVATION_ALREADY_USED",
+            "The device activation code was already used.",
+            ApplicationErrorCategory.Conflict);
+    }
+
+    private static ApplicationProblemException
+        DeviceActivationRecoveryExpired()
+    {
+        return Problem(
+            "DEVICE_ACTIVATION_RECOVERY_EXPIRED",
+            "The activation-result recovery window expired; a new Owner-issued activation code is required.",
+            ApplicationErrorCategory.Conflict);
+    }
+
+    private static ApplicationProblemException IdempotencyPayloadConflict(
+        Guid deviceId)
+    {
+        return Problem(
+            "IDEMPOTENCY_PAYLOAD_CONFLICT",
+            "The idempotency key was already used for a different device-activation request.",
+            ApplicationErrorCategory.Conflict,
+            details: new Dictionary<string, object?>
+            {
+                ["deviceId"] = deviceId.ToString("D"),
+            });
     }
 
     private void VerifyDummyPassword(string password)
@@ -1515,4 +1754,15 @@ internal sealed class ProductionIdentityService :
         DeviceCredential DeviceCredential,
         RefreshTokenFamily Family,
         CommercialConfiguration Commercial);
+
+    private sealed record ActivationReplayResult(
+        Guid WorkspaceId,
+        Guid ActivationCodeId,
+        Guid DeviceId,
+        string IdempotencyKeyHash,
+        string RequestHash,
+        string DeviceSecret,
+        DateTimeOffset ActivatedAtUtc,
+        int SecretVersion,
+        DateTimeOffset ReplayAllowedUntilUtc);
 }

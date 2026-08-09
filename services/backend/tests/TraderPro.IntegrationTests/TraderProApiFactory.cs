@@ -20,20 +20,27 @@ public sealed class TraderProApiFactory(
     int leaseMinutes = 5,
     int refreshReplaySeconds = 30,
     DateTimeOffset? utcNow = null,
-    IClock? testClock = null) : WebApplicationFactory<Program>
+    IClock? testClock = null,
+    string? signingKey = null,
+    string? dataProtectionKeyRingPath = null) : WebApplicationFactory<Program>
 {
     public const string TestIssuer = "TraderPro.IntegrationTests";
     public const string TestAudience =
         "TraderPro.IntegrationTests.Client";
 
     private readonly string _signingKey =
+        signingKey ??
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-    private readonly string _keyRingPath = Path.Combine(
-        Path.GetTempPath(),
-        "traderpro-identity-tests",
-        Guid.NewGuid().ToString("N"));
+    private readonly string _keyRingPath =
+        dataProtectionKeyRingPath ??
+        Path.Combine(
+            Path.GetTempPath(),
+            "traderpro-identity-tests",
+            Guid.NewGuid().ToString("N"));
 
     public string SigningKey => _signingKey;
+
+    public string DataProtectionKeyRingPath => _keyRingPath;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

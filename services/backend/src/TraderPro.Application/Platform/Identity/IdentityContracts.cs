@@ -84,6 +84,7 @@ public interface IProductionIdentityService
 {
     Task<RedeemDeviceActivationResult> RedeemDeviceActivationAsync(
         RedeemDeviceActivationRequest request,
+        string idempotencyKey,
         string correlationId,
         CancellationToken cancellationToken);
 

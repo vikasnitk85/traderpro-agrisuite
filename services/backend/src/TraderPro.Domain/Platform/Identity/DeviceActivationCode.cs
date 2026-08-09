@@ -60,6 +60,14 @@ public sealed class DeviceActivationCode :
 
     public DateTimeOffset? RevokedAtUtc { get; private set; }
 
+    public string? RedemptionIdempotencyKeyHash { get; private set; }
+
+    public string? RedemptionRequestHash { get; private set; }
+
+    public string? ReplayProtectedResult { get; private set; }
+
+    public DateTimeOffset? ReplayAllowedUntilUtc { get; private set; }
+
     public Guid IssuedByUserId { get; private set; }
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
@@ -88,10 +96,39 @@ public sealed class DeviceActivationCode :
         return EnsureUtc(now, nameof(now)) >= ExpiresAtUtc;
     }
 
-    public void Consume(DateTimeOffset now)
+    public void Consume(
+        DateTimeOffset now,
+        string redemptionIdempotencyKeyHash,
+        string redemptionRequestHash,
+        string replayProtectedResult,
+        DateTimeOffset replayAllowedUntilUtc)
     {
         EnsureAvailable(now);
+        EnsureUtc(replayAllowedUntilUtc, nameof(replayAllowedUntilUtc));
+        if (replayAllowedUntilUtc <= now ||
+            replayAllowedUntilUtc > now.AddDays(1))
+        {
+            throw new ArgumentException(
+                "Activation-result replay expiry must be within one day after consumption.",
+                nameof(replayAllowedUntilUtc));
+        }
+
         UsedAtUtc = now;
+        RedemptionIdempotencyKeyHash = RequiredHash(
+            redemptionIdempotencyKeyHash);
+        RedemptionRequestHash = RequiredHash(redemptionRequestHash);
+        ReplayProtectedResult = string.IsNullOrWhiteSpace(
+            replayProtectedResult) || replayProtectedResult.Length > 4096
+            ? throw new ArgumentException(
+                "Bounded protected activation-result replay material is required.",
+                nameof(replayProtectedResult))
+            : replayProtectedResult;
+        ReplayAllowedUntilUtc = replayAllowedUntilUtc;
+    }
+
+    public void ClearReplayMaterial()
+    {
+        ReplayProtectedResult = null;
     }
 
     public void Revoke(DateTimeOffset now)

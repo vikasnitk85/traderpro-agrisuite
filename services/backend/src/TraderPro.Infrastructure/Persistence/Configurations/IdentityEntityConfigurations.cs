@@ -195,6 +195,28 @@ internal sealed class DeviceActivationCodeConfiguration :
                         revoked_at_utc >= created_at_utc)
                     """);
                 table.HasCheckConstraint(
+                    "ck_device_activation_codes_replay_state",
+                    """
+                    (
+                        redemption_idempotency_key_hash IS NULL
+                        AND redemption_request_hash IS NULL
+                        AND replay_protected_result IS NULL
+                        AND replay_allowed_until_utc IS NULL
+                    )
+                    OR
+                    (
+                        used_at_utc IS NOT NULL
+                        AND redemption_idempotency_key_hash IS NOT NULL
+                        AND redemption_request_hash IS NOT NULL
+                        AND replay_allowed_until_utc IS NOT NULL
+                        AND redemption_idempotency_key_hash ~ '^[0-9a-f]{64}$'
+                        AND redemption_request_hash ~ '^[0-9a-f]{64}$'
+                        AND replay_allowed_until_utc > used_at_utc
+                        AND replay_allowed_until_utc <=
+                            used_at_utc + interval '1 day'
+                    )
+                    """);
+                table.HasCheckConstraint(
                     "ck_device_activation_codes_version",
                     "version > 0");
             });
@@ -216,6 +238,18 @@ internal sealed class DeviceActivationCodeConfiguration :
         builder.Property(entity => entity.RevokedAtUtc)
             .HasColumnName("revoked_at_utc")
             .HasColumnType("timestamp with time zone");
+        builder.Property(entity => entity.RedemptionIdempotencyKeyHash)
+            .HasColumnName("redemption_idempotency_key_hash")
+            .HasMaxLength(64);
+        builder.Property(entity => entity.RedemptionRequestHash)
+            .HasColumnName("redemption_request_hash")
+            .HasMaxLength(64);
+        builder.Property(entity => entity.ReplayProtectedResult)
+            .HasColumnName("replay_protected_result")
+            .HasMaxLength(4096);
+        builder.Property(entity => entity.ReplayAllowedUntilUtc)
+            .HasColumnName("replay_allowed_until_utc")
+            .HasColumnType("timestamp with time zone");
         builder.Property(entity => entity.IssuedByUserId)
             .HasColumnName("issued_by_user_id")
             .IsRequired();
@@ -224,6 +258,10 @@ internal sealed class DeviceActivationCodeConfiguration :
                      .Where(property => property.Name is not
                          nameof(DeviceActivationCode.UsedAtUtc) and not
                          nameof(DeviceActivationCode.RevokedAtUtc) and not
+                         nameof(DeviceActivationCode.RedemptionIdempotencyKeyHash) and not
+                         nameof(DeviceActivationCode.RedemptionRequestHash) and not
+                         nameof(DeviceActivationCode.ReplayProtectedResult) and not
+                         nameof(DeviceActivationCode.ReplayAllowedUntilUtc) and not
                          nameof(DeviceActivationCode.Version)))
         {
             property.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
@@ -262,6 +300,15 @@ internal sealed class DeviceActivationCodeConfiguration :
         builder.HasIndex(entity => entity.CodeHash)
             .IsUnique()
             .HasDatabaseName("ux_device_activation_codes_code_hash");
+        builder.HasIndex(entity => new
+        {
+            entity.WorkspaceId,
+            entity.RedemptionIdempotencyKeyHash,
+        })
+            .IsUnique()
+            .HasFilter("redemption_idempotency_key_hash IS NOT NULL")
+            .HasDatabaseName(
+                "ux_device_activation_codes_workspace_redemption_key");
         builder.HasIndex(entity => new
         {
             entity.WorkspaceId,
