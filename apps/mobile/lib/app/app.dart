@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'commercial_identity_screens.dart';
 import 'commercial_secure_startup_state.dart';
 
 const foundationMessage =
@@ -61,6 +62,10 @@ class FoundationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final identityController = startupState?.identityController;
+    if (identityController != null) {
+      return CommercialIdentityScreen(controller: identityController);
+    }
     return Scaffold(
       body: SafeArea(
         child: Center(

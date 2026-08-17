@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:traderpro_agrisuite_mobile/core/security/commercial_database_key_material.dart';
@@ -38,7 +39,7 @@ void main() {
   });
 
   test(
-    'encrypted schema 1 creates, verifies, checkpoints, and reopens',
+    'encrypted schema 2 creates, verifies, checkpoints, and reopens',
     () async {
       var database = await opener.open(file: databaseFile, keyMaterial: key);
       await database.ensureFoundationMetadata(
@@ -52,12 +53,24 @@ void main() {
           .get();
       expect(rows, hasLength(1));
       expect(rows.single.singletonId, 1);
-      expect(rows.single.schemaContractVersion, 1);
+      expect(
+        rows.single.schemaContractVersion,
+        CommercialDatabase.foundationSchemaContractVersion,
+      );
       expect(rows.single.storageContractVersion, 1);
       expect(rows.single.installationId, marker.installationId);
       expect(rows.single.databaseInstanceId, marker.databaseInstanceId);
       expect(rows.single.keyAliasVersion, 1);
       expect(rows.single.createdAtUtcMicros, 1786156200000000);
+      expect(CommercialDatabase.currentSchemaVersion, 2);
+      expect(
+        await _schemaObjectCount(database, 'commercial_identity_binding'),
+        1,
+      );
+      expect(
+        await _schemaObjectCount(database, 'commercial_identity_snapshot'),
+        1,
+      );
 
       expect(await _pragma(database, 'cipher'), 'chacha20');
       expect((await _pragma(database, 'legacy')).toString(), '0');
@@ -149,6 +162,74 @@ void main() {
     await database.close();
   });
 
+  test(
+    'encrypted schema 1 migrates exactly to 2 and preserves metadata',
+    () async {
+      await _createLegacySchema1(databaseFile, key, marker);
+      final before = await databaseFile.readAsBytes();
+      expect(before, isNotEmpty);
+
+      final database = await opener.open(file: databaseFile, keyMaterial: key);
+      await database.verifyFoundationMetadata(marker);
+      final metadata = await database
+          .select(database.commercialStorageMetadata)
+          .getSingle();
+      expect(metadata.schemaContractVersion, 1);
+      expect(metadata.storageContractVersion, 1);
+      expect(metadata.installationId, marker.installationId);
+      expect(metadata.databaseInstanceId, marker.databaseInstanceId);
+      expect(
+        (await database.customSelect('PRAGMA user_version').getSingle())
+            .read<int>('user_version'),
+        2,
+      );
+      expect(
+        await _schemaObjectCount(database, 'commercial_identity_binding'),
+        1,
+      );
+      expect(
+        await _schemaObjectCount(database, 'commercial_identity_snapshot'),
+        1,
+      );
+      await database.close();
+    },
+  );
+
+  test('failed 1 to 2 migration rolls back new schema objects', () async {
+    await _createLegacySchema1(
+      databaseFile,
+      key,
+      marker,
+      addConflictingMigrationTrigger: true,
+    );
+
+    await expectLater(
+      opener.open(file: databaseFile, keyMaterial: key),
+      throwsA(isA<CommercialStorageException>()),
+    );
+
+    key.useBytes((bytes) {
+      final native = sqlite.sqlite3.open(databaseFile.path);
+      try {
+        configureCommercialSqlite3Mc(native, bytes);
+        expect(native.select('PRAGMA user_version').single.values.single, 1);
+        expect(
+          native
+              .select(
+                "SELECT count(*) FROM sqlite_master WHERE type = 'table' "
+                "AND name = 'commercial_identity_binding'",
+              )
+              .single
+              .values
+              .single,
+          0,
+        );
+      } finally {
+        native.close();
+      }
+    });
+  });
+
   test('transaction rollback leaves no partial schema artifact', () async {
     final database = await opener.open(file: databaseFile, keyMaterial: key);
     await database.ensureFoundationMetadata(
@@ -234,6 +315,80 @@ void main() {
 Future<Object?> _pragma(CommercialDatabase database, String name) async {
   final row = await database.customSelect('PRAGMA $name').getSingle();
   return row.data.values.single;
+}
+
+Future<int> _schemaObjectCount(CommercialDatabase database, String name) async {
+  final row = await database
+      .customSelect(
+        'SELECT count(*) AS count FROM sqlite_master WHERE name = ?',
+        variables: <Variable<Object>>[Variable<String>(name)],
+      )
+      .getSingle();
+  return row.read<int>('count');
+}
+
+Future<void> _createLegacySchema1(
+  File file,
+  CommercialDatabaseKeyMaterial key,
+  CommercialProvisioningMarker marker, {
+  bool addConflictingMigrationTrigger = false,
+}) async {
+  key.useBytes((bytes) {
+    final database = sqlite.sqlite3.open(file.path);
+    try {
+      configureCommercialSqlite3Mc(database, bytes);
+      database.execute('''
+        CREATE TABLE commercial_storage_metadata (
+          singleton_id INTEGER NOT NULL PRIMARY KEY CHECK(singleton_id = 1),
+          schema_contract_version INTEGER NOT NULL,
+          storage_contract_version INTEGER NOT NULL,
+          installation_id TEXT NOT NULL,
+          database_instance_id TEXT NOT NULL,
+          key_alias_version INTEGER NOT NULL,
+          created_at_utc_micros INTEGER NOT NULL
+        )
+      ''');
+      database.execute(
+        'INSERT INTO commercial_storage_metadata VALUES (?, ?, ?, ?, ?, ?, ?)',
+        <Object?>[
+          1,
+          1,
+          1,
+          marker.installationId,
+          marker.databaseInstanceId,
+          1,
+          1786156200000000,
+        ],
+      );
+      database.execute('''
+        CREATE TRIGGER commercial_storage_metadata_no_update
+        BEFORE UPDATE ON commercial_storage_metadata
+        BEGIN
+          SELECT RAISE(ABORT, 'commercial storage metadata is immutable');
+        END
+      ''');
+      database.execute('''
+        CREATE TRIGGER commercial_storage_metadata_no_delete
+        BEFORE DELETE ON commercial_storage_metadata
+        BEGIN
+          SELECT RAISE(ABORT, 'commercial storage metadata is immutable');
+        END
+      ''');
+      if (addConflictingMigrationTrigger) {
+        database.execute('''
+          CREATE TRIGGER commercial_identity_binding_no_update
+          BEFORE UPDATE ON commercial_storage_metadata
+          BEGIN
+            SELECT RAISE(ABORT, 'synthetic migration interruption');
+          END
+        ''');
+      }
+      database.execute('PRAGMA user_version = 1');
+      database.execute('PRAGMA wal_checkpoint(FULL)');
+    } finally {
+      database.close();
+    }
+  });
 }
 
 bool _containsBytes(List<int> haystack, List<int> needle) {

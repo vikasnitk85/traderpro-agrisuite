@@ -1349,6 +1349,49 @@ public sealed class ProductionIdentityApiTests(PostgreSqlFixture fixture)
     }
 
     [Fact]
+    public async Task Initial_activation_replay_normalizes_PostgreSql_timestamp_precision()
+    {
+        await using var database = await fixture.CreateDatabaseAsync();
+        await using var factory = IdentityFactory(
+            database,
+            UtcNow.AddTicks(7));
+        var setup = await BootstrapAsync(factory);
+        const string idempotencyKey = "initial-activation-precision-replay";
+
+        using var committed = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+        using var committedJson = await ReadJsonAsync(committed);
+        Assert.Equal(HttpStatusCode.OK, committed.StatusCode);
+
+        using var replayed = await SendActivationAsync(
+            factory,
+            setup.WorkspaceCode,
+            setup.OwnerDeviceId,
+            setup.OwnerActivationCode,
+            idempotencyKey);
+        using var replayedJson = await ReadJsonAsync(replayed);
+        Assert.Equal(HttpStatusCode.OK, replayed.StatusCode);
+        Assert.Equal(
+            committedJson.RootElement
+                .GetProperty("deviceSecret")
+                .GetString(),
+            replayedJson.RootElement
+                .GetProperty("deviceSecret")
+                .GetString());
+        Assert.Equal(
+            committedJson.RootElement
+                .GetProperty("secretVersion")
+                .GetInt32(),
+            replayedJson.RootElement
+                .GetProperty("secretVersion")
+                .GetInt32());
+    }
+
+    [Fact]
     public async Task Committed_activation_with_lost_response_is_recovered_without_rotation_or_duplicate_audit()
     {
         await using var database = await fixture.CreateDatabaseAsync();

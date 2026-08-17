@@ -14,8 +14,14 @@ void main() {
       contains('android:dataExtractionRules="@xml/data_extraction_rules"'),
     );
     expect(manifest, contains('android:usesCleartextTraffic="false"'));
-    expect(manifest, isNot(contains('android.permission.INTERNET')));
+    expect(manifest, contains('android.permission.INTERNET'));
     expect(manifest, isNot(contains('android:debuggable')));
+
+    final activity = File(
+      'android/app/src/main/kotlin/com/traderpro/agrisuite/'
+      'traderpro_agrisuite_mobile/MainActivity.kt',
+    ).readAsStringSync();
+    expect(activity, contains('WindowManager.LayoutParams.FLAG_SECURE'));
   });
 
   test('backup and transfer rules exclude every protected storage domain', () {

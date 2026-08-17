@@ -174,7 +174,7 @@ internal sealed class ProductionIdentityService :
             throw IdempotencyPayloadConflict(code.DeviceId);
         }
 
-        var now = _clock.UtcNow;
+        var now = ToPostgreSqlTimestampPrecision(_clock.UtcNow);
         if (code.RevokedAtUtc is not null)
         {
             throw DeviceActivationInvalid();
@@ -1558,6 +1558,16 @@ internal sealed class ProductionIdentityService :
             "DEVICE_ACTIVATION_RECOVERY_EXPIRED",
             "The activation-result recovery window expired; a new Owner-issued activation code is required.",
             ApplicationErrorCategory.Conflict);
+    }
+
+    private static DateTimeOffset ToPostgreSqlTimestampPrecision(
+        DateTimeOffset value)
+    {
+        var utc = value.ToUniversalTime();
+        const long ticksPerMicrosecond = 10;
+        return new DateTimeOffset(
+            utc.Ticks - utc.Ticks % ticksPerMicrosecond,
+            TimeSpan.Zero);
     }
 
     private static ApplicationProblemException IdempotencyPayloadConflict(

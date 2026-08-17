@@ -3,12 +3,21 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 
+import '../../app/commercial_identity_controller.dart';
 import '../../app/commercial_secure_startup_state.dart';
+import '../../core/identity/commercial_identity_failure.dart';
 import '../../core/security/commercial_storage_failure.dart';
 import '../../core/security/commercial_storage_state_machine.dart';
 import '../../core/security/storage_diagnostics.dart';
+import '../database/commercial/commercial_database.dart';
 import '../database/commercial/commercial_database_initializer.dart';
 import '../database/commercial/commercial_database_paths.dart';
+import '../database/commercial/commercial_identity_binding_repository.dart';
+import '../identity/commercial_identity_service.dart';
+import '../identity/commercial_refresh_coordinator.dart';
+import '../identity/flutter_secure_commercial_identity_credential_store.dart';
+import '../network/commercial_api_environment.dart';
+import '../network/commercial_identity_http_client.dart';
 import '../security/flutter_secure_commercial_database_key_store.dart';
 import '../storage/commercial_provisioning_marker_store.dart';
 
@@ -40,15 +49,61 @@ final class CommercialSecureRuntime with WidgetsBindingObserver {
       markerStore: CommercialProvisioningMarkerStore(paths.provisioningMarker),
       diagnosticSink: diagnosticSink,
     );
-
-    return CommercialSecureRuntime(
+    final credentialStore = FlutterSecureCommercialIdentityCredentialStore();
+    CommercialIdentityHttpClient? identityTransport;
+    CommercialRefreshCoordinator? refreshCoordinator;
+    CommercialIdentityController? identityController;
+    late final CommercialSecureRuntime runtime;
+    runtime = CommercialSecureRuntime(
       storageOpener: () async {
-        await initializer.initialize(
+        const allowDebugHttp = bool.fromEnvironment(
+          'TRADERPRO_ALLOW_DEBUG_HTTP',
+          defaultValue: false,
+        );
+        final environment = CommercialApiEnvironment.fromBuildDefine(
+          allowDebugHttp: allowDebugHttp,
+        );
+        final database = await initializer.initialize(
           context: CommercialProvisioningContext.explicitFirstInitialization,
         );
+        final bindingRepository = CommercialIdentityBindingRepository(database);
+        final transport = CommercialIdentityHttpClient(
+          origin: environment.origin,
+        );
+        final identityService = CommercialIdentityService(
+          transport: transport,
+          credentialStore: credentialStore,
+          activationAttemptStore: credentialStore,
+          bindingPort: bindingRepository,
+          normalizedApiOrigin: environment.origin.normalized,
+          installationReferenceReader: () =>
+              _readInstallationReference(database),
+        );
+        final coordinator = CommercialRefreshCoordinator(
+          identityService: identityService,
+          credentialStore: credentialStore,
+        );
+        final controller = CommercialIdentityController(
+          identityService: identityService,
+          refreshCoordinator: coordinator,
+          credentialStore: credentialStore,
+          activationAttemptStore: credentialStore,
+          bindingPort: bindingRepository,
+        );
+        identityTransport = transport;
+        refreshCoordinator = coordinator;
+        identityController = controller;
+        runtime._identityController = controller;
+        await controller.start();
       },
-      storageCloser: initializer.close,
+      storageCloser: () async {
+        identityController?.dispose();
+        await refreshCoordinator?.dispose();
+        identityTransport?.dispose();
+        await initializer.close();
+      },
     );
+    return runtime;
   }
 
   final CommercialStorageOpen _openStorage;
@@ -58,6 +113,7 @@ final class CommercialSecureRuntime with WidgetsBindingObserver {
   Future<CommercialSecureStartupState>? _opening;
   Future<void>? _closing;
   CommercialSecureStartupState? _startupState;
+  CommercialIdentityController? _identityController;
   bool _observerAttached = false;
 
   CommercialSecureStartupState? get startupState => _startupState;
@@ -87,9 +143,11 @@ final class CommercialSecureRuntime with WidgetsBindingObserver {
     late final CommercialSecureStartupState result;
     try {
       await _openStorage();
-      result = const CommercialSecureStartupState.ready();
+      result = CommercialSecureStartupState.ready(_identityController);
     } on CommercialStorageException catch (error) {
       result = CommercialSecureStartupState.unavailable(error.code.safeCode);
+    } on CommercialIdentityFailure catch (error) {
+      result = CommercialSecureStartupState.unavailable(error.safeCode);
     } on Object {
       result = CommercialSecureStartupState.unavailable(
         CommercialStorageFailureCode.unexpectedStorageFailure.safeCode,
@@ -140,8 +198,23 @@ final class CommercialSecureRuntime with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final controller = _identityController;
+      if (controller != null) {
+        unawaited(controller.onResume());
+      }
+    }
     if (state == AppLifecycleState.detached) {
       unawaited(close());
     }
+  }
+
+  static Future<String?> _readInstallationReference(
+    CommercialDatabase database,
+  ) async {
+    final metadata = await database
+        .select(database.commercialStorageMetadata)
+        .getSingleOrNull();
+    return metadata?.installationId;
   }
 }

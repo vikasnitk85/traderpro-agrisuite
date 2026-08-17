@@ -74,7 +74,7 @@ void main() {
       await _expectPragma(database, 'foreign_keys', '1');
       await _expectPragma(database, 'temp_store', '2');
       await _expectPragma(database, 'journal_mode', 'wal');
-      await _expectPragma(database, 'user_version', '1');
+      await _expectPragma(database, 'user_version', '2');
     } finally {
       await database.close();
       firstKey.dispose();
