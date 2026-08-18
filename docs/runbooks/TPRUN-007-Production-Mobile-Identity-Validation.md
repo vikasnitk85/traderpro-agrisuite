@@ -1,6 +1,6 @@
 # TPRUN-007: Production mobile identity validation
 
-- Status: Task 7C2B3 validated on 2026-08-17
+- Status: Task 7C2B3 validated through PR #5 correction on 2026-08-18
 - Applies to: production `apps/mobile/lib/main.dart` identity composition
 - Data rule: synthetic/disposable identity data only
 
@@ -115,3 +115,47 @@ Inducing destructive OEM secure-store invalidation was intentionally excluded
 from this authorized Device run. Use the instrumented native failure matrix to
 prove fail-closed ciphertext preservation during engineering validation and
 schedule real OEM invalidation only as a separately controlled pilot gate.
+
+## PR #5 corrective revalidation — 2026-08-18
+
+For corrective review, run the focused identity matrix for the following seven
+behaviors before repeating Device evidence:
+
+1. Device labels: trimmed, 200 accepted, 201/blank rejected before storage or
+   transport, with a correctable form.
+2. Revoked Device: same-Device reactivation is available and local encrypted
+   state remains intact.
+3. Logout-all: refreshes an expired access token exactly once, shares a
+   concurrent refresh, prevents late publication, and distinguishes remotely
+   confirmed logout from explicit local-only fallback.
+4. Startup: a durable pending activation/reactivation wins over an older
+   committed Device credential and exact replay remains available.
+5. Activation recovery: TLS and ambiguous network failures retain their
+   activation-specific exact-recovery UI and durable attempt.
+6. Logout storage failure: exits progress, clears memory authorization, locks
+   fail-closed, and preserves Device/binding/database ciphertext/key material.
+7. Login correction: empty/invalid values issue no request and allow a valid
+   resubmission.
+
+The 2026-08-18 corrective gate passed 44 focused identity tests, 98 combined
+identity/security/architecture tests, the full 266-test Flutter suite, analyzer
+validation, and 13 architecture tests. The existing API-24 corrective matrix
+passed. The authorized `2311DRK48I` Android 15/API-35 arm64-v8a physical Device
+then passed the same 44/44 targeted tests.
+
+The physical continuity probe must use isolated synthetic namespaces with the
+real production secure-store adapter, secure database-key store, encrypted
+Drift database, immutable binding repository, and identity controller. Record
+the isolated `prepared` phase, verify the process is absent after explicit
+`adb shell am force-stop <package>`, relaunch without reinstalling, and require
+the isolated `passed` phase. That pass verifies exact pending-reactivation
+recovery, Device secret-version advancement, pending-attempt consumption, and
+unchanged immutable binding across process death.
+
+While the probe is foregrounded, verify a screenshot yields a black protected
+application surface and scan package logs for only the synthetic sentinels.
+The 2026-08-18 physical run produced a black `FLAG_SECURE` capture and zero log
+matches for all five sentinels. Remove temporary entrypoints, Device artifacts,
+and the disposable synthetic installation afterward. Do not repeat already-
+passed host/API-24 gates unless physical validation exposes a production code
+defect; do not begin B4 as part of corrective validation.

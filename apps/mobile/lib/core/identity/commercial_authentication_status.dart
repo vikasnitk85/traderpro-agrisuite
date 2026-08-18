@@ -14,6 +14,7 @@ enum CommercialAuthenticationStatus {
   deviceRevoked,
   identityContextMismatch,
   loggingOut,
+  logoutAllUnconfirmed,
   authRequired,
   closed,
 }

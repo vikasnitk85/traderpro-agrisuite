@@ -1,5 +1,6 @@
 enum CommercialIdentityFailureKind {
   invalidWorkspaceCode,
+  invalidDeviceLabel,
   invalidCredentials,
   authenticationLocked,
   invalidActivation,
@@ -16,6 +17,7 @@ enum CommercialIdentityFailureKind {
   accessExpiredOrInvalid,
   identityContextUnavailable,
   identityContextMismatch,
+  remoteLogoutAllUnconfirmed,
   accountDisabled,
   rateLimited,
   tlsRequired,

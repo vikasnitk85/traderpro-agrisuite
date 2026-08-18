@@ -57,8 +57,8 @@ final class CommercialIdentityService {
     required String deviceLabel,
   }) async {
     final normalizedWorkspace = validateWorkspaceCode(workspaceCode);
-    final cleanCode = _requiredInput(activationCode, max: 4096);
-    final cleanLabel = _requiredInput(deviceLabel, max: 256);
+    final cleanCode = _requiredActivationCode(activationCode);
+    final cleanLabel = validateDeviceLabel(deviceLabel);
     final pending = await activationAttemptStore.readActivationAttempt();
     late final CommercialActivationAttempt attempt;
     if (pending.state == CommercialCredentialStoreState.empty) {
@@ -192,7 +192,7 @@ final class CommercialIdentityService {
     }
     final request = CommercialLoginRequest(
       workspaceCode: validateWorkspaceCode(workspaceCode),
-      login: _requiredInput(login, max: 256),
+      login: validateLogin(login),
       password: _requiredPassword(password),
       deviceCredential: deviceRead.value!,
     );
@@ -391,11 +391,33 @@ final class CommercialIdentityService {
     return normalized;
   }
 
-  static String _requiredInput(String value, {required int max}) {
-    if (value.isEmpty || value.trim().isEmpty || value.length > max) {
+  static String validateDeviceLabel(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed.length > 200) {
       throw const CommercialIdentityFailure(
-        kind: CommercialIdentityFailureKind.protocolContractMismatch,
-        safeCode: 'IDENTITY_INPUT_INVALID',
+        kind: CommercialIdentityFailureKind.invalidDeviceLabel,
+        safeCode: 'DEVICE_LABEL_INVALID',
+      );
+    }
+    return trimmed;
+  }
+
+  static String validateLogin(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed.length > 100) {
+      throw const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.invalidCredentials,
+        safeCode: 'AUTHENTICATION_FAILED',
+      );
+    }
+    return trimmed;
+  }
+
+  static String _requiredActivationCode(String value) {
+    if (value.isEmpty || value.trim().isEmpty || value.length > 4096) {
+      throw const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.invalidActivation,
+        safeCode: 'DEVICE_ACTIVATION_INVALID',
       );
     }
     return value;

@@ -21,6 +21,7 @@ final class _CommercialIdentityScreenState
   final _loginWorkspace = TextEditingController();
   final _login = TextEditingController();
   final _password = TextEditingController();
+  bool _showReactivationForm = false;
 
   @override
   void dispose() {
@@ -78,12 +79,10 @@ final class _CommercialIdentityScreenState
       message:
           'This installation remains bound to its original account. No local data was changed.',
     ),
-    CommercialAuthenticationStatus.deviceRevoked => _blockingStatus(
-      icon: Icons.phonelink_erase_outlined,
-      title: 'Device is inactive',
-      message:
-          'An Owner or administrator must reactivate this Device before it can sign in.',
-    ),
+    CommercialAuthenticationStatus.deviceRevoked =>
+      _showReactivationForm
+          ? _activationForm(reactivation: true)
+          : _revokedStatus(),
     CommercialAuthenticationStatus.lockedFailClosed ||
     CommercialAuthenticationStatus.storageUnavailable => _blockingStatus(
       icon: Icons.lock_outline,
@@ -93,6 +92,8 @@ final class _CommercialIdentityScreenState
     ),
     CommercialAuthenticationStatus.identityContextReady => _readyStatus(),
     CommercialAuthenticationStatus.loggingOut => _progress('Signing out…'),
+    CommercialAuthenticationStatus.logoutAllUnconfirmed =>
+      _logoutAllUnconfirmedStatus(),
     CommercialAuthenticationStatus.closed => _blockingStatus(
       icon: Icons.power_settings_new,
       title: 'TraderPro is closed',
@@ -101,14 +102,14 @@ final class _CommercialIdentityScreenState
     CommercialAuthenticationStatus.sessionRevoked => _loginForm(),
   };
 
-  Widget _activationForm() => AutofillGroup(
+  Widget _activationForm({bool reactivation = false}) => AutofillGroup(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Icon(Icons.phonelink_lock_outlined, size: 48),
         const SizedBox(height: 16),
         Text(
-          'Activate Device',
+          reactivation ? 'Reactivate Device' : 'Activate Device',
           style: Theme.of(context).textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
@@ -149,10 +150,12 @@ final class _CommercialIdentityScreenState
         ),
         const SizedBox(height: 20),
         FilledButton.icon(
-          key: const Key('activate-device'),
+          key: Key(reactivation ? 'reactivate-device' : 'activate-device'),
           onPressed: _submitActivation,
           icon: const Icon(Icons.lock_open_outlined),
-          label: const Text('Activate securely'),
+          label: Text(
+            reactivation ? 'Reactivate securely' : 'Activate securely',
+          ),
         ),
         _safeFailure(),
       ],
@@ -258,6 +261,42 @@ final class _CommercialIdentityScreenState
       ],
     );
   }
+
+  Widget _revokedStatus() => _statusCard(
+    icon: Icons.phonelink_erase_outlined,
+    title: 'Device is inactive',
+    message:
+        'An Owner or administrator must issue a new activation code for this same Device.',
+    actions: [
+      FilledButton.icon(
+        key: const Key('open-device-reactivation'),
+        onPressed: _openReactivation,
+        icon: const Icon(Icons.phonelink_lock_outlined),
+        label: const Text('Reactivate this Device'),
+      ),
+    ],
+  );
+
+  Widget _logoutAllUnconfirmedStatus() => _statusCard(
+    icon: Icons.cloud_off_outlined,
+    title: 'Sign out all was not confirmed',
+    message:
+        'TraderPro could not confirm that every server session was revoked. Retry, or sign out only on this Device.',
+    actions: [
+      FilledButton.icon(
+        key: const Key('retry-sign-out-all'),
+        onPressed: () => widget.controller.logout(allSessions: true),
+        icon: const Icon(Icons.refresh),
+        label: const Text('Retry sign out all'),
+      ),
+      OutlinedButton.icon(
+        key: const Key('fallback-local-sign-out'),
+        onPressed: () => widget.controller.logout(allSessions: false),
+        icon: const Icon(Icons.logout),
+        label: const Text('Sign out on this Device'),
+      ),
+    ],
+  );
 
   Widget _offlineStatus() {
     final identity = widget.controller.identity;
@@ -365,5 +404,14 @@ final class _CommercialIdentityScreenState
     } finally {
       _password.clear();
     }
+  }
+
+  void _openReactivation() {
+    final identity = widget.controller.identity;
+    if (identity != null) {
+      _activationWorkspace.text = identity.workspaceCode;
+      _deviceLabel.text = identity.deviceLabel;
+    }
+    setState(() => _showReactivationForm = true);
   }
 }

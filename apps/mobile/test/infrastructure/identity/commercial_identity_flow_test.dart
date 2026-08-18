@@ -8,6 +8,7 @@ import 'package:traderpro_agrisuite_mobile/core/identity/commercial_authenticati
 import 'package:traderpro_agrisuite_mobile/core/identity/commercial_identity_failure.dart';
 import 'package:traderpro_agrisuite_mobile/core/identity/commercial_identity_models.dart';
 import 'package:traderpro_agrisuite_mobile/core/identity/commercial_identity_ports.dart';
+import 'package:traderpro_agrisuite_mobile/infrastructure/identity/commercial_identity_contract_codec.dart';
 import 'package:traderpro_agrisuite_mobile/infrastructure/identity/commercial_identity_service.dart';
 import 'package:traderpro_agrisuite_mobile/infrastructure/identity/commercial_refresh_coordinator.dart';
 
@@ -152,6 +153,89 @@ void main() {
         expect(store.activationAttempt, isNotNull);
       },
     );
+
+    test(
+      'Device label accepts 200 characters and trims before persistence',
+      () async {
+        final store = _MemoryCredentialStore();
+        final transport = _FakeTransport(
+          (_) async => _ok(_activationResponse()),
+        );
+        final service = _service(
+          transport: transport,
+          store: store,
+          activationKeys: _FixedActivationKeys(),
+        );
+        final label = List.filled(200, 'D').join();
+
+        await service.activate(
+          workspaceCode: 'FARM-ONE',
+          activationCode: 'ACT-SECRET',
+          deviceLabel: ' $label ',
+        );
+
+        expect(transport.requests, hasLength(1));
+        expect(transport.requests.single.jsonBody?['deviceLabel'], label);
+      },
+    );
+
+    test('invalid Device labels fail before persistence and HTTP', () async {
+      for (final label in <String>[List.filled(201, 'D').join(), ' \t\n ']) {
+        final store = _MemoryCredentialStore();
+        final transport = _FakeTransport(
+          (_) async => throw StateError('No request expected'),
+        );
+        final service = _service(transport: transport, store: store);
+
+        await expectLater(
+          service.activate(
+            workspaceCode: 'FARM-ONE',
+            activationCode: 'ACT-SECRET',
+            deviceLabel: label,
+          ),
+          throwsA(
+            isA<CommercialIdentityFailure>().having(
+              (failure) => failure.kind,
+              'kind',
+              CommercialIdentityFailureKind.invalidDeviceLabel,
+            ),
+          ),
+        );
+
+        expect(store.activationAttempt, isNull);
+        expect(transport.requests, isEmpty);
+      }
+    });
+
+    test('empty login and password are correctable and send no HTTP', () async {
+      for (final credentials in <(String, String)>[
+        ('', 'correct horse battery staple'),
+        (' \t\n ', 'correct horse battery staple'),
+        ('owner@example.test', ''),
+      ]) {
+        final store = _MemoryCredentialStore()..device = _device();
+        final transport = _FakeTransport(
+          (_) async => throw StateError('No request expected'),
+        );
+        final service = _service(transport: transport, store: store);
+
+        await expectLater(
+          service.requestLogin(
+            workspaceCode: 'FARM-ONE',
+            login: credentials.$1,
+            password: credentials.$2,
+          ),
+          throwsA(
+            isA<CommercialIdentityFailure>().having(
+              (failure) => failure.kind,
+              'kind',
+              CommercialIdentityFailureKind.invalidCredentials,
+            ),
+          ),
+        );
+        expect(transport.requests, isEmpty);
+      }
+    });
 
     test('login is not automatically retried', () async {
       final store = _MemoryCredentialStore()..device = _device();
@@ -411,6 +495,343 @@ void main() {
     );
 
     test(
+      'logout-all uses a valid access token then clears local session',
+      () async {
+        var now = DateTime.utc(2026, 8, 9, 10);
+        final store = _MemoryCredentialStore()..device = _device();
+        var refreshCalls = 0;
+        var logoutAllCalls = 0;
+        final transport = _FakeTransport((request) async {
+          if (request.relativePath.endsWith('/login')) {
+            return _ok(_authResponse('refresh-2'));
+          }
+          if (request.relativePath.endsWith('/me')) {
+            return _ok(_meResponse());
+          }
+          if (request.relativePath.endsWith('/refresh')) {
+            refreshCalls += 1;
+            return _ok(
+              _authResponse(
+                'refresh-3',
+                access: 'access-3',
+                accessExpiresAtUtc: '2026-08-09T12:00:00Z',
+              ),
+            );
+          }
+          if (request.relativePath.endsWith('/logout-all')) {
+            logoutAllCalls += 1;
+            expect(request.bearerAccessToken, 'access-2');
+            return _noContent();
+          }
+          throw StateError('Unexpected request ${request.relativePath}');
+        });
+        final coordinator = CommercialRefreshCoordinator(
+          identityService: _service(
+            transport: transport,
+            store: store,
+            now: now,
+          ),
+          credentialStore: store,
+          clock: () => now,
+        );
+        await coordinator.login(
+          workspaceCode: 'FARM-ONE',
+          login: 'owner@example.test',
+          password: 'correct horse battery staple',
+        );
+
+        await coordinator.logout(allSessions: true);
+
+        expect(refreshCalls, 0);
+        expect(logoutAllCalls, 1);
+        expect(coordinator.hasMemoryAccessToken, isFalse);
+        expect(store.refresh, isNull);
+      },
+    );
+
+    test('expired access refreshes once before logout-all', () async {
+      var now = DateTime.utc(2026, 8, 9, 10);
+      final store = _MemoryCredentialStore()..device = _device();
+      var refreshCalls = 0;
+      final transport = _FakeTransport((request) async {
+        if (request.relativePath.endsWith('/login')) {
+          return _ok(_authResponse('refresh-2'));
+        }
+        if (request.relativePath.endsWith('/refresh')) {
+          refreshCalls += 1;
+          return _ok(
+            _authResponse(
+              'refresh-3',
+              access: 'access-3',
+              accessExpiresAtUtc: '2026-08-09T13:00:00Z',
+            ),
+          );
+        }
+        if (request.relativePath.endsWith('/me')) {
+          return _ok(_meResponse());
+        }
+        if (request.relativePath.endsWith('/logout-all')) {
+          expect(request.bearerAccessToken, 'access-3');
+          return _noContent();
+        }
+        throw StateError('Unexpected request ${request.relativePath}');
+      });
+      final service = _service(transport: transport, store: store, now: now);
+      final coordinator = CommercialRefreshCoordinator(
+        identityService: service,
+        credentialStore: store,
+        clock: () => now,
+      );
+      await coordinator.login(
+        workspaceCode: 'FARM-ONE',
+        login: 'owner@example.test',
+        password: 'correct horse battery staple',
+      );
+      now = DateTime.utc(2026, 8, 9, 11);
+
+      await coordinator.logout(allSessions: true);
+
+      expect(refreshCalls, 1);
+      expect(store.refresh, isNull);
+      expect(coordinator.hasMemoryAccessToken, isFalse);
+    });
+
+    test('concurrent refresh and logout-all share one refresh', () async {
+      var now = DateTime.utc(2026, 8, 9, 10);
+      final store = _MemoryCredentialStore()..device = _device();
+      final refreshResponse = Completer<CommercialIdentityTransportResponse>();
+      var refreshCalls = 0;
+      final transport = _FakeTransport((request) async {
+        if (request.relativePath.endsWith('/login')) {
+          return _ok(_authResponse('refresh-2'));
+        }
+        if (request.relativePath.endsWith('/refresh')) {
+          refreshCalls += 1;
+          return refreshResponse.future;
+        }
+        if (request.relativePath.endsWith('/me')) {
+          return _ok(_meResponse());
+        }
+        if (request.relativePath.endsWith('/logout-all')) {
+          expect(request.bearerAccessToken, 'access-3');
+          return _noContent();
+        }
+        throw StateError('Unexpected request ${request.relativePath}');
+      });
+      final coordinator = CommercialRefreshCoordinator(
+        identityService: _service(transport: transport, store: store, now: now),
+        credentialStore: store,
+        clock: () => now,
+      );
+      await coordinator.login(
+        workspaceCode: 'FARM-ONE',
+        login: 'owner@example.test',
+        password: 'correct horse battery staple',
+      );
+      now = DateTime.utc(2026, 8, 9, 11);
+
+      final refresh = coordinator.validAccessToken();
+      final logout = coordinator.logout(allSessions: true);
+      await _until(() => refreshCalls == 1);
+      refreshResponse.complete(
+        _ok(
+          _authResponse(
+            'refresh-3',
+            access: 'access-3',
+            accessExpiresAtUtc: '2026-08-09T13:00:00Z',
+          ),
+        ),
+      );
+      await refresh;
+      await logout;
+
+      expect(refreshCalls, 1);
+      expect(store.refresh, isNull);
+      expect(coordinator.hasMemoryAccessToken, isFalse);
+    });
+
+    test(
+      'refresh rejection cannot be reported as logout-all success',
+      () async {
+        var now = DateTime.utc(2026, 8, 9, 10);
+        final store = _MemoryCredentialStore()..device = _device();
+        var logoutAllCalls = 0;
+        final transport = _FakeTransport((request) async {
+          if (request.relativePath.endsWith('/login')) {
+            return _ok(_authResponse('refresh-2'));
+          }
+          if (request.relativePath.endsWith('/me')) {
+            return _ok(_meResponse());
+          }
+          if (request.relativePath.endsWith('/refresh')) {
+            return _error(401, 'REFRESH_TOKEN_INVALID');
+          }
+          if (request.relativePath.endsWith('/logout-all')) {
+            logoutAllCalls += 1;
+            return _noContent();
+          }
+          throw StateError('Unexpected request ${request.relativePath}');
+        });
+        final coordinator = CommercialRefreshCoordinator(
+          identityService: _service(
+            transport: transport,
+            store: store,
+            now: now,
+          ),
+          credentialStore: store,
+          clock: () => now,
+        );
+        await coordinator.login(
+          workspaceCode: 'FARM-ONE',
+          login: 'owner@example.test',
+          password: 'correct horse battery staple',
+        );
+        now = DateTime.utc(2026, 8, 9, 11);
+
+        await expectLater(
+          coordinator.logout(allSessions: true),
+          throwsA(
+            isA<CommercialIdentityFailure>().having(
+              (failure) => failure.kind,
+              'kind',
+              CommercialIdentityFailureKind.remoteLogoutAllUnconfirmed,
+            ),
+          ),
+        );
+
+        expect(logoutAllCalls, 0);
+        expect(coordinator.hasMemoryAccessToken, isFalse);
+        expect(store.refresh, isNull);
+      },
+    );
+
+    for (final scenario in <(String, Object)>[
+      (
+        'network ambiguity',
+        const CommercialIdentityFailure(
+          kind: CommercialIdentityFailureKind.networkAmbiguous,
+          safeCode: 'IDENTITY_NETWORK_OUTCOME_UNKNOWN',
+        ),
+      ),
+      ('server 401', _error(401, 'ACCESS_TOKEN_INVALID')),
+      ('server 403', _error(403, 'DEVICE_NOT_ACTIVE')),
+    ]) {
+      test(
+        'logout-all ${scenario.$1} is unconfirmed with local fallback',
+        () async {
+          final now = DateTime.utc(2026, 8, 9, 10);
+          final store = _MemoryCredentialStore()..device = _device();
+          final transport = _FakeTransport((request) async {
+            if (request.relativePath.endsWith('/login')) {
+              return _ok(_authResponse('refresh-2'));
+            }
+            if (request.relativePath.endsWith('/me')) {
+              return _ok(_meResponse());
+            }
+            if (request.relativePath.endsWith('/logout-all')) {
+              final result = scenario.$2;
+              if (result is CommercialIdentityFailure) {
+                throw result;
+              }
+              return result as CommercialIdentityTransportResponse;
+            }
+            if (request.relativePath.endsWith('/logout')) {
+              return _noContent();
+            }
+            throw StateError('Unexpected request ${request.relativePath}');
+          });
+          final coordinator = CommercialRefreshCoordinator(
+            identityService: _service(
+              transport: transport,
+              store: store,
+              now: now,
+            ),
+            credentialStore: store,
+            clock: () => now,
+          );
+          await coordinator.login(
+            workspaceCode: 'FARM-ONE',
+            login: 'owner@example.test',
+            password: 'correct horse battery staple',
+          );
+
+          await expectLater(
+            coordinator.logout(allSessions: true),
+            throwsA(
+              isA<CommercialIdentityFailure>().having(
+                (failure) => failure.kind,
+                'kind',
+                CommercialIdentityFailureKind.remoteLogoutAllUnconfirmed,
+              ),
+            ),
+          );
+          expect(store.refresh, isNotNull);
+
+          await coordinator.logout(allSessions: false);
+          expect(store.refresh, isNull);
+          expect(coordinator.hasMemoryAccessToken, isFalse);
+        },
+      );
+    }
+
+    test('logout-all epoch prevents late refresh publication', () async {
+      var now = DateTime.utc(2026, 8, 9, 10);
+      final store = _MemoryCredentialStore()..device = _device();
+      final logoutResponse = Completer<CommercialIdentityTransportResponse>();
+      final refreshResponse = Completer<CommercialIdentityTransportResponse>();
+      var logoutStarted = false;
+      var refreshStarted = false;
+      final transport = _FakeTransport((request) async {
+        if (request.relativePath.endsWith('/login')) {
+          return _ok(_authResponse('refresh-2'));
+        }
+        if (request.relativePath.endsWith('/me')) {
+          return _ok(_meResponse());
+        }
+        if (request.relativePath.endsWith('/logout-all')) {
+          logoutStarted = true;
+          return logoutResponse.future;
+        }
+        if (request.relativePath.endsWith('/refresh')) {
+          refreshStarted = true;
+          return refreshResponse.future;
+        }
+        throw StateError('Unexpected request ${request.relativePath}');
+      });
+      final coordinator = CommercialRefreshCoordinator(
+        identityService: _service(transport: transport, store: store, now: now),
+        credentialStore: store,
+        clock: () => now,
+      );
+      await coordinator.login(
+        workspaceCode: 'FARM-ONE',
+        login: 'owner@example.test',
+        password: 'correct horse battery staple',
+      );
+
+      final logout = coordinator.logout(allSessions: true);
+      await _until(() => logoutStarted);
+      final refresh = coordinator.validAccessToken(forceRefresh: true);
+      await _until(() => refreshStarted);
+      logoutResponse.complete(_noContent());
+      await Future<void>.delayed(Duration.zero);
+      refreshResponse.complete(
+        _ok(
+          _authResponse(
+            'refresh-late',
+            access: 'access-late',
+            accessExpiresAtUtc: '2026-08-09T13:00:00Z',
+          ),
+        ),
+      );
+
+      await expectLater(refresh, throwsA(isA<CommercialIdentityFailure>()));
+      await logout;
+      expect(coordinator.hasMemoryAccessToken, isFalse);
+      expect(store.refresh, isNull);
+    });
+
+    test(
       'context mismatch clears refresh and attempts logout-all once',
       () async {
         final now = DateTime.utc(2026, 8, 9, 10);
@@ -473,6 +894,230 @@ void main() {
       expect(find.textContaining('Inventory'), findsNothing);
     });
 
+    testWidgets('invalid Device label leaves activation form correctable', (
+      tester,
+    ) async {
+      final store = _MemoryCredentialStore();
+      final transport = _FakeTransport(
+        (_) async => throw StateError('No request expected'),
+      );
+      final controller = _controller(store, transport);
+      await controller.start();
+      await tester.pumpWidget(
+        MaterialApp(home: CommercialIdentityScreen(controller: controller)),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('activation-workspace-code')),
+        'FARM-ONE',
+      );
+      await tester.enterText(
+        find.byKey(const Key('activation-code')),
+        'ACT-SECRET',
+      );
+      await tester.enterText(
+        find.byKey(const Key('activation-device-label')),
+        List.filled(201, 'D').join(),
+      );
+      await tester.tap(find.byKey(const Key('activate-device')));
+      await tester.pumpAndSettle();
+
+      expect(
+        controller.status,
+        CommercialAuthenticationStatus.deviceUnregistered,
+      );
+      expect(find.text('Activate Device'), findsOneWidget);
+      expect(find.text('DEVICE_LABEL_INVALID'), findsOneWidget);
+      expect(store.activationAttempt, isNull);
+      expect(transport.requests, isEmpty);
+    });
+
+    test(
+      'pending activation wins over a committed Device credential',
+      () async {
+        final store = _MemoryCredentialStore()
+          ..device = _device(secret: 'committed-secret')
+          ..activationAttempt = _activationAttempt();
+        final transport = _FakeTransport((request) async {
+          expect(
+            request.relativePath,
+            CommercialIdentityContract.activationPath,
+          );
+          expect(request.idempotencyKey, 'stable-key');
+          return _ok(_activationResponse(secret: 'committed-secret'));
+        });
+        final controller = _controller(store, transport);
+
+        await controller.start();
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.activationOutcomeUnknown,
+        );
+        expect(transport.requests, isEmpty);
+
+        await controller.recoverActivation();
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.deviceRegisteredNoSession,
+        );
+        expect(store.activationAttempt, isNull);
+        expect(store.device?.secret, 'committed-secret');
+        expect(transport.requests, hasLength(1));
+      },
+    );
+
+    test(
+      'pending reactivation wins over old Device credential after restart',
+      () async {
+        final now = DateTime.utc(2026, 8, 9, 10);
+        final originalBinding = _binding(now);
+        final originalSnapshot = _snapshot(now);
+        final binding = _MemoryBindingPort()
+          ..binding = originalBinding
+          ..snapshot = originalSnapshot;
+        final store = _MemoryCredentialStore()
+          ..device = _device(secret: 'old-device-secret')
+          ..activationAttempt = _activationAttempt();
+        final transport = _FakeTransport((request) async {
+          expect(
+            request.relativePath,
+            CommercialIdentityContract.activationPath,
+          );
+          expect(request.idempotencyKey, 'stable-key');
+          expect(request.jsonBody, {
+            'workspaceCode': 'FARM-ONE',
+            'activationCode': 'ACT-SECRET',
+            'clientInstallationReference': 'installation-reference',
+            'deviceLabel': 'Yard tablet',
+            'platform': 'Android',
+          });
+          return _ok(
+            _activationResponse(secret: 'new-device-secret', version: 2),
+          );
+        });
+        final controller = _controller(
+          store,
+          transport,
+          binding: binding,
+          now: now,
+        );
+
+        await controller.start();
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.activationOutcomeUnknown,
+        );
+        expect(transport.requests, isEmpty);
+
+        await controller.recoverActivation();
+
+        expect(store.device?.deviceId.value, _deviceId);
+        expect(store.device?.secret, 'new-device-secret');
+        expect(store.device?.secretVersion, 2);
+        expect(store.activationAttempt, isNull);
+        expect(identical(binding.binding, originalBinding), isTrue);
+        expect(identical(binding.snapshot, originalSnapshot), isTrue);
+        expect(transport.requests, hasLength(1));
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.deviceRegisteredNoSession,
+        );
+      },
+    );
+
+    test(
+      'malformed activation attempt fails closed before login restore',
+      () async {
+        final store = _MemoryCredentialStore()
+          ..device = _device()
+          ..activationReadOverride = const CommercialCredentialRead(
+            CommercialCredentialStoreState.malformed,
+          );
+        final transport = _FakeTransport(
+          (_) async => throw StateError('No request expected'),
+        );
+        final controller = _controller(store, transport);
+
+        await controller.start();
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.lockedFailClosed,
+        );
+        expect(controller.safeFailureCode, 'ACTIVATION_ATTEMPT_STORE_INVALID');
+        expect(transport.requests, isEmpty);
+      },
+    );
+
+    for (final failure in <CommercialIdentityFailure>[
+      const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.tlsFailure,
+        safeCode: 'IDENTITY_TLS_FAILURE',
+      ),
+      const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.networkAmbiguous,
+        safeCode: 'IDENTITY_NETWORK_OUTCOME_UNKNOWN',
+      ),
+    ]) {
+      testWidgets(
+        'first activation ${failure.kind.name} stays recoverable across restart',
+        (tester) async {
+          final store = _MemoryCredentialStore();
+          var shouldFail = true;
+          final transport = _FakeTransport((request) async {
+            expect(request.idempotencyKey, 'stable-key');
+            if (shouldFail) {
+              throw failure;
+            }
+            return _ok(_activationResponse());
+          });
+          final first = _controller(
+            store,
+            transport,
+            activationKeys: _FixedActivationKeys(),
+          );
+          await first.start();
+
+          await first.activate(
+            workspaceCode: 'FARM-ONE',
+            activationCode: 'ACT-SECRET',
+            deviceLabel: 'Yard tablet',
+          );
+
+          expect(
+            first.status,
+            CommercialAuthenticationStatus.activationOutcomeUnknown,
+          );
+          expect(store.activationAttempt?.idempotencyKey, 'stable-key');
+          final originalBody = transport.requests.single.jsonBody;
+
+          final restarted = _controller(store, transport);
+          await restarted.start();
+          await tester.pumpWidget(
+            MaterialApp(home: CommercialIdentityScreen(controller: restarted)),
+          );
+          expect(
+            find.text('Activation outcome needs recovery'),
+            findsOneWidget,
+          );
+          expect(find.text('Workspace sign in'), findsNothing);
+
+          shouldFail = false;
+          await tester.tap(find.byKey(const Key('recover-activation')));
+          await tester.pumpAndSettle();
+
+          expect(transport.requests, hasLength(2));
+          expect(transport.requests[1].idempotencyKey, 'stable-key');
+          expect(transport.requests[1].jsonBody, originalBody);
+          expect(store.activationAttempt, isNull);
+          expect(find.text('Workspace sign in'), findsOneWidget);
+        },
+      );
+    }
+
     testWidgets('shows login and obscures the password', (tester) async {
       final store = _MemoryCredentialStore()..device = _device();
       final controller = _controller(
@@ -492,6 +1137,59 @@ void main() {
             .obscureText,
         isTrue,
       );
+    });
+
+    testWidgets('invalid login remains correctable and can be resubmitted', (
+      tester,
+    ) async {
+      final store = _MemoryCredentialStore()..device = _device();
+      final transport = _FakeTransport((request) async {
+        if (request.relativePath.endsWith('/login')) {
+          return _ok(_authResponse('refresh-2'));
+        }
+        if (request.relativePath.endsWith('/me')) {
+          return _ok(_meResponse());
+        }
+        throw StateError('Unexpected request ${request.relativePath}');
+      });
+      final controller = _controller(store, transport);
+      await controller.start();
+      await tester.pumpWidget(
+        MaterialApp(home: CommercialIdentityScreen(controller: controller)),
+      );
+      await tester.enterText(
+        find.byKey(const Key('login-workspace-code')),
+        'FARM-ONE',
+      );
+      await tester.enterText(
+        find.byKey(const Key('login-password')),
+        'correct horse battery staple',
+      );
+
+      await tester.tap(find.byKey(const Key('sign-in')));
+      await tester.pumpAndSettle();
+
+      expect(
+        controller.status,
+        CommercialAuthenticationStatus.deviceRegisteredNoSession,
+      );
+      expect(find.text('Workspace sign in'), findsOneWidget);
+      expect(find.text('AUTHENTICATION_FAILED'), findsOneWidget);
+      expect(transport.requests, isEmpty);
+
+      await tester.enterText(
+        find.byKey(const Key('login-name')),
+        'owner@example.test',
+      );
+      await tester.enterText(
+        find.byKey(const Key('login-password')),
+        'correct horse battery staple',
+      );
+      await tester.tap(find.byKey(const Key('sign-in')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Identity confirmed'), findsOneWidget);
+      expect(transport.requests, hasLength(2));
     });
 
     testWidgets('offline bound state is explicit and non-authorizing', (
@@ -634,6 +1332,282 @@ void main() {
       expect(find.text('Device is inactive'), findsOneWidget);
       expect(revokedStore.retired, isTrue);
     });
+
+    testWidgets(
+      'revoked Device reactivates same identity without clearing local data',
+      (tester) async {
+        final now = DateTime.utc(2026, 8, 9, 10);
+        final originalBinding = _binding(now);
+        final originalSnapshot = _snapshot(now);
+        final binding = _MemoryBindingPort()
+          ..binding = originalBinding
+          ..snapshot = originalSnapshot;
+        final store = _MemoryCredentialStore()
+          ..device = _device(secret: 'old-device-secret')
+          ..refresh = _refresh('refresh-1', now);
+        final transport = _FakeTransport((request) async {
+          if (request.relativePath.endsWith('/refresh')) {
+            return _error(403, 'DEVICE_NOT_ACTIVE');
+          }
+          if (request.relativePath.endsWith('/redeem')) {
+            expect(request.jsonBody?['workspaceCode'], 'FARM-ONE');
+            expect(request.jsonBody?['deviceLabel'], 'Yard tablet');
+            return _ok(
+              _activationResponse(secret: 'new-device-secret', version: 2),
+            );
+          }
+          throw StateError('Unexpected request ${request.relativePath}');
+        });
+        final controller = _controller(
+          store,
+          transport,
+          binding: binding,
+          activationKeys: _FixedActivationKeys(),
+          now: now,
+        );
+        await controller.start();
+        await tester.pumpWidget(
+          MaterialApp(home: CommercialIdentityScreen(controller: controller)),
+        );
+
+        expect(
+          find.byKey(const Key('open-device-reactivation')),
+          findsOneWidget,
+        );
+        expect(store.device, isNull);
+        expect(store.retired, isTrue);
+        expect(binding.binding?.deviceId.value, _deviceId);
+
+        await tester.tap(find.byKey(const Key('open-device-reactivation')));
+        await tester.pumpAndSettle();
+        expect(find.text('Reactivate Device'), findsOneWidget);
+        expect(
+          tester
+              .widget<TextField>(
+                find.byKey(const Key('activation-workspace-code')),
+              )
+              .controller
+              ?.text,
+          'FARM-ONE',
+        );
+        expect(
+          tester
+              .widget<TextField>(
+                find.byKey(const Key('activation-device-label')),
+              )
+              .controller
+              ?.text,
+          'Yard tablet',
+        );
+        await tester.enterText(
+          find.byKey(const Key('activation-code')),
+          'ACT-SECRET',
+        );
+        await tester.tap(find.byKey(const Key('reactivate-device')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Workspace sign in'), findsOneWidget);
+        expect(store.device?.deviceId.value, _deviceId);
+        expect(store.device?.secret, 'new-device-secret');
+        expect(store.device?.secretVersion, 2);
+        expect(store.retired, isFalse);
+        expect(store.refresh, isNull);
+        expect(store.activationAttempt, isNull);
+        expect(identical(binding.binding, originalBinding), isTrue);
+        expect(identical(binding.snapshot, originalSnapshot), isTrue);
+        expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+        expect(store.databaseKeySentinel, 'commercial-db-key');
+      },
+    );
+
+    testWidgets('ambiguous reactivation is exact-replay recoverable', (
+      tester,
+    ) async {
+      final now = DateTime.utc(2026, 8, 9, 10);
+      final binding = _MemoryBindingPort()
+        ..binding = _binding(now)
+        ..snapshot = _snapshot(now);
+      final store = _MemoryCredentialStore()
+        ..device = _device(secret: 'old-device-secret')
+        ..refresh = _refresh('refresh-1', now);
+      var redeemCalls = 0;
+      final transport = _FakeTransport((request) async {
+        if (request.relativePath.endsWith('/refresh')) {
+          return _error(403, 'DEVICE_NOT_ACTIVE');
+        }
+        if (request.relativePath.endsWith('/redeem')) {
+          redeemCalls += 1;
+          if (redeemCalls == 1) {
+            throw const CommercialIdentityFailure(
+              kind: CommercialIdentityFailureKind.networkAmbiguous,
+              safeCode: 'IDENTITY_NETWORK_OUTCOME_UNKNOWN',
+            );
+          }
+          return _ok(
+            _activationResponse(secret: 'new-device-secret', version: 2),
+          );
+        }
+        throw StateError('Unexpected request ${request.relativePath}');
+      });
+      final first = _controller(
+        store,
+        transport,
+        binding: binding,
+        activationKeys: _FixedActivationKeys(),
+        now: now,
+      );
+      await first.start();
+      await first.activate(
+        workspaceCode: 'FARM-ONE',
+        activationCode: 'ACT-SECRET',
+        deviceLabel: 'Yard tablet',
+      );
+
+      expect(
+        first.status,
+        CommercialAuthenticationStatus.activationOutcomeUnknown,
+      );
+      expect(store.activationAttempt, isNotNull);
+      final firstRedeem = transport.requests.last;
+
+      final restarted = _controller(
+        store,
+        transport,
+        binding: binding,
+        now: now,
+      );
+      await restarted.start();
+      await tester.pumpWidget(
+        MaterialApp(home: CommercialIdentityScreen(controller: restarted)),
+      );
+      expect(find.text('Activation outcome needs recovery'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('recover-activation')));
+      await tester.pumpAndSettle();
+
+      final recoveredRedeem = transport.requests.last;
+      expect(recoveredRedeem.idempotencyKey, firstRedeem.idempotencyKey);
+      expect(recoveredRedeem.jsonBody, firstRedeem.jsonBody);
+      expect(store.device?.deviceId.value, _deviceId);
+      expect(store.device?.secret, 'new-device-secret');
+      expect(store.activationAttempt, isNull);
+      expect(find.text('Workspace sign in'), findsOneWidget);
+    });
+
+    testWidgets('unconfirmed logout-all offers retry and local fallback', (
+      tester,
+    ) async {
+      final now = DateTime.utc(2026, 8, 9, 10);
+      final store = _MemoryCredentialStore()..device = _device();
+      final transport = _FakeTransport((request) async {
+        if (request.relativePath.endsWith('/login')) {
+          return _ok(_authResponse('refresh-2'));
+        }
+        if (request.relativePath.endsWith('/me')) {
+          return _ok(_meResponse());
+        }
+        if (request.relativePath.endsWith('/logout-all')) {
+          throw const CommercialIdentityFailure(
+            kind: CommercialIdentityFailureKind.networkAmbiguous,
+            safeCode: 'IDENTITY_NETWORK_OUTCOME_UNKNOWN',
+          );
+        }
+        if (request.relativePath.endsWith('/logout')) {
+          return _noContent();
+        }
+        throw StateError('Unexpected request ${request.relativePath}');
+      });
+      final controller = _controller(store, transport, now: now);
+      await controller.start();
+      await controller.login(
+        workspaceCode: 'FARM-ONE',
+        login: 'owner@example.test',
+        password: 'correct horse battery staple',
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: CommercialIdentityScreen(controller: controller)),
+      );
+
+      await tester.tap(find.byKey(const Key('sign-out-all')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign out all was not confirmed'), findsOneWidget);
+      expect(find.byKey(const Key('retry-sign-out-all')), findsOneWidget);
+      expect(find.byKey(const Key('fallback-local-sign-out')), findsOneWidget);
+      expect(store.refresh, isNotNull);
+
+      await tester.tap(find.byKey(const Key('fallback-local-sign-out')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Workspace sign in'), findsOneWidget);
+      expect(store.refresh, isNull);
+      expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+    });
+
+    for (final kind in <CommercialIdentityFailureKind>[
+      CommercialIdentityFailureKind.secureStoreUnavailable,
+      CommercialIdentityFailureKind.credentialPersistenceFailed,
+      CommercialIdentityFailureKind.secureStoreMalformed,
+    ]) {
+      testWidgets('logout ${kind.name} exits spinner fail-closed', (
+        tester,
+      ) async {
+        final now = DateTime.utc(2026, 8, 9, 10);
+        final originalDevice = _device();
+        final store = _MemoryCredentialStore()..device = originalDevice;
+        final binding = _MemoryBindingPort();
+        final transport = _FakeTransport((request) async {
+          if (request.relativePath.endsWith('/login')) {
+            return _ok(_authResponse('refresh-2'));
+          }
+          if (request.relativePath.endsWith('/me')) {
+            return _ok(_meResponse());
+          }
+          if (request.relativePath.endsWith('/logout')) {
+            return _noContent();
+          }
+          throw StateError('Unexpected request ${request.relativePath}');
+        });
+        final controller = _controller(
+          store,
+          transport,
+          binding: binding,
+          now: now,
+        );
+        await controller.start();
+        await controller.login(
+          workspaceCode: 'FARM-ONE',
+          login: 'owner@example.test',
+          password: 'correct horse battery staple',
+        );
+        final originalBinding = binding.binding;
+        store.clearRefreshFailure = CommercialIdentityFailure(
+          kind: kind,
+          safeCode: 'TEST_SECURE_STORE_CLEAR_FAILED',
+        );
+        await tester.pumpWidget(
+          MaterialApp(home: CommercialIdentityScreen(controller: controller)),
+        );
+
+        await tester.tap(find.byKey(const Key('sign-out')));
+        await tester.pumpAndSettle();
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.lockedFailClosed,
+        );
+        expect(find.text('Signing out…'), findsNothing);
+        expect(
+          find.text('Secure identity storage unavailable'),
+          findsOneWidget,
+        );
+        expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(store.refresh, isNotNull);
+        expect(identical(store.device, originalDevice), isTrue);
+        expect(identical(binding.binding, originalBinding), isTrue);
+        expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+        expect(store.databaseKeySentinel, 'commercial-db-key');
+      });
+    }
   });
 }
 
@@ -641,6 +1615,7 @@ CommercialIdentityController _controller(
   _MemoryCredentialStore store,
   _FakeTransport transport, {
   _MemoryBindingPort? binding,
+  ActivationIdempotencyKeyGenerator? activationKeys,
   DateTime? now,
 }) {
   final bindingPort = binding ?? _MemoryBindingPort();
@@ -648,6 +1623,7 @@ CommercialIdentityController _controller(
     transport: transport,
     store: store,
     binding: bindingPort,
+    activationKeys: activationKeys,
     now: now,
   );
   final coordinator = CommercialRefreshCoordinator(
@@ -735,6 +1711,10 @@ final class _MemoryCredentialStore
   CommercialActivationAttempt? activationAttempt;
   bool retired = false;
   bool failDeviceReplacement = false;
+  String databaseCiphertextSentinel = 'commercial-db-ciphertext';
+  String databaseKeySentinel = 'commercial-db-key';
+  CommercialCredentialRead<CommercialActivationAttempt>? activationReadOverride;
+  CommercialIdentityFailure? clearRefreshFailure;
   int? failRefreshReplacementAt;
   int refreshReplacementCount = 0;
 
@@ -793,17 +1773,23 @@ final class _MemoryCredentialStore
 
   @override
   Future<void> clearRefreshCredential() async {
+    final failure = clearRefreshFailure;
+    if (failure != null) {
+      throw failure;
+    }
     refresh = null;
   }
 
   @override
   Future<CommercialCredentialRead<CommercialActivationAttempt>>
-  readActivationAttempt() async => activationAttempt == null
-      ? const CommercialCredentialRead(CommercialCredentialStoreState.empty)
-      : CommercialCredentialRead(
-          CommercialCredentialStoreState.valid,
-          value: activationAttempt,
-        );
+  readActivationAttempt() async =>
+      activationReadOverride ??
+      (activationAttempt == null
+          ? const CommercialCredentialRead(CommercialCredentialStoreState.empty)
+          : CommercialCredentialRead(
+              CommercialCredentialStoreState.valid,
+              value: activationAttempt,
+            ));
 
   @override
   Future<void> writeActivationAttempt(
@@ -849,11 +1835,12 @@ final class _FixedActivationKeys implements ActivationIdempotencyKeyGenerator {
   String generate() => 'stable-key';
 }
 
-DeviceCredential _device() => DeviceCredential(
-  deviceId: DeviceId(_deviceId),
-  secret: 'device-secret',
-  secretVersion: 1,
-);
+DeviceCredential _device({String secret = 'device-secret', int version = 1}) =>
+    DeviceCredential(
+      deviceId: DeviceId(_deviceId),
+      secret: secret,
+      secretVersion: version,
+    );
 
 CommercialAccountBinding _binding(DateTime now) => CommercialAccountBinding(
   apiOrigin: 'https://identity.example.test/',
@@ -863,6 +1850,25 @@ CommercialAccountBinding _binding(DateTime now) => CommercialAccountBinding(
   userId: UserId(_userId),
   deviceId: DeviceId(_deviceId),
   firstBoundAtUtc: now,
+);
+
+CommercialIdentitySnapshot _snapshot(DateTime now) =>
+    CommercialIdentitySnapshot(
+      workspaceCode: 'FARM-ONE',
+      userDisplayName: 'Owner One',
+      role: CommercialRole.owner,
+      deviceLabel: 'Yard tablet',
+      lastConfirmedAtUtc: now,
+    );
+
+CommercialActivationAttempt _activationAttempt() => CommercialActivationAttempt(
+  idempotencyKey: 'stable-key',
+  workspaceCode: 'FARM-ONE',
+  activationCode: 'ACT-SECRET',
+  clientInstallationReference: 'installation-reference',
+  deviceLabel: 'Yard tablet',
+  platform: 'Android',
+  createdAtUtc: DateTime.utc(2026, 8, 9, 10),
 );
 
 RefreshCredential _refresh(String value, DateTime now) => RefreshCredential(
@@ -916,16 +1922,23 @@ CommercialIdentityContext _context() => CommercialIdentityContext(
   deviceLabel: 'Yard tablet',
 );
 
-Map<String, Object?> _activationResponse() => <String, Object?>{
+Map<String, Object?> _activationResponse({
+  String secret = 'device-secret',
+  int version = 1,
+}) => <String, Object?>{
   'deviceId': _deviceId,
-  'deviceSecret': 'device-secret',
-  'secretVersion': 1,
+  'deviceSecret': secret,
+  'secretVersion': version,
   'activatedAtUtc': '2026-08-09T10:00:00Z',
 };
 
-Map<String, Object?> _authResponse(String refresh) => <String, Object?>{
-  'accessToken': 'access-2',
-  'accessTokenExpiresAtUtc': '2026-08-09T11:00:00Z',
+Map<String, Object?> _authResponse(
+  String refresh, {
+  String access = 'access-2',
+  String accessExpiresAtUtc = '2026-08-09T11:00:00Z',
+}) => <String, Object?>{
+  'accessToken': access,
+  'accessTokenExpiresAtUtc': accessExpiresAtUtc,
   'refreshToken': refresh,
   'refreshTokenExpiresAtUtc': '2026-08-10T10:00:00Z',
   ..._contextResponse(),

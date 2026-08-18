@@ -283,6 +283,14 @@ final class CommercialRefreshCoordinator {
   }
 
   Future<void> logout({required bool allSessions}) async {
+    if (allSessions) {
+      await _logoutAllConfirmed();
+      return;
+    }
+    await _logoutLocal();
+  }
+
+  Future<void> _logoutLocal() async {
     if (_disposed) {
       return;
     }
@@ -290,10 +298,42 @@ final class CommercialRefreshCoordinator {
     final access = _accessToken;
     _accessToken = null;
     try {
-      await identityService.bestEffortLogout(access, allSessions: allSessions);
+      await identityService.bestEffortLogout(access, allSessions: false);
     } on CommercialIdentityFailure {
       // Local logout is authoritative for local credential removal.
     }
+    final inFlight = _inFlightRefresh;
+    if (inFlight != null) {
+      try {
+        await inFlight;
+      } on Object {
+        // The epoch prevents a late result from publishing a session.
+      }
+    }
+    await credentialStore.clearRefreshCredential();
+  }
+
+  Future<void> _logoutAllConfirmed() async {
+    _ensureActive();
+    late final AccessTokenLease access;
+    try {
+      access = await validAccessToken();
+      await identityService.bestEffortLogout(access, allSessions: true);
+    } on CommercialIdentityFailure catch (failure) {
+      if (_isSecureStoreFailure(failure.kind)) {
+        rethrow;
+      }
+      throw CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.remoteLogoutAllUnconfirmed,
+        safeCode: 'LOGOUT_ALL_NOT_CONFIRMED',
+        retryable: failure.retryable,
+        httpStatus: failure.httpStatus,
+        retryAfter: failure.retryAfter,
+      );
+    }
+
+    _sessionEpoch += 1;
+    _accessToken = null;
     final inFlight = _inFlightRefresh;
     if (inFlight != null) {
       try {
@@ -382,4 +422,9 @@ final class CommercialRefreshCoordinator {
 
   static String _credentialDigest(String value) =>
       sha256.convert(value.codeUnits).toString();
+
+  static bool _isSecureStoreFailure(CommercialIdentityFailureKind kind) =>
+      kind == CommercialIdentityFailureKind.secureStoreUnavailable ||
+      kind == CommercialIdentityFailureKind.secureStoreMalformed ||
+      kind == CommercialIdentityFailureKind.credentialPersistenceFailed;
 }

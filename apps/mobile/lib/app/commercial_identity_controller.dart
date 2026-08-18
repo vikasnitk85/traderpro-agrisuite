@@ -43,6 +43,8 @@ final class CommercialIdentityController extends ChangeNotifier {
       CommercialAuthenticationStatus.identityContextLoading;
   String? _safeFailureCode;
   CommercialIdentityView? _identity;
+  CommercialAuthenticationStatus _activationFallbackStatus =
+      CommercialAuthenticationStatus.deviceUnregistered;
   bool _disposed = false;
 
   CommercialAuthenticationStatus get status => _status;
@@ -52,6 +54,26 @@ final class CommercialIdentityController extends ChangeNotifier {
   Future<void> start() async {
     final binding = await bindingPort.readBinding();
     final snapshot = await bindingPort.readSnapshot();
+    if (snapshot != null) {
+      _identity = _viewFromSnapshot(snapshot);
+    }
+    final activation = await activationAttemptStore.readActivationAttempt();
+    if (activation.state == CommercialCredentialStoreState.valid &&
+        activation.value != null) {
+      _activationFallbackStatus = binding == null
+          ? CommercialAuthenticationStatus.deviceUnregistered
+          : CommercialAuthenticationStatus.deviceRevoked;
+      _setStatus(CommercialAuthenticationStatus.activationOutcomeUnknown);
+      return;
+    }
+    if (activation.state != CommercialCredentialStoreState.empty) {
+      _safeFailureCode = 'ACTIVATION_ATTEMPT_STORE_INVALID';
+      _setStatus(
+        CommercialAuthenticationStatus.lockedFailClosed,
+        preserveFailure: true,
+      );
+      return;
+    }
     final device = await credentialStore.readDeviceCredential();
     final refresh = await credentialStore.readRefreshCredential();
     final next = _stateMachine.classifyStartup(
@@ -62,16 +84,6 @@ final class CommercialIdentityController extends ChangeNotifier {
         refreshState: refresh.state,
       ),
     );
-    if (snapshot != null) {
-      _identity = _viewFromSnapshot(snapshot);
-    }
-    if (next == CommercialAuthenticationStatus.deviceUnregistered) {
-      final activation = await activationAttemptStore.readActivationAttempt();
-      if (activation.state == CommercialCredentialStoreState.valid) {
-        _setStatus(CommercialAuthenticationStatus.activationOutcomeUnknown);
-        return;
-      }
-    }
     if (next != CommercialAuthenticationStatus.refreshing) {
       _setStatus(next);
       return;
@@ -94,6 +106,10 @@ final class CommercialIdentityController extends ChangeNotifier {
     required String activationCode,
     required String deviceLabel,
   }) async {
+    _activationFallbackStatus =
+        _status == CommercialAuthenticationStatus.deviceRevoked
+        ? CommercialAuthenticationStatus.deviceRevoked
+        : CommercialAuthenticationStatus.deviceUnregistered;
     _setStatus(CommercialAuthenticationStatus.activating);
     try {
       await refreshCoordinator.activateDevice(
@@ -102,9 +118,11 @@ final class CommercialIdentityController extends ChangeNotifier {
         deviceLabel: deviceLabel,
       );
       _identity = null;
+      _activationFallbackStatus =
+          CommercialAuthenticationStatus.deviceUnregistered;
       _setStatus(CommercialAuthenticationStatus.deviceRegisteredNoSession);
     } on CommercialIdentityFailure catch (failure) {
-      await _applyFailure(failure);
+      await _applyActivationFailure(failure);
     }
   }
 
@@ -112,9 +130,11 @@ final class CommercialIdentityController extends ChangeNotifier {
     _setStatus(CommercialAuthenticationStatus.activating);
     try {
       await refreshCoordinator.recoverDeviceActivation();
+      _activationFallbackStatus =
+          CommercialAuthenticationStatus.deviceUnregistered;
       _setStatus(CommercialAuthenticationStatus.deviceRegisteredNoSession);
     } on CommercialIdentityFailure catch (failure) {
-      await _applyFailure(failure);
+      await _applyActivationFailure(failure);
     }
   }
 
@@ -154,9 +174,56 @@ final class CommercialIdentityController extends ChangeNotifier {
 
   Future<void> logout({required bool allSessions}) async {
     _setStatus(CommercialAuthenticationStatus.loggingOut);
-    await refreshCoordinator.logout(allSessions: allSessions);
-    _identity = null;
-    _setStatus(CommercialAuthenticationStatus.deviceRegisteredNoSession);
+    try {
+      await refreshCoordinator.logout(allSessions: allSessions);
+      _identity = null;
+      _setStatus(CommercialAuthenticationStatus.deviceRegisteredNoSession);
+    } on CommercialIdentityFailure catch (failure) {
+      if (failure.kind ==
+          CommercialIdentityFailureKind.remoteLogoutAllUnconfirmed) {
+        _safeFailureCode = failure.safeCode;
+        _setStatus(
+          CommercialAuthenticationStatus.logoutAllUnconfirmed,
+          preserveFailure: true,
+        );
+        return;
+      }
+      await _applyFailure(failure);
+    } on Object {
+      _safeFailureCode = 'IDENTITY_LOGOUT_UNEXPECTED';
+      _setStatus(
+        CommercialAuthenticationStatus.lockedFailClosed,
+        preserveFailure: true,
+      );
+    }
+  }
+
+  Future<void> _applyActivationFailure(
+    CommercialIdentityFailure failure,
+  ) async {
+    _safeFailureCode = failure.safeCode;
+    final next = switch (failure.kind) {
+      CommercialIdentityFailureKind.activationOutcomeUnknown ||
+      CommercialIdentityFailureKind.activationRecoveryUnavailable ||
+      CommercialIdentityFailureKind.networkUnavailable ||
+      CommercialIdentityFailureKind.networkAmbiguous ||
+      CommercialIdentityFailureKind.tlsFailure =>
+        CommercialAuthenticationStatus.activationOutcomeUnknown,
+      CommercialIdentityFailureKind.secureStoreUnavailable ||
+      CommercialIdentityFailureKind.secureStoreMalformed ||
+      CommercialIdentityFailureKind.credentialPersistenceFailed ||
+      CommercialIdentityFailureKind.protocolContractMismatch =>
+        CommercialAuthenticationStatus.lockedFailClosed,
+      CommercialIdentityFailureKind.identityContextMismatch =>
+        CommercialAuthenticationStatus.identityContextMismatch,
+      CommercialIdentityFailureKind.deviceInactive =>
+        CommercialAuthenticationStatus.deviceRevoked,
+      _ => _activationFallbackStatus,
+    };
+    if (failure.kind == CommercialIdentityFailureKind.deviceInactive) {
+      await refreshCoordinator.handleDefiniteDeviceInactive();
+    }
+    _setStatus(next, preserveFailure: true);
   }
 
   Future<void> onResume() async {
@@ -207,6 +274,8 @@ final class CommercialIdentityController extends ChangeNotifier {
       CommercialIdentityFailureKind.accountDisabled ||
       CommercialIdentityFailureKind.accessExpiredOrInvalid =>
         CommercialAuthenticationStatus.authRequired,
+      CommercialIdentityFailureKind.remoteLogoutAllUnconfirmed =>
+        CommercialAuthenticationStatus.logoutAllUnconfirmed,
       _ =>
         _status == CommercialAuthenticationStatus.activating
             ? CommercialAuthenticationStatus.deviceUnregistered

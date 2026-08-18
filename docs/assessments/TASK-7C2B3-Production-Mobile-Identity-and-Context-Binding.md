@@ -1,7 +1,7 @@
 # Task 7C2B3 production mobile identity and context binding assessment
 
 - Status: Complete; host, release-posture, API-24, and physical API-35 gates pass
-- Evidence date: 2026-08-17
+- Evidence date: 2026-08-18
 - Branch: `task/7c2b3-mobile-identity-context`
 - Base: `91a0da7ac2eaf688e351077d5699638b93abb29e`
 - ADR: ADR-0014 Accepted
@@ -105,6 +105,52 @@ request `INTERNET`, disable cleartext and backup, retain both exclusion
 resources, and preserve the approved native graph. Host gates that had already
 passed were not repeated except for the two focused backend regressions needed
 for the Device-exposed defect.
+
+## PR #5 corrective evidence — 2026-08-18
+
+All seven PR #5 findings were corrected within the B3 mobile identity scope:
+
+1. Device-label validation now trims, accepts 200 characters, rejects 201 or
+   blank input before persistence/HTTP, and leaves the form correctable.
+2. A revoked Device now exposes same-Device reactivation without clearing the
+   encrypted database, key, immutable binding, or safe snapshot.
+3. Logout-all obtains one valid access token before the remote request, shares
+   an in-flight refresh, blocks late publication, and presents retry plus an
+   explicit local-only fallback when the remote outcome is unconfirmed.
+4. A durable pending activation/reactivation attempt takes startup precedence
+   over an older committed Device credential and is recovered with the exact
+   stored idempotency key and body.
+5. First activation and reactivation keep TLS and ambiguous network outcomes
+   in the exact-recovery flow instead of degrading to a generic failure.
+6. Secure-store failures during logout exit the spinner into a deterministic
+   fail-closed state while preserving Device, binding, database ciphertext,
+   and database-key state.
+7. Empty or invalid login input remains correctable and can be resubmitted
+   without an intervening restart or unintended HTTP request.
+
+Corrective host evidence passed before Device validation: 44 focused identity
+tests, 98 combined identity/security/architecture tests, the complete 266-test
+Flutter suite, `flutter analyze --no-pub`, and 13 architecture tests. The
+already-passed host and API-24 gates were not repeated during the final
+physical run.
+
+The targeted corrective matrix passed on the official API-24 emulator and then
+passed 44/44 on the authorized `2311DRK48I` Android 15/API-35 arm64-v8a
+physical Device. The physical force-stop probe used the production secure-store
+adapter, secure database-key store, encrypted Drift database, immutable
+binding repository, and refresh/activation controller. It reached `prepared`,
+the process was absent after explicit `adb shell am force-stop`, and the cold
+relaunch reached `passed`. Recovery retained the same Device ID and immutable
+binding, advanced the Device secret version, consumed the pending activation,
+and reused the exact idempotency key without a startup HTTP request.
+
+The physical active window retained `FLAG_SECURE`; its captured application
+surface was black. Package logs contained zero matches for the five synthetic
+Device-secret, activation, idempotency, and Device-ID sentinels. No backend,
+dependency, lockfile, protected POC, legacy database, Receiving, or storage-
+spike source changed. Temporary corrective entrypoints, Device artifacts, and
+the disposable synthetic installation were removed after evidence capture.
+ADR-0014 remains Accepted, and B4 was not started.
 
 ## Deferred and residual
 
