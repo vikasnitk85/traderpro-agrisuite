@@ -351,12 +351,21 @@ final class CommercialRefreshCoordinator {
   Future<void> handleDefiniteDeviceInactive() async {
     _sessionEpoch += 1;
     _accessToken = null;
-    await credentialStore.clearRefreshCredential();
-    final device = await credentialStore.readDeviceCredential();
-    if (device.state == CommercialCredentialStoreState.valid &&
-        device.value != null) {
-      await credentialStore.retireDeviceCredential(
-        deviceId: device.value!.deviceId,
+    try {
+      await credentialStore.clearRefreshCredential();
+      final device = await credentialStore.readDeviceCredential();
+      if (device.state == CommercialCredentialStoreState.valid &&
+          device.value != null) {
+        await credentialStore.retireDeviceCredential(
+          deviceId: device.value!.deviceId,
+        );
+      }
+    } on CommercialIdentityFailure {
+      rethrow;
+    } on Object {
+      throw const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.credentialPersistenceFailed,
+        safeCode: 'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
       );
     }
   }

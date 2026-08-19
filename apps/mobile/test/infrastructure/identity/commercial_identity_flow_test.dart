@@ -155,6 +155,47 @@ void main() {
     );
 
     test(
+      'installation-reference storage failure is typed before journal or HTTP',
+      () async {
+        final store = _MemoryCredentialStore();
+        final transport = _FakeTransport(
+          (_) async => throw StateError('No request expected'),
+        );
+        final service = _service(
+          transport: transport,
+          store: store,
+          installationReferenceReader: () async =>
+              throw StateError('synthetic Drift metadata read failure'),
+        );
+
+        await expectLater(
+          service.activate(
+            workspaceCode: 'FARM-ONE',
+            activationCode: 'ACT-SECRET',
+            deviceLabel: 'Yard tablet',
+          ),
+          throwsA(
+            isA<CommercialIdentityFailure>()
+                .having(
+                  (failure) => failure.kind,
+                  'kind',
+                  CommercialIdentityFailureKind.identityBindingStorageFailure,
+                )
+                .having(
+                  (failure) => failure.safeCode,
+                  'safeCode',
+                  'IDENTITY_BINDING_STORAGE_FAILED',
+                ),
+          ),
+        );
+
+        expect(store.activationAttempt, isNull);
+        expect(store.device, isNull);
+        expect(transport.requests, isEmpty);
+      },
+    );
+
+    test(
       'Device label accepts 200 characters and trims before persistence',
       () async {
         final store = _MemoryCredentialStore();
@@ -874,6 +915,345 @@ void main() {
   });
 
   group('identity controller and minimal UI', () {
+    test(
+      'activation metadata storage failure exits progress and retries cleanly',
+      () async {
+        final store = _MemoryCredentialStore();
+        final binding = _MemoryBindingPort();
+        var metadataUnavailable = true;
+        final transport = _FakeTransport(
+          (_) async => _ok(_activationResponse()),
+        );
+        Future<String?> installationReader() async {
+          if (metadataUnavailable) {
+            throw StateError('synthetic Drift metadata read failure');
+          }
+          return 'installation-reference';
+        }
+
+        final controller = _controller(
+          store,
+          transport,
+          binding: binding,
+          installationReferenceReader: installationReader,
+        );
+        await controller.start();
+
+        await controller.activate(
+          workspaceCode: 'FARM-ONE',
+          activationCode: 'ACT-SECRET',
+          deviceLabel: 'Yard tablet',
+        );
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.lockedFailClosed,
+        );
+        expect(controller.safeFailureCode, 'IDENTITY_BINDING_STORAGE_FAILED');
+        expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(store.activationAttempt, isNull);
+        expect(store.device, isNull);
+        expect(binding.binding, isNull);
+        expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+        expect(store.databaseKeySentinel, 'commercial-db-key');
+        expect(transport.requests, isEmpty);
+
+        controller.dispose();
+        await controller.refreshCoordinator.dispose();
+        metadataUnavailable = false;
+        final restarted = _controller(
+          store,
+          transport,
+          binding: binding,
+          installationReferenceReader: installationReader,
+        );
+        await restarted.start();
+        expect(
+          restarted.status,
+          CommercialAuthenticationStatus.deviceUnregistered,
+        );
+        await restarted.activate(
+          workspaceCode: 'FARM-ONE',
+          activationCode: 'ACT-SECRET',
+          deviceLabel: 'Yard tablet',
+        );
+        expect(
+          restarted.status,
+          CommercialAuthenticationStatus.deviceRegisteredNoSession,
+        );
+        expect(restarted.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(store.device?.deviceId.value, _deviceId);
+        expect(store.activationAttempt, isNull);
+        expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+        expect(store.databaseKeySentinel, 'commercial-db-key');
+      },
+    );
+
+    for (final scenario in <(String, bool)>[
+      ('binding', true),
+      ('snapshot', false),
+    ]) {
+      test(
+        '${scenario.$1} read failure exits revalidation fail-closed and recovers',
+        () async {
+          final now = DateTime.utc(2026, 8, 9, 10);
+          final originalDevice = _device();
+          final originalBinding = _binding(now);
+          final originalSnapshot = _snapshot(now);
+          final store = _MemoryCredentialStore()
+            ..device = originalDevice
+            ..refresh = _refresh('refresh-1', now);
+          final binding = _MemoryBindingPort()
+            ..binding = originalBinding
+            ..snapshot = originalSnapshot;
+          var networkUnavailable = false;
+          var refreshSequence = 1;
+          final transport = _FakeTransport((request) async {
+            if (request.relativePath.endsWith('/refresh') ||
+                request.relativePath.endsWith('/login')) {
+              if (networkUnavailable) {
+                throw const CommercialIdentityFailure(
+                  kind: CommercialIdentityFailureKind.networkAmbiguous,
+                  safeCode: 'IDENTITY_NETWORK_OUTCOME_UNKNOWN',
+                  retryable: true,
+                );
+              }
+              refreshSequence += 1;
+              return _ok(_authResponse('refresh-$refreshSequence'));
+            }
+            if (request.relativePath.endsWith('/me')) {
+              return _ok(_meResponse());
+            }
+            throw StateError('Unexpected request ${request.relativePath}');
+          });
+          final controller = _controller(
+            store,
+            transport,
+            binding: binding,
+            now: now,
+          );
+          await controller.start();
+          expect(
+            controller.status,
+            CommercialAuthenticationStatus.identityContextReady,
+          );
+          expect(controller.refreshCoordinator.hasMemoryAccessToken, isTrue);
+          final persistedBinding = binding.binding;
+          final persistedSnapshot = binding.snapshot;
+
+          networkUnavailable = true;
+          final readFailure = scenario.$2
+              ? StateError('synthetic binding read failure')
+              : const CommercialIdentityFailure(
+                  kind: CommercialIdentityFailureKind
+                      .identityBindingStorageFailure,
+                  safeCode: 'IDENTITY_BINDING_STORAGE_FAILED',
+                  retryable: true,
+                );
+          if (scenario.$2) {
+            binding.readBindingFailure = readFailure;
+          } else {
+            binding.readSnapshotFailure = readFailure;
+          }
+          await controller.revalidate();
+
+          expect(
+            controller.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(controller.safeFailureCode, 'IDENTITY_BINDING_STORAGE_FAILED');
+          expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+          expect(identical(binding.binding, persistedBinding), isTrue);
+          expect(identical(binding.snapshot, persistedSnapshot), isTrue);
+          expect(identical(store.device, originalDevice), isTrue);
+          expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+          expect(store.databaseKeySentinel, 'commercial-db-key');
+
+          controller.dispose();
+          await controller.refreshCoordinator.dispose();
+          final faultedRestart = _controller(
+            store,
+            transport,
+            binding: binding,
+            now: now,
+          );
+          await faultedRestart.start();
+          expect(
+            faultedRestart.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(
+            faultedRestart.refreshCoordinator.hasMemoryAccessToken,
+            isFalse,
+          );
+
+          faultedRestart.dispose();
+          await faultedRestart.refreshCoordinator.dispose();
+          networkUnavailable = false;
+          binding
+            ..readBindingFailure = null
+            ..readSnapshotFailure = null;
+          final recovered = _controller(
+            store,
+            transport,
+            binding: binding,
+            now: now,
+          );
+          await recovered.start();
+          expect(
+            recovered.status,
+            CommercialAuthenticationStatus.identityContextReady,
+          );
+          expect(recovered.refreshCoordinator.hasMemoryAccessToken, isTrue);
+          expect(identical(binding.binding, originalBinding), isTrue);
+        },
+      );
+    }
+
+    for (final scenario
+        in <(String, Object, CommercialCredentialStoreState, String)>[
+          (
+            'secure store unavailable',
+            const CommercialIdentityFailure(
+              kind: CommercialIdentityFailureKind.secureStoreUnavailable,
+              safeCode: 'IDENTITY_SECURE_STORE_UNAVAILABLE',
+            ),
+            CommercialCredentialStoreState.unavailable,
+            'IDENTITY_SECURE_STORE_UNAVAILABLE',
+          ),
+          (
+            'persistence verification',
+            const CommercialIdentityFailure(
+              kind: CommercialIdentityFailureKind.credentialPersistenceFailed,
+              safeCode: 'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+            ),
+            CommercialCredentialStoreState.inconsistent,
+            'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+          ),
+          (
+            'raw platform implementation',
+            StateError('synthetic secure-store retirement failure'),
+            CommercialCredentialStoreState.malformed,
+            'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+          ),
+        ]) {
+      test(
+        'Device retirement ${scenario.$1} exits progress and reactivates',
+        () async {
+          final now = DateTime.utc(2026, 8, 9, 10);
+          final originalDevice = _device();
+          final originalBinding = _binding(now);
+          final originalSnapshot = _snapshot(now);
+          final store = _MemoryCredentialStore()
+            ..device = originalDevice
+            ..retireDeviceFailure = scenario.$2;
+          final binding = _MemoryBindingPort()
+            ..binding = originalBinding
+            ..snapshot = originalSnapshot;
+          final transport = _FakeTransport((request) async {
+            if (request.relativePath.endsWith('/login')) {
+              return _error(401, 'DEVICE_NOT_ACTIVE');
+            }
+            if (request.relativePath.endsWith('/device-activations/redeem')) {
+              return _ok(
+                _activationResponse(
+                  secret: 'rotated-device-secret',
+                  version: 2,
+                ),
+              );
+            }
+            throw StateError('Unexpected request ${request.relativePath}');
+          });
+          final controller = _controller(
+            store,
+            transport,
+            binding: binding,
+            now: now,
+          );
+          await controller.start();
+          await controller.login(
+            workspaceCode: 'FARM-ONE',
+            login: 'owner@example.test',
+            password: 'correct horse battery staple',
+          );
+
+          expect(
+            controller.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(controller.safeFailureCode, scenario.$4);
+          expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+          expect(identical(store.device, originalDevice), isTrue);
+          expect(store.retired, isFalse);
+          expect(identical(binding.binding, originalBinding), isTrue);
+          expect(identical(binding.snapshot, originalSnapshot), isTrue);
+          expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+          expect(store.databaseKeySentinel, 'commercial-db-key');
+
+          controller.dispose();
+          await controller.refreshCoordinator.dispose();
+          store.deviceReadOverride = CommercialCredentialRead(scenario.$3);
+          final faultedRestart = _controller(
+            store,
+            transport,
+            binding: binding,
+            now: now,
+          );
+          await faultedRestart.start();
+          expect(
+            faultedRestart.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(
+            faultedRestart.refreshCoordinator.hasMemoryAccessToken,
+            isFalse,
+          );
+
+          faultedRestart.dispose();
+          await faultedRestart.refreshCoordinator.dispose();
+          store
+            ..deviceReadOverride = null
+            ..retireDeviceFailure = null;
+          final recovered = _controller(
+            store,
+            transport,
+            binding: binding,
+            now: now,
+          );
+          await recovered.start();
+          expect(
+            recovered.status,
+            CommercialAuthenticationStatus.deviceRegisteredNoSession,
+          );
+          await recovered.login(
+            workspaceCode: 'FARM-ONE',
+            login: 'owner@example.test',
+            password: 'correct horse battery staple',
+          );
+          expect(
+            recovered.status,
+            CommercialAuthenticationStatus.deviceRevoked,
+          );
+          expect(store.retired, isTrue);
+          await recovered.activate(
+            workspaceCode: 'FARM-ONE',
+            activationCode: 'ACT-SECRET',
+            deviceLabel: 'Yard tablet',
+          );
+          expect(
+            recovered.status,
+            CommercialAuthenticationStatus.deviceRegisteredNoSession,
+          );
+          expect(store.device?.deviceId.value, _deviceId);
+          expect(store.device?.secretVersion, 2);
+          expect(store.retired, isFalse);
+          expect(identical(binding.binding, originalBinding), isTrue);
+          expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+          expect(store.databaseKeySentinel, 'commercial-db-key');
+        },
+      );
+    }
+
     test(
       'login binding write failure clears provisional authority and recovers',
       () async {
@@ -1751,6 +2131,7 @@ CommercialIdentityController _controller(
   _FakeTransport transport, {
   _MemoryBindingPort? binding,
   ActivationIdempotencyKeyGenerator? activationKeys,
+  CommercialInstallationReferenceReader? installationReferenceReader,
   DateTime? now,
 }) {
   final bindingPort = binding ?? _MemoryBindingPort();
@@ -1759,6 +2140,7 @@ CommercialIdentityController _controller(
     store: store,
     binding: bindingPort,
     activationKeys: activationKeys,
+    installationReferenceReader: installationReferenceReader,
     now: now,
   );
   final coordinator = CommercialRefreshCoordinator(
@@ -1780,6 +2162,7 @@ CommercialIdentityService _service({
   required _MemoryCredentialStore store,
   _MemoryBindingPort? binding,
   ActivationIdempotencyKeyGenerator? activationKeys,
+  CommercialInstallationReferenceReader? installationReferenceReader,
   DateTime? now,
 }) => CommercialIdentityService(
   transport: transport,
@@ -1787,7 +2170,8 @@ CommercialIdentityService _service({
   activationAttemptStore: store,
   bindingPort: binding ?? _MemoryBindingPort(),
   normalizedApiOrigin: 'https://identity.example.test/',
-  installationReferenceReader: () async => 'installation-reference',
+  installationReferenceReader:
+      installationReferenceReader ?? (() async => 'installation-reference'),
   activationKeyGenerator: activationKeys,
   clock: () => now ?? DateTime.utc(2026, 8, 9, 10),
 );
@@ -1846,6 +2230,8 @@ final class _MemoryCredentialStore
   CommercialActivationAttempt? activationAttempt;
   bool retired = false;
   bool failDeviceReplacement = false;
+  CommercialCredentialRead<DeviceCredential>? deviceReadOverride;
+  Object? retireDeviceFailure;
   String databaseCiphertextSentinel = 'commercial-db-ciphertext';
   String databaseKeySentinel = 'commercial-db-key';
   CommercialCredentialRead<CommercialActivationAttempt>? activationReadOverride;
@@ -1856,14 +2242,18 @@ final class _MemoryCredentialStore
 
   @override
   Future<CommercialCredentialRead<DeviceCredential>>
-  readDeviceCredential() async => retired
-      ? const CommercialCredentialRead(CommercialCredentialStoreState.retired)
-      : device == null
-      ? const CommercialCredentialRead(CommercialCredentialStoreState.empty)
-      : CommercialCredentialRead(
-          CommercialCredentialStoreState.valid,
-          value: device,
-        );
+  readDeviceCredential() async =>
+      deviceReadOverride ??
+      (retired
+          ? const CommercialCredentialRead(
+              CommercialCredentialStoreState.retired,
+            )
+          : device == null
+          ? const CommercialCredentialRead(CommercialCredentialStoreState.empty)
+          : CommercialCredentialRead(
+              CommercialCredentialStoreState.valid,
+              value: device,
+            ));
 
   @override
   Future<void> replaceDeviceCredential(
@@ -1882,6 +2272,10 @@ final class _MemoryCredentialStore
 
   @override
   Future<void> retireDeviceCredential({required DeviceId deviceId}) async {
+    final failure = retireDeviceFailure;
+    if (failure != null) {
+      throw failure;
+    }
     device = null;
     retired = true;
   }
@@ -1946,13 +2340,27 @@ final class _MemoryBindingPort implements CommercialIdentityBindingPort {
   CommercialIdentitySnapshot? snapshot;
   Completer<void>? bindBarrier;
   Object? bindFailure;
+  Object? readBindingFailure;
+  Object? readSnapshotFailure;
   int bindAttempts = 0;
 
   @override
-  Future<CommercialAccountBinding?> readBinding() async => binding;
+  Future<CommercialAccountBinding?> readBinding() async {
+    final failure = readBindingFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return binding;
+  }
 
   @override
-  Future<CommercialIdentitySnapshot?> readSnapshot() async => snapshot;
+  Future<CommercialIdentitySnapshot?> readSnapshot() async {
+    final failure = readSnapshotFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return snapshot;
+  }
 
   @override
   Future<void> bindOrMatch(

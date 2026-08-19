@@ -1,6 +1,7 @@
 # TPRUN-007: Production mobile identity validation
 
-- Status: Task 7C2B3 validated through the second PR #5 correction on 2026-08-19
+- Status: Task 7C2B3 validated through the final PR #5 corrective pass on
+  2026-08-19
 - Applies to: production `apps/mobile/lib/main.dart` identity composition
 - Data rule: synthetic/disposable identity data only
 
@@ -204,3 +205,62 @@ visible. Device logs contained zero matches for all five synthetic Device,
 access, refresh, password, and identity sentinels. Pubspec, lockfile, backend,
 protected POC, legacy database, Receiving, and storage-spike sources remain
 unchanged. ADR-0014 semantics remain unchanged, and B4 was not started.
+
+## PR #5 final corrective revalidation — 2026-08-19
+
+The final corrective pass covers three storage/error-boundary findings and one
+adjacent same-class startup boundary:
+
+1. Activation installation-reference reads must translate Drift/SQLite and
+   other implementation errors before they reach the controller. A failure
+   before the durable attempt write sends no HTTP and creates no attempt; an
+   existing durable attempt must retain its exact ADR-0013 key/body for replay.
+2. Binding or safe-snapshot reads used after a network-failed revalidation are
+   fallible. A secondary read failure must clear memory access, exit
+   `refreshing`, expose `IDENTITY_BINDING_STORAGE_FAILED`, preserve immutable
+   local state and the durable refresh predecessor journal, and never classify
+   cached data as authorized offline state. After fault removal, exact refresh
+   recovery and `/auth/me` must precede access-token publication.
+3. A local Device-retirement failure after `DEVICE_NOT_ACTIVE` must translate
+   to a typed secure-store/persistence failure, exit authentication progress,
+   and lock fail-closed. The Device, database, key, binding, and safe snapshot
+   remain intact when retirement is unconfirmed. While the secure-store fault
+   persists, restart must remain fail-closed; after recovery, retirement and
+   same-Device reactivation must complete deterministically.
+4. Initial binding, snapshot, activation-attempt, Device, refresh, and session-
+   restoration reads use the same typed/unexpected startup boundary so no raw
+   implementation exception can leave the controller loading indefinitely.
+
+Host regression evidence for this pass is 53/53 focused identity lifecycle
+tests, 78/78 combined identity/binding/secure-journal/origin tests, 278/278 for
+the complete Flutter suite, no analyzer issues, and 13/13 architecture checks.
+Formatting verification passed for all five corrective Dart files. No Drift
+schema/generation, dependency, or lockfile change was required.
+
+Run the retained Android integration probe on both required targets. It must
+use isolated production secure-store namespaces, a real stored database key,
+an isolated SQLite3MC-encrypted Commercial database, the production binding
+repository, and the production identity service/coordinator/controller. Inject:
+
+- the production activation-metadata Drift read failure before journal/HTTP;
+- binding and snapshot read failures during network-failed revalidation;
+- Device-retirement secure-store unavailable and persistence-verification
+  failures; and
+- one unexpected platform retirement exception.
+
+For each injection, require a terminal typed fail-closed state, no memory access
+token, policy-correct journal state, unchanged encrypted DB/key and immutable
+identity state, persistent-fault restart behavior, and normal recovery after
+removing the fault. The retirement cases must then complete remote-inactive
+handling and same-Device reactivation with an advanced secret version.
+
+On 2026-08-19 the retained probe passed 1/1 on the official Android 7/API-24
+x86_64 emulator and 1/1 on the authorized `2311DRK48I` Android 15/API-35
+arm64-v8a physical Device. Every injected path met the required transient-exit,
+authorization, durability, continuity, restart, and recovery assertions. The
+API-35 `MainActivity` window record explicitly contained `SECURE`; API-24 and
+API-35 captures exposed blank/protected app regions. The scoped log scan for six
+synthetic Device-secret, access-token, refresh-token, password, Device-ID, and
+activation-code sentinels returned zero matches on both targets. Remove the
+isolated state, captures, and disposable debug installation after review.
+ADR-0014 remains Accepted, and B4 remains not started.

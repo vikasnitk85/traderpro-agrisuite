@@ -52,52 +52,58 @@ final class CommercialIdentityController extends ChangeNotifier {
   CommercialIdentityView? get identity => _identity;
 
   Future<void> start() async {
-    final binding = await bindingPort.readBinding();
-    final snapshot = await bindingPort.readSnapshot();
-    if (snapshot != null) {
-      _identity = _viewFromSnapshot(snapshot);
-    }
-    final activation = await activationAttemptStore.readActivationAttempt();
-    if (activation.state == CommercialCredentialStoreState.valid &&
-        activation.value != null) {
-      _activationFallbackStatus = binding == null
-          ? CommercialAuthenticationStatus.deviceUnregistered
-          : CommercialAuthenticationStatus.deviceRevoked;
-      _setStatus(CommercialAuthenticationStatus.activationOutcomeUnknown);
-      return;
-    }
-    if (activation.state != CommercialCredentialStoreState.empty) {
-      _safeFailureCode = 'ACTIVATION_ATTEMPT_STORE_INVALID';
-      _setStatus(
-        CommercialAuthenticationStatus.lockedFailClosed,
-        preserveFailure: true,
-      );
-      return;
-    }
-    final device = await credentialStore.readDeviceCredential();
-    final refresh = await credentialStore.readRefreshCredential();
-    final next = _stateMachine.classifyStartup(
-      CommercialIdentityStartupFacts(
-        hasBinding: binding != null,
-        hasSnapshot: snapshot != null,
-        deviceState: device.state,
-        refreshState: refresh.state,
-      ),
-    );
-    if (next != CommercialAuthenticationStatus.refreshing) {
-      _setStatus(next);
-      return;
-    }
-    _setStatus(CommercialAuthenticationStatus.refreshing);
+    CommercialAccountBinding? binding;
+    CommercialIdentitySnapshot? snapshot;
     try {
+      binding = await bindingPort.readBinding();
+      snapshot = await bindingPort.readSnapshot();
+      if (snapshot != null) {
+        _identity = _viewFromSnapshot(snapshot);
+      }
+      final activation = await activationAttemptStore.readActivationAttempt();
+      if (activation.state == CommercialCredentialStoreState.valid &&
+          activation.value != null) {
+        _activationFallbackStatus = binding == null
+            ? CommercialAuthenticationStatus.deviceUnregistered
+            : CommercialAuthenticationStatus.deviceRevoked;
+        _setStatus(CommercialAuthenticationStatus.activationOutcomeUnknown);
+        return;
+      }
+      if (activation.state != CommercialCredentialStoreState.empty) {
+        _safeFailureCode = 'ACTIVATION_ATTEMPT_STORE_INVALID';
+        _setStatus(
+          CommercialAuthenticationStatus.lockedFailClosed,
+          preserveFailure: true,
+        );
+        return;
+      }
+      final device = await credentialStore.readDeviceCredential();
+      final refresh = await credentialStore.readRefreshCredential();
+      final next = _stateMachine.classifyStartup(
+        CommercialIdentityStartupFacts(
+          hasBinding: binding != null,
+          hasSnapshot: snapshot != null,
+          deviceState: device.state,
+          refreshState: refresh.state,
+        ),
+      );
+      if (next != CommercialAuthenticationStatus.refreshing) {
+        _setStatus(next);
+        return;
+      }
+      _setStatus(CommercialAuthenticationStatus.refreshing);
       final context = await refreshCoordinator.restoreSession();
       _setReady(context);
     } on CommercialIdentityFailure catch (failure) {
+      refreshCoordinator.clearMemoryAccessToken();
       await _applyFailure(
         failure,
         hasBinding: binding != null,
         hasSnapshot: snapshot != null,
       );
+    } on Object {
+      refreshCoordinator.clearMemoryAccessToken();
+      await _applyFailure(_unexpectedFailure());
     }
   }
 
@@ -123,6 +129,8 @@ final class CommercialIdentityController extends ChangeNotifier {
       _setStatus(CommercialAuthenticationStatus.deviceRegisteredNoSession);
     } on CommercialIdentityFailure catch (failure) {
       await _applyActivationFailure(failure);
+    } on Object {
+      await _applyActivationFailure(_unexpectedFailure());
     }
   }
 
@@ -135,6 +143,8 @@ final class CommercialIdentityController extends ChangeNotifier {
       _setStatus(CommercialAuthenticationStatus.deviceRegisteredNoSession);
     } on CommercialIdentityFailure catch (failure) {
       await _applyActivationFailure(failure);
+    } on Object {
+      await _applyActivationFailure(_unexpectedFailure());
     }
   }
 
@@ -153,6 +163,8 @@ final class CommercialIdentityController extends ChangeNotifier {
       _setReady(context);
     } on CommercialIdentityFailure catch (failure) {
       await _applyFailure(failure);
+    } on Object {
+      await _applyFailure(_unexpectedFailure());
     }
   }
 
@@ -162,18 +174,27 @@ final class CommercialIdentityController extends ChangeNotifier {
       final context = await refreshCoordinator.restoreSession();
       _setReady(context);
     } on CommercialIdentityFailure catch (failure) {
-      final needsOfflineFacts = _needsOfflineFacts(failure.kind);
-      final binding = needsOfflineFacts
-          ? await bindingPort.readBinding()
-          : null;
-      final snapshot = needsOfflineFacts
-          ? await bindingPort.readSnapshot()
-          : null;
-      await _applyFailure(
-        failure,
-        hasBinding: binding != null,
-        hasSnapshot: snapshot != null,
-      );
+      refreshCoordinator.clearMemoryAccessToken();
+      if (!_needsOfflineFacts(failure.kind)) {
+        await _applyFailure(failure);
+        return;
+      }
+      try {
+        final binding = await bindingPort.readBinding();
+        final snapshot = await bindingPort.readSnapshot();
+        await _applyFailure(
+          failure,
+          hasBinding: binding != null,
+          hasSnapshot: snapshot != null,
+        );
+      } on CommercialIdentityFailure catch (storageFailure) {
+        await _applyFailure(storageFailure);
+      } on Object {
+        await _applyFailure(_bindingStorageFailure());
+      }
+    } on Object {
+      refreshCoordinator.clearMemoryAccessToken();
+      await _applyFailure(_unexpectedFailure());
     }
   }
 
@@ -218,6 +239,7 @@ final class CommercialIdentityController extends ChangeNotifier {
       CommercialIdentityFailureKind.secureStoreMalformed ||
       CommercialIdentityFailureKind.credentialPersistenceFailed ||
       CommercialIdentityFailureKind.identityBindingStorageFailure ||
+      CommercialIdentityFailureKind.unexpectedIdentityFailure ||
       CommercialIdentityFailureKind.protocolContractMismatch =>
         CommercialAuthenticationStatus.lockedFailClosed,
       CommercialIdentityFailureKind.identityContextMismatch =>
@@ -227,7 +249,9 @@ final class CommercialIdentityController extends ChangeNotifier {
       _ => _activationFallbackStatus,
     };
     if (failure.kind == CommercialIdentityFailureKind.deviceInactive) {
-      await refreshCoordinator.handleDefiniteDeviceInactive();
+      if (!await _retireInactiveDevice()) {
+        return;
+      }
     }
     _setStatus(next, preserveFailure: true);
   }
@@ -272,6 +296,7 @@ final class CommercialIdentityController extends ChangeNotifier {
       CommercialIdentityFailureKind.secureStoreMalformed ||
       CommercialIdentityFailureKind.credentialPersistenceFailed ||
       CommercialIdentityFailureKind.identityBindingStorageFailure ||
+      CommercialIdentityFailureKind.unexpectedIdentityFailure ||
       CommercialIdentityFailureKind.protocolContractMismatch =>
         CommercialAuthenticationStatus.lockedFailClosed,
       CommercialIdentityFailureKind.refreshRejected ||
@@ -289,9 +314,33 @@ final class CommercialIdentityController extends ChangeNotifier {
             : CommercialAuthenticationStatus.deviceRegisteredNoSession,
     };
     if (failure.kind == CommercialIdentityFailureKind.deviceInactive) {
-      await refreshCoordinator.handleDefiniteDeviceInactive();
+      if (!await _retireInactiveDevice()) {
+        return;
+      }
     }
     _setStatus(next, preserveFailure: true);
+  }
+
+  Future<bool> _retireInactiveDevice() async {
+    try {
+      await refreshCoordinator.handleDefiniteDeviceInactive();
+      return true;
+    } on CommercialIdentityFailure catch (failure) {
+      _setFailClosed(failure);
+      return false;
+    } on Object {
+      _setFailClosed(_credentialPersistenceFailure());
+      return false;
+    }
+  }
+
+  void _setFailClosed(CommercialIdentityFailure failure) {
+    refreshCoordinator.clearMemoryAccessToken();
+    _safeFailureCode = failure.safeCode;
+    _setStatus(
+      CommercialAuthenticationStatus.lockedFailClosed,
+      preserveFailure: true,
+    );
   }
 
   void _setReady(CommercialIdentityContext context) {
@@ -331,6 +380,25 @@ final class CommercialIdentityController extends ChangeNotifier {
       kind == CommercialIdentityFailureKind.networkUnavailable ||
       kind == CommercialIdentityFailureKind.networkAmbiguous ||
       kind == CommercialIdentityFailureKind.tlsFailure;
+
+  static CommercialIdentityFailure _bindingStorageFailure() =>
+      const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.identityBindingStorageFailure,
+        safeCode: 'IDENTITY_BINDING_STORAGE_FAILED',
+        retryable: true,
+      );
+
+  static CommercialIdentityFailure _credentialPersistenceFailure() =>
+      const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.credentialPersistenceFailed,
+        safeCode: 'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+      );
+
+  static CommercialIdentityFailure _unexpectedFailure() =>
+      const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.unexpectedIdentityFailure,
+        safeCode: 'IDENTITY_OPERATION_FAILED',
+      );
 
   @override
   void dispose() {

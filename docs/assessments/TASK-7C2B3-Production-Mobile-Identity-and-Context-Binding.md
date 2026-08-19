@@ -1,6 +1,7 @@
 # Task 7C2B3 production mobile identity and context binding assessment
 
-- Status: Complete; host, release-posture, API-24, and physical API-35 gates pass
+- Status: Complete through the final PR #5 corrective pass; host,
+  release-posture, API-24, and physical API-35 gates pass
 - Evidence date: 2026-08-19
 - Branch: `task/7c2b3-mobile-identity-context`
 - Base: `91a0da7ac2eaf688e351077d5699638b93abb29e`
@@ -196,6 +197,74 @@ identity log scans returned zero matches. The isolated secure-store entries,
 database, screenshot, and temporary debug installation were removed. No
 dependency, lockfile, backend, protected POC, legacy database, Receiving, or
 storage-spike source changed. ADR-0014 remains Accepted, and B4 was not started.
+
+## PR #5 final corrective evidence — 2026-08-19
+
+The final complete-PR review identified three additional storage-boundary
+defects. First, the production activation path read the installation reference
+from Drift while constructing the activation transaction, before the service's
+typed storage boundary; a raw local exception could therefore escape while the
+controller remained `activating`. The service now translates that read to
+`IDENTITY_BINDING_STORAGE_FAILED`, and activation/recovery controller boundaries
+also map an unexpected implementation exception to a deterministic locked
+fail-closed state. A failure before the durable attempt write sends no HTTP and
+creates no ambiguous journal record; failures after a durable attempt retain
+the accepted ADR-0013 exact-replay semantics and never regenerate its key.
+
+Second, the binding and safe-snapshot reads used to classify a failed
+revalidation were themselves fallible. A secondary read failure could escape
+while the controller remained `refreshing`. Revalidation now clears the
+memory-only access token before classification, translates binding/snapshot
+read failures to the typed fail-closed storage state, preserves the durable
+refresh predecessor journal and immutable local state, and republishes
+authority only after the fault is removed, exact refresh recovery succeeds,
+and `/auth/me` confirms the context. The adjacent startup audit found the same
+exception-boundary class around initial binding, snapshot, activation-journal,
+Device-journal, and refresh-journal reads. Startup now catches both typed and
+unexpected failures, clears memory authority, and exits loading fail-closed.
+
+Third, local Device retirement after `DEVICE_NOT_ACTIVE` could throw while the
+controller was applying the remote failure, bypassing its terminal state. The
+coordinator now translates raw retirement/storage exceptions to
+`IDENTITY_CREDENTIAL_PERSISTENCE_FAILED`; the controller catches typed and raw
+retirement failures, clears memory authority, and locks fail-closed. If
+retirement cannot be confirmed, the possibly revoked Device is not used for
+authorization and is not silently deleted or replaced. While the secure-store
+fault persists, restart remains fail-closed. After recovery, the remote
+inactive result is applied again, durable retirement completes, and
+same-Device reactivation rotates the Device secret while preserving encrypted
+data, its key, immutable binding, and safe snapshot.
+
+Corrective host evidence passed 53/53 focused identity lifecycle tests, 78/78
+combined identity/binding/secure-journal/origin tests, the complete 278-test
+Flutter suite, analyzer validation with no issues, and all 13 architecture
+checks. Dart formatting verification passed for the five corrective Dart files;
+the existing protected POC remained untouched. No Drift schema or generated
+file changed.
+
+The retained Android production-adapter probe passed 1/1 on the official
+`TraderPro_API24` emulator and 1/1 on the authorized `2311DRK48I` Android
+15/API-35 arm64-v8a physical Device. It used isolated entries in the real
+Android secure store, the real stored database key, an isolated
+SQLite3MC-encrypted Drift database, the production binding repository, and the
+production identity service/coordinator/controller. It injected the activation
+metadata read failure, binding and snapshot reads during network-failed
+revalidation, secure-store unavailable and persistence-verification retirement
+failures, and an unexpected platform retirement exception. Every path exited
+its transient state, published no access token, preserved the policy-required
+Device/DB/key/binding/snapshot/journal state, stayed fail-closed while its fault
+persisted, and recovered after fault removal. Same-Device reactivation retained
+the Device ID and advanced its secret version.
+
+Both current Device runs retained `FLAG_SECURE`; the API-35 `MainActivity`
+window explicitly reported `SECURE`, and captured API-24/API-35 application
+regions were blank/protected. The scoped scan for six synthetic Device-secret,
+access-token, refresh-token, password, Device-ID, and activation-code sentinels
+returned zero log matches on each target. The isolated test state and
+disposable physical debug installation were removed. Dependencies, lockfiles,
+backend, contracts, protected POC, legacy database, Receiving, and B2 storage-
+spike sources remain unchanged. ADR-0014 remains Accepted, and B4 remains not
+started.
 
 ## Deferred and residual
 

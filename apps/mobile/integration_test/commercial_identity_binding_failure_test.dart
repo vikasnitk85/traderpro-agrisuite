@@ -7,6 +7,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:traderpro_agrisuite_mobile/app/commercial_identity_controller.dart';
 import 'package:traderpro_agrisuite_mobile/core/identity/commercial_authentication_status.dart';
+import 'package:traderpro_agrisuite_mobile/core/identity/commercial_identity_failure.dart';
 import 'package:traderpro_agrisuite_mobile/core/identity/commercial_identity_models.dart';
 import 'package:traderpro_agrisuite_mobile/core/identity/commercial_identity_ports.dart';
 import 'package:traderpro_agrisuite_mobile/core/security/commercial_database_key_store.dart';
@@ -41,8 +42,12 @@ void main() {
       );
       final identityStrings = _IsolatedIdentityStringStore(_securePrefix);
       final keyStrings = _IsolatedKeyStringStore(_securePrefix);
-      final credentialStore = FlutterSecureCommercialIdentityCredentialStore(
-        secureStringStore: identityStrings,
+      final durableCredentialStore =
+          FlutterSecureCommercialIdentityCredentialStore(
+            secureStringStore: identityStrings,
+          );
+      final credentialStore = _FaultInjectingCredentialStore(
+        durableCredentialStore,
       );
       final keyStore = FlutterSecureCommercialDatabaseKeyStore(
         secureStringStore: keyStrings,
@@ -70,13 +75,108 @@ void main() {
         final bindingRepository = CommercialIdentityBindingRepository(database);
         final transport = _DeviceMatrixTransport();
         final now = DateTime.utc(2026, 8, 18, 12);
-        final device = DeviceCredential(
-          deviceId: DeviceId(_deviceId),
-          secret: 'synthetic-device-secret',
-          secretVersion: 1,
-        );
-        await credentialStore.replaceDeviceCredential(device);
         final originalKey = await _readKeyBytes(keyStore);
+        var installationReadFails = true;
+        Future<String?> installationReferenceReader() async {
+          if (installationReadFails) {
+            await database
+                .customSelect(
+                  'SELECT installation_id FROM b3_missing_storage_metadata',
+                )
+                .getSingleOrNull();
+          }
+          final metadata = await database
+              .select(database.commercialStorageMetadata)
+              .getSingleOrNull();
+          return metadata?.installationId;
+        }
+
+        final activationStorageFailure = _createController(
+          credentialStore: credentialStore,
+          bindingPort: bindingRepository,
+          transport: transport,
+          installationReferenceReader: installationReferenceReader,
+          now: now,
+        );
+        coordinators.add(activationStorageFailure.refreshCoordinator);
+        await activationStorageFailure.start();
+        expect(
+          activationStorageFailure.status,
+          CommercialAuthenticationStatus.deviceUnregistered,
+        );
+        await activationStorageFailure.activate(
+          workspaceCode: 'FARM-ONE',
+          activationCode: 'ACT-SECRET',
+          deviceLabel: 'Android failure matrix Device',
+        );
+        expect(
+          activationStorageFailure.status,
+          CommercialAuthenticationStatus.lockedFailClosed,
+        );
+        expect(
+          activationStorageFailure.safeFailureCode,
+          'IDENTITY_BINDING_STORAGE_FAILED',
+        );
+        expect(
+          activationStorageFailure.refreshCoordinator.hasMemoryAccessToken,
+          isFalse,
+        );
+        expect(
+          (await credentialStore.readActivationAttempt()).state,
+          CommercialCredentialStoreState.empty,
+        );
+        expect(
+          (await credentialStore.readDeviceCredential()).state,
+          CommercialCredentialStoreState.empty,
+        );
+        expect(await bindingRepository.readBinding(), isNull);
+        expect(await bindingRepository.readSnapshot(), isNull);
+        expect(await _readKeyBytes(keyStore), orderedEquals(originalKey));
+
+        activationStorageFailure.dispose();
+        await activationStorageFailure.refreshCoordinator.dispose();
+        coordinators.remove(activationStorageFailure.refreshCoordinator);
+        installationReadFails = false;
+
+        final activationRecovery = _createController(
+          credentialStore: credentialStore,
+          bindingPort: bindingRepository,
+          transport: transport,
+          installationReferenceReader: installationReferenceReader,
+          now: now,
+        );
+        coordinators.add(activationRecovery.refreshCoordinator);
+        await activationRecovery.start();
+        expect(
+          activationRecovery.status,
+          CommercialAuthenticationStatus.deviceUnregistered,
+        );
+        await activationRecovery.activate(
+          workspaceCode: 'FARM-ONE',
+          activationCode: 'ACT-SECRET',
+          deviceLabel: 'Android failure matrix Device',
+        );
+        expect(
+          activationRecovery.status,
+          CommercialAuthenticationStatus.deviceRegisteredNoSession,
+        );
+        expect(
+          activationRecovery.refreshCoordinator.hasMemoryAccessToken,
+          isFalse,
+        );
+        expect(
+          (await credentialStore.readActivationAttempt()).state,
+          CommercialCredentialStoreState.empty,
+        );
+        expect(
+          (await credentialStore.readDeviceCredential()).value?.deviceId.value,
+          _deviceId,
+        );
+        expect(await _readKeyBytes(keyStore), orderedEquals(originalKey));
+
+        activationRecovery.dispose();
+        await activationRecovery.refreshCoordinator.dispose();
+        coordinators.remove(activationRecovery.refreshCoordinator);
 
         await database.customStatement('''
           CREATE TRIGGER b3_fail_first_snapshot_insert
@@ -87,8 +187,9 @@ void main() {
         ''');
         final first = _createController(
           credentialStore: credentialStore,
-          bindingRepository: bindingRepository,
+          bindingPort: bindingRepository,
           transport: transport,
+          installationReferenceReader: installationReferenceReader,
           now: now,
         );
         coordinators.add(first.refreshCoordinator);
@@ -124,8 +225,9 @@ void main() {
 
         final recovered = _createController(
           credentialStore: credentialStore,
-          bindingRepository: bindingRepository,
+          bindingPort: bindingRepository,
           transport: transport,
+          installationReferenceReader: installationReferenceReader,
           now: now,
         );
         coordinators.add(recovered.refreshCoordinator);
@@ -161,8 +263,9 @@ void main() {
 
         final restoring = _createController(
           credentialStore: credentialStore,
-          bindingRepository: bindingRepository,
+          bindingPort: bindingRepository,
           transport: transport,
+          installationReferenceReader: installationReferenceReader,
           now: now,
         );
         coordinators.add(restoring.refreshCoordinator);
@@ -199,8 +302,9 @@ void main() {
 
         final finalRecovery = _createController(
           credentialStore: credentialStore,
-          bindingRepository: bindingRepository,
+          bindingPort: bindingRepository,
           transport: transport,
+          installationReferenceReader: installationReferenceReader,
           now: now,
         );
         coordinators.add(finalRecovery.refreshCoordinator);
@@ -218,6 +322,292 @@ void main() {
           (await bindingRepository.readBinding())?.fingerprint,
           immutableBinding?.fingerprint,
         );
+
+        finalRecovery.dispose();
+        await finalRecovery.refreshCoordinator.dispose();
+        coordinators.remove(finalRecovery.refreshCoordinator);
+        final stableBindingFingerprint =
+            (await bindingRepository.readBinding())?.fingerprint;
+        final stableSnapshot = await bindingRepository.readSnapshot();
+        final faultingBinding = _FaultInjectingBindingPort(bindingRepository);
+
+        Future<void> failDatabaseRead() async {
+          try {
+            await database
+                .customSelect('SELECT value FROM b3_missing_offline_fact')
+                .getSingleOrNull();
+          } on Object {
+            throw const CommercialIdentityFailure(
+              kind: CommercialIdentityFailureKind.identityBindingStorageFailure,
+              safeCode: 'IDENTITY_BINDING_STORAGE_FAILED',
+              retryable: true,
+            );
+          }
+        }
+
+        for (final scenario in <(String, bool)>[
+          ('binding', true),
+          ('snapshot', false),
+        ]) {
+          final revalidating = _createController(
+            credentialStore: credentialStore,
+            bindingPort: faultingBinding,
+            transport: transport,
+            installationReferenceReader: installationReferenceReader,
+            now: now,
+          );
+          coordinators.add(revalidating.refreshCoordinator);
+          await revalidating.start();
+          expect(
+            revalidating.status,
+            CommercialAuthenticationStatus.identityContextReady,
+          );
+
+          transport.networkUnavailable = true;
+          if (scenario.$2) {
+            faultingBinding.beforeReadBinding = failDatabaseRead;
+          } else {
+            faultingBinding.beforeReadSnapshot = failDatabaseRead;
+          }
+          await revalidating.revalidate();
+          expect(
+            revalidating.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(
+            revalidating.safeFailureCode,
+            'IDENTITY_BINDING_STORAGE_FAILED',
+          );
+          expect(revalidating.refreshCoordinator.hasMemoryAccessToken, isFalse);
+          expect(
+            (await credentialStore.readRefreshCredential()).state,
+            CommercialCredentialStoreState.valid,
+          );
+          expect(
+            (await bindingRepository.readBinding())?.fingerprint,
+            stableBindingFingerprint,
+          );
+          expect(
+            (await bindingRepository.readSnapshot())?.lastConfirmedAtUtc,
+            stableSnapshot?.lastConfirmedAtUtc,
+          );
+          expect(
+            (await credentialStore.readDeviceCredential())
+                .value
+                ?.deviceId
+                .value,
+            _deviceId,
+          );
+          expect(await _readKeyBytes(keyStore), orderedEquals(originalKey));
+
+          revalidating.dispose();
+          await revalidating.refreshCoordinator.dispose();
+          coordinators.remove(revalidating.refreshCoordinator);
+          final faultedRestart = _createController(
+            credentialStore: credentialStore,
+            bindingPort: faultingBinding,
+            transport: transport,
+            installationReferenceReader: installationReferenceReader,
+            now: now,
+          );
+          coordinators.add(faultedRestart.refreshCoordinator);
+          await faultedRestart.start();
+          expect(
+            faultedRestart.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(
+            faultedRestart.refreshCoordinator.hasMemoryAccessToken,
+            isFalse,
+          );
+
+          faultedRestart.dispose();
+          await faultedRestart.refreshCoordinator.dispose();
+          coordinators.remove(faultedRestart.refreshCoordinator);
+          transport.networkUnavailable = false;
+          faultingBinding
+            ..beforeReadBinding = null
+            ..beforeReadSnapshot = null;
+          final readRecovery = _createController(
+            credentialStore: credentialStore,
+            bindingPort: faultingBinding,
+            transport: transport,
+            installationReferenceReader: installationReferenceReader,
+            now: now,
+          );
+          coordinators.add(readRecovery.refreshCoordinator);
+          await readRecovery.start();
+          expect(
+            readRecovery.status,
+            CommercialAuthenticationStatus.identityContextReady,
+          );
+          expect(
+            (await bindingRepository.readBinding())?.fingerprint,
+            stableBindingFingerprint,
+          );
+          readRecovery.dispose();
+          await readRecovery.refreshCoordinator.dispose();
+          coordinators.remove(readRecovery.refreshCoordinator);
+        }
+
+        for (final scenario
+            in <(String, Object, CommercialCredentialStoreState, String)>[
+              (
+                'secure store unavailable',
+                const CommercialIdentityFailure(
+                  kind: CommercialIdentityFailureKind.secureStoreUnavailable,
+                  safeCode: 'IDENTITY_SECURE_STORE_UNAVAILABLE',
+                ),
+                CommercialCredentialStoreState.unavailable,
+                'IDENTITY_SECURE_STORE_UNAVAILABLE',
+              ),
+              (
+                'persistence verification',
+                const CommercialIdentityFailure(
+                  kind:
+                      CommercialIdentityFailureKind.credentialPersistenceFailed,
+                  safeCode: 'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+                ),
+                CommercialCredentialStoreState.inconsistent,
+                'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+              ),
+              (
+                'unexpected platform implementation',
+                StateError('synthetic Android secure-store retirement error'),
+                CommercialCredentialStoreState.malformed,
+                'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
+              ),
+            ]) {
+          await credentialStore.clearRefreshCredential();
+          credentialStore.retireDeviceFailure = scenario.$2;
+          transport.deviceInactiveOnLogin = true;
+          final retiring = _createController(
+            credentialStore: credentialStore,
+            bindingPort: bindingRepository,
+            transport: transport,
+            installationReferenceReader: installationReferenceReader,
+            now: now,
+          );
+          coordinators.add(retiring.refreshCoordinator);
+          await retiring.start();
+          expect(
+            retiring.status,
+            CommercialAuthenticationStatus.deviceRegisteredNoSession,
+          );
+          await retiring.login(
+            workspaceCode: 'FARM-ONE',
+            login: 'owner@example.test',
+            password: 'correct horse battery staple',
+          );
+          expect(
+            retiring.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(retiring.safeFailureCode, scenario.$4);
+          expect(retiring.refreshCoordinator.hasMemoryAccessToken, isFalse);
+          expect(
+            (await credentialStore.readRefreshCredential()).state,
+            CommercialCredentialStoreState.empty,
+          );
+          expect(
+            (await durableCredentialStore.readDeviceCredential())
+                .value
+                ?.deviceId
+                .value,
+            _deviceId,
+          );
+          expect(
+            (await bindingRepository.readBinding())?.fingerprint,
+            stableBindingFingerprint,
+          );
+          expect(
+            (await bindingRepository.readSnapshot())?.lastConfirmedAtUtc,
+            isNotNull,
+          );
+          expect(await _readKeyBytes(keyStore), orderedEquals(originalKey));
+
+          retiring.dispose();
+          await retiring.refreshCoordinator.dispose();
+          coordinators.remove(retiring.refreshCoordinator);
+          credentialStore.deviceReadOverride = CommercialCredentialRead(
+            scenario.$3,
+          );
+          final faultedRestart = _createController(
+            credentialStore: credentialStore,
+            bindingPort: bindingRepository,
+            transport: transport,
+            installationReferenceReader: installationReferenceReader,
+            now: now,
+          );
+          coordinators.add(faultedRestart.refreshCoordinator);
+          await faultedRestart.start();
+          expect(
+            faultedRestart.status,
+            CommercialAuthenticationStatus.lockedFailClosed,
+          );
+          expect(
+            faultedRestart.refreshCoordinator.hasMemoryAccessToken,
+            isFalse,
+          );
+
+          faultedRestart.dispose();
+          await faultedRestart.refreshCoordinator.dispose();
+          coordinators.remove(faultedRestart.refreshCoordinator);
+          credentialStore
+            ..deviceReadOverride = null
+            ..retireDeviceFailure = null;
+          final retirementRecovery = _createController(
+            credentialStore: credentialStore,
+            bindingPort: bindingRepository,
+            transport: transport,
+            installationReferenceReader: installationReferenceReader,
+            now: now,
+          );
+          coordinators.add(retirementRecovery.refreshCoordinator);
+          await retirementRecovery.start();
+          expect(
+            retirementRecovery.status,
+            CommercialAuthenticationStatus.deviceRegisteredNoSession,
+          );
+          await retirementRecovery.login(
+            workspaceCode: 'FARM-ONE',
+            login: 'owner@example.test',
+            password: 'correct horse battery staple',
+          );
+          expect(
+            retirementRecovery.status,
+            CommercialAuthenticationStatus.deviceRevoked,
+          );
+          expect(
+            (await durableCredentialStore.readDeviceCredential()).state,
+            CommercialCredentialStoreState.retired,
+          );
+          transport.deviceInactiveOnLogin = false;
+          await retirementRecovery.activate(
+            workspaceCode: 'FARM-ONE',
+            activationCode: 'ACT-SECRET',
+            deviceLabel: 'Android failure matrix Device',
+          );
+          expect(
+            retirementRecovery.status,
+            CommercialAuthenticationStatus.deviceRegisteredNoSession,
+          );
+          expect(
+            (await durableCredentialStore.readDeviceCredential())
+                .value
+                ?.deviceId
+                .value,
+            _deviceId,
+          );
+          expect(
+            (await bindingRepository.readBinding())?.fingerprint,
+            stableBindingFingerprint,
+          );
+          expect(await _readKeyBytes(keyStore), orderedEquals(originalKey));
+          retirementRecovery.dispose();
+          await retirementRecovery.refreshCoordinator.dispose();
+          coordinators.remove(retirementRecovery.refreshCoordinator);
+        }
       } finally {
         for (final coordinator in coordinators) {
           await coordinator.dispose();
@@ -234,18 +624,19 @@ void main() {
 }
 
 CommercialIdentityController _createController({
-  required FlutterSecureCommercialIdentityCredentialStore credentialStore,
-  required CommercialIdentityBindingRepository bindingRepository,
+  required _FaultInjectingCredentialStore credentialStore,
+  required CommercialIdentityBindingPort bindingPort,
   required _DeviceMatrixTransport transport,
+  required CommercialInstallationReferenceReader installationReferenceReader,
   required DateTime now,
 }) {
   final service = CommercialIdentityService(
     transport: transport,
     credentialStore: credentialStore,
     activationAttemptStore: credentialStore,
-    bindingPort: bindingRepository,
+    bindingPort: bindingPort,
     normalizedApiOrigin: _origin,
-    installationReferenceReader: () async => 'device-matrix-installation',
+    installationReferenceReader: installationReferenceReader,
     clock: () => now,
   );
   final coordinator = CommercialRefreshCoordinator(
@@ -258,7 +649,7 @@ CommercialIdentityController _createController({
     refreshCoordinator: coordinator,
     credentialStore: credentialStore,
     activationAttemptStore: credentialStore,
-    bindingPort: bindingRepository,
+    bindingPort: bindingPort,
   );
 }
 
@@ -277,11 +668,28 @@ Future<Uint8List> _readKeyBytes(
 
 final class _DeviceMatrixTransport implements CommercialIdentityTransport {
   int _authenticationCount = 0;
+  int _activationCount = 0;
+  bool networkUnavailable = false;
+  bool deviceInactiveOnLogin = false;
 
   @override
   Future<CommercialIdentityTransportResponse> send(
     CommercialIdentityTransportRequest request,
   ) async {
+    if (request.relativePath.endsWith('/device-activations/redeem')) {
+      _activationCount += 1;
+      return _ok(_activationResponse(_activationCount));
+    }
+    if (networkUnavailable && request.relativePath.endsWith('/refresh')) {
+      throw const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.networkAmbiguous,
+        safeCode: 'IDENTITY_NETWORK_OUTCOME_UNKNOWN',
+        retryable: true,
+      );
+    }
+    if (deviceInactiveOnLogin && request.relativePath.endsWith('/login')) {
+      return _error(401, 'DEVICE_NOT_ACTIVE');
+    }
     if (request.relativePath.endsWith('/login') ||
         request.relativePath.endsWith('/refresh')) {
       _authenticationCount += 1;
@@ -296,6 +704,13 @@ final class _DeviceMatrixTransport implements CommercialIdentityTransport {
   @override
   void dispose() {}
 }
+
+Map<String, Object?> _activationResponse(int sequence) => <String, Object?>{
+  'deviceId': _deviceId,
+  'deviceSecret': 'synthetic-device-secret-$sequence',
+  'secretVersion': sequence,
+  'activatedAtUtc': '2026-08-18T12:00:00Z',
+};
 
 Map<String, Object?> _authenticationResponse(int sequence) => <String, Object?>{
   'accessToken': 'synthetic-access-$sequence',
@@ -337,6 +752,107 @@ CommercialIdentityTransportResponse _ok(Map<String, Object?> body) =>
       jsonBody: body,
       headers: const <String, String>{},
     );
+
+CommercialIdentityTransportResponse _error(int status, String code) =>
+    CommercialIdentityTransportResponse(
+      statusCode: status,
+      correlationId: '55555555-5555-4555-8555-555555555555',
+      jsonBody: <String, Object?>{
+        'error': <String, Object?>{
+          'code': code,
+          'message': 'Safe Device-matrix failure',
+          'category': 'Conflict',
+          'retryable': false,
+        },
+        'meta': <String, Object?>{
+          'correlationId': '55555555-5555-4555-8555-555555555555',
+        },
+      },
+      headers: const <String, String>{},
+    );
+
+final class _FaultInjectingCredentialStore
+    implements
+        CommercialIdentityCredentialStore,
+        CommercialActivationAttemptStore {
+  _FaultInjectingCredentialStore(this.delegate);
+
+  final FlutterSecureCommercialIdentityCredentialStore delegate;
+  CommercialCredentialRead<DeviceCredential>? deviceReadOverride;
+  Object? retireDeviceFailure;
+
+  @override
+  Future<CommercialCredentialRead<DeviceCredential>>
+  readDeviceCredential() async =>
+      deviceReadOverride ?? await delegate.readDeviceCredential();
+
+  @override
+  Future<void> replaceDeviceCredential(
+    DeviceCredential credential, {
+    String? bindingFingerprint,
+  }) => delegate.replaceDeviceCredential(
+    credential,
+    bindingFingerprint: bindingFingerprint,
+  );
+
+  @override
+  Future<void> retireDeviceCredential({required DeviceId deviceId}) async {
+    final failure = retireDeviceFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    await delegate.retireDeviceCredential(deviceId: deviceId);
+  }
+
+  @override
+  Future<CommercialCredentialRead<RefreshCredential>> readRefreshCredential() =>
+      delegate.readRefreshCredential();
+
+  @override
+  Future<void> replaceRefreshCredential(RefreshCredential credential) =>
+      delegate.replaceRefreshCredential(credential);
+
+  @override
+  Future<void> clearRefreshCredential() => delegate.clearRefreshCredential();
+
+  @override
+  Future<CommercialCredentialRead<CommercialActivationAttempt>>
+  readActivationAttempt() => delegate.readActivationAttempt();
+
+  @override
+  Future<void> writeActivationAttempt(CommercialActivationAttempt attempt) =>
+      delegate.writeActivationAttempt(attempt);
+
+  @override
+  Future<void> clearActivationAttempt() => delegate.clearActivationAttempt();
+}
+
+final class _FaultInjectingBindingPort
+    implements CommercialIdentityBindingPort {
+  _FaultInjectingBindingPort(this.delegate);
+
+  final CommercialIdentityBindingPort delegate;
+  Future<void> Function()? beforeReadBinding;
+  Future<void> Function()? beforeReadSnapshot;
+
+  @override
+  Future<CommercialAccountBinding?> readBinding() async {
+    await beforeReadBinding?.call();
+    return delegate.readBinding();
+  }
+
+  @override
+  Future<CommercialIdentitySnapshot?> readSnapshot() async {
+    await beforeReadSnapshot?.call();
+    return delegate.readSnapshot();
+  }
+
+  @override
+  Future<void> bindOrMatch(
+    CommercialAccountBinding binding,
+    CommercialIdentitySnapshot snapshot,
+  ) => delegate.bindOrMatch(binding, snapshot);
+}
 
 final class _IsolatedIdentityStringStore implements IdentitySecureStringStore {
   _IsolatedIdentityStringStore(this.prefix)

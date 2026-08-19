@@ -66,7 +66,7 @@ final class CommercialIdentityService {
         idempotencyKey: _activationKeys.generate(),
         workspaceCode: normalizedWorkspace,
         activationCode: cleanCode,
-        clientInstallationReference: await installationReferenceReader(),
+        clientInstallationReference: await _readInstallationReference(),
         deviceLabel: cleanLabel,
         platform: 'Android',
         createdAtUtc: _clock().toUtc(),
@@ -97,6 +97,20 @@ final class CommercialIdentityService {
       );
     }
     return _redeemAttempt(attempt);
+  }
+
+  Future<String?> _readInstallationReference() async {
+    try {
+      return await installationReferenceReader();
+    } on CommercialIdentityFailure {
+      rethrow;
+    } on Object {
+      throw const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.identityBindingStorageFailure,
+        safeCode: 'IDENTITY_BINDING_STORAGE_FAILED',
+        retryable: true,
+      );
+    }
   }
 
   Future<DeviceCredential> recoverActivation() async {
