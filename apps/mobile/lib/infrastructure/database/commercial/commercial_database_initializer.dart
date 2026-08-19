@@ -340,7 +340,8 @@ final class CommercialDatabaseInitializer {
         phase: phase,
         databaseExists: databaseExists,
         secureStoreState: secureStoreState,
-        schemaContractVersion: CommercialDatabase.currentSchemaVersion,
+        schemaContractVersion:
+            CommercialDatabase.foundationSchemaContractVersion,
         storageContractVersion: CommercialDatabase.storageContractVersion,
         engineContractVersion: 1,
         coarsePlatform: coarsePlatform,

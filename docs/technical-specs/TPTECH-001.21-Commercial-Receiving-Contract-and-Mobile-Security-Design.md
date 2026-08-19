@@ -768,8 +768,8 @@ blocks without mutating credentials, encrypted data, or offline facts.
 
 ### Frozen B3 identity decisions
 
-Task 7C2B3.0 records these decisions for later B3 implementation and does not
-implement Flutter networking, storage, Android, or UI changes:
+Task 7C2B3.0 froze these decisions and Task 7C2B3 implements them in the
+production Flutter entry without adding any B4/Receiving service:
 
 - B2 `installationId` is only the non-secret informational
   `clientInstallationReference`; it is never authentication authority.
@@ -789,6 +789,14 @@ implement Flutter networking, storage, Android, or UI changes:
 - B3 adds Android production `INTERNET` permission and global production
   `FLAG_SECURE`.
 - The B3 UI is minimal and identity-only.
+
+Commercial schema 2 contains only the permanent identity binding and mutable
+safe identity snapshot. The explicit transactional `1 -> 2` migration retains
+and independently verifies the B2 foundation contract version 1. `/auth/me`
+must match the login/refresh response and the immutable stored tuple before
+identity-ready. A mismatch attempts one safe family revocation, clears local
+access/refresh, preserves Device/database/key/binding, and exposes no cached
+business data.
 
 ## Secure mobile storage strategy
 

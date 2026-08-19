@@ -754,14 +754,13 @@ and
 The following capabilities are intentionally outside this scaffold:
 
 - Commercial Receiving Flutter workflows and UI (Task 7C2)
-- Task 7C2 secure Flutter Commercial Receiving, authentication, encrypted
-  local database, and commercial offline synchronization
+- Task 7C2 Commercial master, Receiving, outbox, cursor, projection, and
+  business synchronization slices after B3 identity
 - Inventory movements
 - Financial posting
 - Sales workflows
 - Production workflows
 - Subscription billing
-- Flutter authentication/activation UI and secure token storage
 - MFA, password reset, SSO, and production onboarding
 - Production cloud synchronisation (Task 6B is a debug-only POC)
 - PDF generation
@@ -780,8 +779,13 @@ It currently uses ordinary, unencrypted SQLite and is **not production-ready
 for sensitive customer data**. Separately, ADR-0011 selects
 SQLite3MultipleCiphers and Task 7C2B2 implements the encrypted production
 Commercial schema-1 foundation, OS-backed key handling, and backup exclusions.
-Authentication, business workflows, and the remaining pilot gates are later
-reviewed work.
+Task 7C2B3 extends that database to schema 2 and implements production Device
+activation, secure credential journals, workspace login, single-flight refresh,
+authoritative `/auth/me` context binding, non-authorizing offline status,
+logout/reactivation, Android INTERNET/FLAG_SECURE posture, and identity-only
+UI. Access tokens remain memory-only, logout retains the Device/database/key,
+and no Commercial business service starts in B3. See ADR-0014 and TPRUN-007.
+Business workflows and the remaining pilot gates are later reviewed work.
 
 These omissions are intentional. Future work should introduce each capability through reviewed specifications and tests while preserving the rules in `AGENTS.md`.
 

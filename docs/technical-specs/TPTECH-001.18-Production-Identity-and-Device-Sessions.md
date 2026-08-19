@@ -374,6 +374,12 @@ It does not provide MFA, password-reset delivery, breached-password checks,
 hardware attestation, automatic device fingerprint trust, RLS, or onboarding
 UI. A client installation reference is explicitly not a hardware identity.
 
-Future Flutter work must add login/activation UX, secure OS-backed secret and
-refresh-token storage, renewal coordination, logout UX, and safe redaction.
-Those mobile capabilities are deferred and Task 6B behavior remains unchanged.
+Task 7C2B3 consumes this identity boundary in the production Flutter entry.
+It journals the exact ADR-0013 activation transaction before send, keeps
+Device and refresh credentials in a dedicated OS-backed namespace, retains
+access only in memory, serializes refresh with one 30-second predecessor
+replay, and resolves authority through `/auth/me`. The encrypted Commercial
+database permanently binds API origin, Workspace, Company, default Branch,
+User, and Device; cached role/display fields are not authority. Logout retains
+the Device/database/key/binding, while a definite inactive Device retires the
+local secret. Task 6B behavior remains separate and unchanged.

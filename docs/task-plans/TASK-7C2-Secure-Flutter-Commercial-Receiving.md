@@ -1,6 +1,6 @@
 # Task 7C2: Secure Flutter Commercial Receiving and Offline Sync
 
-- Status: `TASK 7C2B2 = COMPLETE`; Task 7C2B3.0 backend prerequisite complete; mobile B3 not started
+- Status: `TASK 7C2B2 = COMPLETE`; `TASK 7C2B3 = COMPLETE`; B4 not started
 - Date: 2026-08-01
 - Scope: Task 7A mobile identity, encrypted local-first Commercial Receiving,
   authenticated sync, and read-only Owner monitoring
@@ -36,10 +36,12 @@ API-35, release, backup-declaration, native, SBOM, and SCA technical gates pass.
 Owner notice approval is recorded for the frozen B2 graph. The approved future
 surface is About / Legal / Third-Party Notices with the SQLite public-domain
 dedication/provenance included; that presentation UI is a later release
-requirement and is not implemented in B2. B3 authentication/context binding
-and all business tables/UI remain unimplemented. No plaintext pilot path is
-approved. ADR-0012 is accepted. `TASK 7C2B2 = COMPLETE`; mobile Task 7C2B3 is
-`NOT STARTED`. Task 7C2B3.0 corrects and freezes the backend activation/identity
+requirement and is not implemented in B2. B3 authentication/context binding is
+implemented with schema 2, secure credential journals, authoritative `/me`,
+single-flight refresh, and identity-only UI; all business tables/UI remain
+unimplemented. No plaintext pilot path is approved. ADR-0012 is accepted and
+ADR-0014 was accepted after B3 final technical closeout on 2026-08-17. Task 7C2B3.0
+corrects and freezes the backend activation/identity
 contract before that mobile work: accepted ADR-0013, crash-safe exact activation
 replay, and executable positive/negative fixtures passed their disposable
 PostgreSQL response-loss, delay/expiry, restart/key-ring, concurrency, rollback,
@@ -54,13 +56,18 @@ client:
 | --- | --- | --- | --- |
 | Task 7C2B1: Production encrypted-storage selection | Merged 7C2A evidence and unchanged production dependency graph | Frozen candidate parameters/key syntax, API/runtime/lifecycle/performance evidence, provenance, notices, locked SBOM, SCA review, and ADR-0011 only after one candidate passes every gate | **Complete subject to commit review:** SQLite3MultipleCiphers accepted in ADR-0011 |
 | Task 7C2B2: Secure Android/Flutter foundation | Accepted ADR-0011 and approved Android backup/release policy | Pinned production packages, narrow OS secure-store and database-key ports, separate encrypted Commercial database/opener, fail-closed startup, foundation metadata schema 1, backup/data-extraction controls, redaction, runtime ownership, and architecture/test seams | **Complete:** host/API-24/API-35/release/SBOM/SCA/static review pass; Owner notice approval recorded 2026-08-08; ADR-0012 accepted |
-| Task 7C2B3: Production authentication and context binding | Accepted B2 foundation and stable Task 7A contracts | Activation, credential storage, workspace login, `/auth/me` binding, serialized refresh, logout/reactivation/context rules, and HTTPS-only authenticated client foundation | Identity/context/key-loss matrices pass without introducing Receiving capture or sync |
+| Task 7C2B3: Production authentication and context binding | Accepted B2 foundation and stable Task 7A contracts | Activation, credential storage, workspace login, `/auth/me` binding, serialized refresh, logout/reactivation/context rules, and HTTPS-only authenticated client foundation | **Complete:** host/release-posture gates and full official API-24/authorized physical API-35 response-loss, crash/replay, binding, replacement, continuity, `FLAG_SECURE`, artifact, and log matrices pass; ADR-0014 accepted 2026-08-17; no Receiving capture or sync |
 | Later Task 7C2 delivery slices | Accepted B3 and relevant product gates | Master sync, local Receiving/outbox, capture UI, operation sync, event projections, Owner monitoring, and field validation in separately reviewed slices | Existing backlog acceptance criteria and final pilot gates pass |
 
 B2 schema 1 contains only immutable installation/database identity and schema
 metadata needed to prove the secure opener. Receiving Sessions, Entries,
 outbox, masters, cursors, projections, attention, Inventory, and Finance do not
 belong in the secure-foundation milestone. No POC schema/data is migrated.
+
+B3 Commercial schema 2 adds only immutable identity binding and mutable safe
+identity snapshot tables. Credentials remain in the dedicated OS-backed secure
+store and access remains memory-only. Bound offline state is status-only and
+does not authorize any later Commercial operation.
 
 ## Outcome
 
