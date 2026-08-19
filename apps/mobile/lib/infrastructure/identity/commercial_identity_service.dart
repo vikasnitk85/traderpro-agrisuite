@@ -241,10 +241,20 @@ final class CommercialIdentityService {
       );
     }
     final now = _clock().toUtc();
-    await bindingPort.bindOrMatch(
-      me.toBinding(apiOrigin: normalizedApiOrigin, firstBoundAtUtc: now),
-      me.toSnapshot(now),
-    );
+    try {
+      await bindingPort.bindOrMatch(
+        me.toBinding(apiOrigin: normalizedApiOrigin, firstBoundAtUtc: now),
+        me.toSnapshot(now),
+      );
+    } on CommercialIdentityFailure {
+      rethrow;
+    } on Object {
+      throw const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.identityBindingStorageFailure,
+        safeCode: 'IDENTITY_BINDING_STORAGE_FAILED',
+        retryable: true,
+      );
+    }
     return me;
   }
 

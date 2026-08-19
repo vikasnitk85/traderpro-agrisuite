@@ -874,6 +874,141 @@ void main() {
   });
 
   group('identity controller and minimal UI', () {
+    test(
+      'login binding write failure clears provisional authority and recovers',
+      () async {
+        final now = DateTime.utc(2026, 8, 9, 10);
+        final originalDevice = _device();
+        final store = _MemoryCredentialStore()..device = originalDevice;
+        final bindingBarrier = Completer<void>();
+        final binding = _MemoryBindingPort()
+          ..bindBarrier = bindingBarrier
+          ..bindFailure = StateError('synthetic Drift binding write failure');
+        final transport = _FakeTransport((request) async {
+          if (request.relativePath.endsWith('/login')) {
+            return _ok(_authResponse('refresh-2'));
+          }
+          if (request.relativePath.endsWith('/me')) {
+            return _ok(_meResponse());
+          }
+          throw StateError('Unexpected request ${request.relativePath}');
+        });
+        final controller = _controller(
+          store,
+          transport,
+          binding: binding,
+          now: now,
+        );
+        await controller.start();
+
+        final login = controller.login(
+          workspaceCode: 'FARM-ONE',
+          login: 'owner@example.test',
+          password: 'correct horse battery staple',
+        );
+        await _until(() => binding.bindAttempts == 1);
+
+        expect(store.refresh?.value, 'refresh-2');
+        expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.authenticating,
+        );
+
+        bindingBarrier.complete();
+        await login;
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.lockedFailClosed,
+        );
+        expect(controller.safeFailureCode, 'IDENTITY_BINDING_STORAGE_FAILED');
+        expect(controller.identity, isNull);
+        expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(store.refresh, isNull);
+        expect(identical(store.device, originalDevice), isTrue);
+        expect(binding.binding, isNull);
+        expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+        expect(store.databaseKeySentinel, 'commercial-db-key');
+
+        controller.dispose();
+        await controller.refreshCoordinator.dispose();
+        binding
+          ..bindBarrier = null
+          ..bindFailure = null;
+        final restarted = _controller(
+          store,
+          transport,
+          binding: binding,
+          now: now,
+        );
+        await restarted.start();
+        expect(
+          restarted.status,
+          CommercialAuthenticationStatus.deviceRegisteredNoSession,
+        );
+        await restarted.login(
+          workspaceCode: 'FARM-ONE',
+          login: 'owner@example.test',
+          password: 'correct horse battery staple',
+        );
+        expect(
+          restarted.status,
+          CommercialAuthenticationStatus.identityContextReady,
+        );
+        expect(restarted.refreshCoordinator.hasMemoryAccessToken, isTrue);
+        expect(binding.binding, isNotNull);
+      },
+    );
+
+    test(
+      'refresh binding write failure clears replacement and preserves binding',
+      () async {
+        final now = DateTime.utc(2026, 8, 9, 10);
+        final originalDevice = _device();
+        final originalBinding = _binding(now);
+        final originalSnapshot = _snapshot(now);
+        final store = _MemoryCredentialStore()
+          ..device = originalDevice
+          ..refresh = _refresh('refresh-1', now);
+        final bindingBarrier = Completer<void>();
+        final binding = _MemoryBindingPort()
+          ..binding = originalBinding
+          ..snapshot = originalSnapshot
+          ..bindBarrier = bindingBarrier
+          ..bindFailure = StateError('synthetic Drift snapshot write failure');
+        final controller = _controller(
+          store,
+          _refreshAndMeTransport(),
+          binding: binding,
+          now: now,
+        );
+
+        final start = controller.start();
+        await _until(() => binding.bindAttempts == 1);
+
+        expect(store.refreshReplacementValues, contains('refresh-2'));
+        expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(controller.status, CommercialAuthenticationStatus.refreshing);
+
+        bindingBarrier.complete();
+        await start;
+
+        expect(
+          controller.status,
+          CommercialAuthenticationStatus.lockedFailClosed,
+        );
+        expect(controller.safeFailureCode, 'IDENTITY_BINDING_STORAGE_FAILED');
+        expect(controller.refreshCoordinator.hasMemoryAccessToken, isFalse);
+        expect(store.refresh, isNull);
+        expect(identical(store.device, originalDevice), isTrue);
+        expect(identical(binding.binding, originalBinding), isTrue);
+        expect(identical(binding.snapshot, originalSnapshot), isTrue);
+        expect(store.databaseCiphertextSentinel, 'commercial-db-ciphertext');
+        expect(store.databaseKeySentinel, 'commercial-db-key');
+      },
+    );
+
     testWidgets('shows activation without any Commercial business UI', (
       tester,
     ) async {
@@ -1717,6 +1852,7 @@ final class _MemoryCredentialStore
   CommercialIdentityFailure? clearRefreshFailure;
   int? failRefreshReplacementAt;
   int refreshReplacementCount = 0;
+  final List<String> refreshReplacementValues = [];
 
   @override
   Future<CommercialCredentialRead<DeviceCredential>>
@@ -1768,6 +1904,7 @@ final class _MemoryCredentialStore
         safeCode: 'IDENTITY_CREDENTIAL_PERSISTENCE_FAILED',
       );
     }
+    refreshReplacementValues.add(credential.value);
     refresh = credential;
   }
 
@@ -1807,6 +1944,9 @@ final class _MemoryCredentialStore
 final class _MemoryBindingPort implements CommercialIdentityBindingPort {
   CommercialAccountBinding? binding;
   CommercialIdentitySnapshot? snapshot;
+  Completer<void>? bindBarrier;
+  Object? bindFailure;
+  int bindAttempts = 0;
 
   @override
   Future<CommercialAccountBinding?> readBinding() async => binding;
@@ -1819,6 +1959,15 @@ final class _MemoryBindingPort implements CommercialIdentityBindingPort {
     CommercialAccountBinding proposed,
     CommercialIdentitySnapshot proposedSnapshot,
   ) async {
+    bindAttempts += 1;
+    final barrier = bindBarrier;
+    if (barrier != null) {
+      await barrier.future;
+    }
+    final failure = bindFailure;
+    if (failure != null) {
+      throw failure;
+    }
     if (binding != null && !binding!.matches(proposed)) {
       throw const CommercialIdentityFailure(
         kind: CommercialIdentityFailureKind.identityContextMismatch,

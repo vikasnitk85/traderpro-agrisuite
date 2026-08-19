@@ -1,6 +1,6 @@
 # TPRUN-007: Production mobile identity validation
 
-- Status: Task 7C2B3 validated through PR #5 correction on 2026-08-18
+- Status: Task 7C2B3 validated through the second PR #5 correction on 2026-08-19
 - Applies to: production `apps/mobile/lib/main.dart` identity composition
 - Data rule: synthetic/disposable identity data only
 
@@ -159,3 +159,48 @@ matches for all five sentinels. Remove temporary entrypoints, Device artifacts,
 and the disposable synthetic installation afterward. Do not repeat already-
 passed host/API-24 gates unless physical validation exposes a production code
 defect; do not begin B4 as part of corrective validation.
+
+## PR #5 second corrective revalidation — 2026-08-19
+
+The second corrective pass covers two later static-review findings only:
+
+1. A binding or snapshot storage failure must translate to the typed
+   `IDENTITY_BINDING_STORAGE_FAILED` state, retire persisted refresh authority,
+   publish no access token, exit authentication/revalidation progress, and
+   preserve the encrypted database, database key, Device credential, and any
+   existing immutable binding.
+2. Release-origin validation must recognize `::ffff:0:0/96` IPv4-mapped IPv6
+   addresses and apply the existing IPv4 local/private policy to the embedded
+   address without rejecting mapped public addresses.
+
+Focused host coverage passed 60/60 across the identity flow, binding repository,
+and API-origin suites. The full Flutter suite passed 271/271, analyzer validation
+reported no issues, and the architecture gate passed all 13 core checks plus
+three protected POC checks. The retained Android integration probe then passed
+1/1 on the official API-24 emulator and 1/1 on the authorized `2311DRK48I`
+Android 15/API-35 arm64-v8a Device. Already-passed host and API-24 gates were not
+repeated during the physical closeout.
+
+The Android probe uses isolated entries in the real secure-store namespaces, an
+isolated encrypted Commercial database and key, the production binding
+repository, identity service, refresh coordinator, and controller. SQLite abort
+triggers inject both first-binding snapshot insertion failure and existing-
+binding snapshot update failure. On API 35, both paths reached the typed locked
+fail-closed state with no published memory access token; the committed refresh
+credential was replaced by its durable cleared state; Device ID, database key,
+and immutable binding remained unchanged; and normal login/binding recovery
+succeeded after each trigger was removed. Probe cleanup removed its isolated
+database, secure-store entries, screenshot, and temporary debug installation.
+
+IPv4-mapped parsing remains deterministic Dart `Uri`/`InternetAddress` logic
+with no Android-specific production override. Host boundary tests are therefore
+authoritative: mapped unspecified, loopback, link-local, and private addresses
+are rejected, while mapped public `8.8.8.8`, `172.15.255.255`, and `172.32.0.0`
+remain accepted. No Android divergence was observed.
+
+The API-35 TraderPro `MainActivity` window record contained the `SECURE` flag,
+and its captured application region was blank/protected with no app content
+visible. Device logs contained zero matches for all five synthetic Device,
+access, refresh, password, and identity sentinels. Pubspec, lockfile, backend,
+protected POC, legacy database, Receiving, and storage-spike sources remain
+unchanged. ADR-0014 semantics remain unchanged, and B4 was not started.

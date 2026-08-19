@@ -13,9 +13,15 @@ final class CommercialIdentityBindingRepository
 
   @override
   Future<domain.CommercialAccountBinding?> readBinding() async {
-    final row = await (_database.select(
-      _database.commercialIdentityBindings,
-    )..where((candidate) => candidate.singletonId.equals(1))).getSingleOrNull();
+    final CommercialIdentityBinding? row;
+    try {
+      row =
+          await (_database.select(_database.commercialIdentityBindings)
+                ..where((candidate) => candidate.singletonId.equals(1)))
+              .getSingleOrNull();
+    } on Object {
+      throw _storageFailure();
+    }
     if (row == null) {
       return null;
     }
@@ -43,9 +49,15 @@ final class CommercialIdentityBindingRepository
 
   @override
   Future<domain.CommercialIdentitySnapshot?> readSnapshot() async {
-    final row = await (_database.select(
-      _database.commercialIdentitySnapshots,
-    )..where((candidate) => candidate.singletonId.equals(1))).getSingleOrNull();
+    final CommercialIdentitySnapshot? row;
+    try {
+      row =
+          await (_database.select(_database.commercialIdentitySnapshots)
+                ..where((candidate) => candidate.singletonId.equals(1)))
+              .getSingleOrNull();
+    } on Object {
+      throw _storageFailure();
+    }
     if (row == null) {
       return null;
     }
@@ -69,53 +81,68 @@ final class CommercialIdentityBindingRepository
   Future<void> bindOrMatch(
     domain.CommercialAccountBinding binding,
     domain.CommercialIdentitySnapshot snapshot,
-  ) => _database.transaction(() async {
-    final existing = await readBinding();
-    if (existing == null) {
-      await _database
-          .into(_database.commercialIdentityBindings)
-          .insert(
-            CommercialIdentityBindingsCompanion.insert(
-              singletonId: const Value(1),
-              bindingContractVersion:
-                  CommercialDatabase.identityBindingContractVersion,
-              apiOrigin: binding.apiOrigin,
-              workspaceId: binding.workspaceId.value,
-              companyId: binding.companyId.value,
-              defaultBranchId: binding.defaultBranchId.value,
-              userId: binding.userId.value,
-              deviceId: binding.deviceId.value,
-              firstBoundAtUtcMicros: binding.firstBoundAtUtc
-                  .toUtc()
-                  .microsecondsSinceEpoch,
-            ),
+  ) async {
+    try {
+      await _database.transaction(() async {
+        final existing = await readBinding();
+        if (existing == null) {
+          await _database
+              .into(_database.commercialIdentityBindings)
+              .insert(
+                CommercialIdentityBindingsCompanion.insert(
+                  singletonId: const Value(1),
+                  bindingContractVersion:
+                      CommercialDatabase.identityBindingContractVersion,
+                  apiOrigin: binding.apiOrigin,
+                  workspaceId: binding.workspaceId.value,
+                  companyId: binding.companyId.value,
+                  defaultBranchId: binding.defaultBranchId.value,
+                  userId: binding.userId.value,
+                  deviceId: binding.deviceId.value,
+                  firstBoundAtUtcMicros: binding.firstBoundAtUtc
+                      .toUtc()
+                      .microsecondsSinceEpoch,
+                ),
+              );
+        } else if (!existing.matches(binding)) {
+          throw const CommercialIdentityFailure(
+            kind: CommercialIdentityFailureKind.identityContextMismatch,
+            safeCode: 'IDENTITY_CONTEXT_MISMATCH',
           );
-    } else if (!existing.matches(binding)) {
-      throw const CommercialIdentityFailure(
-        kind: CommercialIdentityFailureKind.identityContextMismatch,
-        safeCode: 'IDENTITY_CONTEXT_MISMATCH',
-      );
-    }
+        }
 
-    await _database
-        .into(_database.commercialIdentitySnapshots)
-        .insertOnConflictUpdate(
-          CommercialIdentitySnapshotsCompanion.insert(
-            singletonId: const Value(1),
-            workspaceCode: snapshot.workspaceCode,
-            userDisplayName: snapshot.userDisplayName,
-            role: snapshot.role.wireValue,
-            deviceLabel: snapshot.deviceLabel,
-            lastConfirmedAtUtcMicros: snapshot.lastConfirmedAtUtc
-                .toUtc()
-                .microsecondsSinceEpoch,
-          ),
-        );
-  });
+        await _database
+            .into(_database.commercialIdentitySnapshots)
+            .insertOnConflictUpdate(
+              CommercialIdentitySnapshotsCompanion.insert(
+                singletonId: const Value(1),
+                workspaceCode: snapshot.workspaceCode,
+                userDisplayName: snapshot.userDisplayName,
+                role: snapshot.role.wireValue,
+                deviceLabel: snapshot.deviceLabel,
+                lastConfirmedAtUtcMicros: snapshot.lastConfirmedAtUtc
+                    .toUtc()
+                    .microsecondsSinceEpoch,
+              ),
+            );
+      });
+    } on CommercialIdentityFailure {
+      rethrow;
+    } on Object {
+      throw _storageFailure();
+    }
+  }
 
   static CommercialIdentityFailure _protocolFailure() =>
       const CommercialIdentityFailure(
         kind: CommercialIdentityFailureKind.protocolContractMismatch,
         safeCode: 'IDENTITY_BINDING_STORAGE_INVALID',
+      );
+
+  static CommercialIdentityFailure _storageFailure() =>
+      const CommercialIdentityFailure(
+        kind: CommercialIdentityFailureKind.identityBindingStorageFailure,
+        safeCode: 'IDENTITY_BINDING_STORAGE_FAILED',
+        retryable: true,
       );
 }

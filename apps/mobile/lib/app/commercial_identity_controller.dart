@@ -162,8 +162,13 @@ final class CommercialIdentityController extends ChangeNotifier {
       final context = await refreshCoordinator.restoreSession();
       _setReady(context);
     } on CommercialIdentityFailure catch (failure) {
-      final binding = await bindingPort.readBinding();
-      final snapshot = await bindingPort.readSnapshot();
+      final needsOfflineFacts = _needsOfflineFacts(failure.kind);
+      final binding = needsOfflineFacts
+          ? await bindingPort.readBinding()
+          : null;
+      final snapshot = needsOfflineFacts
+          ? await bindingPort.readSnapshot()
+          : null;
       await _applyFailure(
         failure,
         hasBinding: binding != null,
@@ -212,6 +217,7 @@ final class CommercialIdentityController extends ChangeNotifier {
       CommercialIdentityFailureKind.secureStoreUnavailable ||
       CommercialIdentityFailureKind.secureStoreMalformed ||
       CommercialIdentityFailureKind.credentialPersistenceFailed ||
+      CommercialIdentityFailureKind.identityBindingStorageFailure ||
       CommercialIdentityFailureKind.protocolContractMismatch =>
         CommercialAuthenticationStatus.lockedFailClosed,
       CommercialIdentityFailureKind.identityContextMismatch =>
@@ -265,6 +271,7 @@ final class CommercialIdentityController extends ChangeNotifier {
       CommercialIdentityFailureKind.secureStoreUnavailable ||
       CommercialIdentityFailureKind.secureStoreMalformed ||
       CommercialIdentityFailureKind.credentialPersistenceFailed ||
+      CommercialIdentityFailureKind.identityBindingStorageFailure ||
       CommercialIdentityFailureKind.protocolContractMismatch =>
         CommercialAuthenticationStatus.lockedFailClosed,
       CommercialIdentityFailureKind.refreshRejected ||
@@ -319,6 +326,11 @@ final class CommercialIdentityController extends ChangeNotifier {
     role: snapshot.role.wireValue,
     deviceLabel: snapshot.deviceLabel,
   );
+
+  static bool _needsOfflineFacts(CommercialIdentityFailureKind kind) =>
+      kind == CommercialIdentityFailureKind.networkUnavailable ||
+      kind == CommercialIdentityFailureKind.networkAmbiguous ||
+      kind == CommercialIdentityFailureKind.tlsFailure;
 
   @override
   void dispose() {

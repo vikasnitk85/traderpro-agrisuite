@@ -1,7 +1,7 @@
 # Task 7C2B3 production mobile identity and context binding assessment
 
 - Status: Complete; host, release-posture, API-24, and physical API-35 gates pass
-- Evidence date: 2026-08-18
+- Evidence date: 2026-08-19
 - Branch: `task/7c2b3-mobile-identity-context`
 - Base: `91a0da7ac2eaf688e351077d5699638b93abb29e`
 - ADR: ADR-0014 Accepted
@@ -151,6 +151,51 @@ dependency, lockfile, protected POC, legacy database, Receiving, or storage-
 spike source changed. Temporary corrective entrypoints, Device artifacts, and
 the disposable synthetic installation were removed after evidence capture.
 ADR-0014 remains Accepted, and B4 was not started.
+
+## PR #5 second corrective evidence — 2026-08-19
+
+The later complete-PR review identified two additional defects. First,
+unexpected Drift/SQLite exceptions during authoritative binding could escape
+the typed identity boundary after refresh persistence and access-token
+assignment. The correction adds a narrow binding-storage failure taxonomy,
+translates repository and binding-port exceptions, keeps access provisional
+until `/auth/me` and transactional binding succeed, durably clears refresh
+authority on binding-storage failure, and moves login/refresh UI to locked
+fail-closed without rereading the failing database. Device credential,
+encrypted database, database key, and immutable binding are preserved.
+
+Second, release origin validation now detects canonical IPv4-mapped IPv6
+addresses under `::ffff:0:0/96`, extracts the final IPv4 octets, and applies the
+same unspecified, loopback, carrier-grade NAT, link-local, and private-range
+policy used for ordinary IPv4. Host boundaries reject mapped `0/8`, `10/8`,
+`127/8`, `169.254/16`, `172.16/12`, and `192.168/16` examples while accepting
+mapped public `8.8.8.8`, `172.15.255.255`, and `172.32.0.0`.
+
+Corrective host evidence passed 60/60 focused identity/binding/origin tests, the
+complete 271-test Flutter suite, analyzer validation with no issues, and 16/16
+architecture checks (13 core plus three protected POC checks). The retained
+Android binding-failure probe passed 1/1 on the official API-24 emulator and
+1/1 on the authorized `2311DRK48I` Android 15/API-35 arm64-v8a Device. No
+already-passed host or API-24 gate was repeated during physical closeout.
+
+The physical probe used real Android secure-store journals, an isolated
+SQLite3MC-encrypted Commercial database and real stored database key, the
+production binding repository, and the production identity controller flow.
+SQLite abort triggers covered first-binding snapshot insertion and existing-
+binding snapshot update during session restoration. Both failures exposed
+`IDENTITY_BINDING_STORAGE_FAILED`, left no memory access token or identity-ready
+session, retired the persisted refresh credential, preserved Device/key/data and
+the immutable binding, and recovered normally after fault removal. The
+production Android path has no alternate origin parser, so the deterministic
+mapped-origin host cases remain authoritative; no platform divergence was
+observed.
+
+The physical `MainActivity` window retained `FLAG_SECURE`, and the captured app
+region exposed no application content. All five scoped synthetic secret/token/
+identity log scans returned zero matches. The isolated secure-store entries,
+database, screenshot, and temporary debug installation were removed. No
+dependency, lockfile, backend, protected POC, legacy database, Receiving, or
+storage-spike source changed. ADR-0014 remains Accepted, and B4 was not started.
 
 ## Deferred and residual
 

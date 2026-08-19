@@ -52,6 +52,53 @@ void main() {
     }
   });
 
+  test('release rejects IPv4-mapped IPv6 local and private origins', () {
+    for (final value in <String>[
+      'https://[::ffff:0.0.0.0]',
+      'https://[::ffff:10.0.0.1]',
+      'https://[::ffff:127.0.0.1]',
+      'https://[::ffff:169.254.1.1]',
+      'https://[::ffff:172.16.0.0]',
+      'https://[::ffff:172.31.255.255]',
+      'https://[::ffff:192.168.1.1]',
+    ]) {
+      expect(
+        () => CommercialApiOrigin.parse(value, releaseMode: true),
+        throwsA(isA<CommercialIdentityFailure>()),
+        reason: value,
+      );
+    }
+  });
+
+  test('ordinary and mapped IPv4 private boundaries share one policy', () {
+    for (final value in <String>[
+      'https://172.16.0.0',
+      'https://172.31.255.255',
+      'https://[::ffff:172.16.0.0]',
+      'https://[::ffff:172.31.255.255]',
+    ]) {
+      expect(
+        () => CommercialApiOrigin.parse(value, releaseMode: true),
+        throwsA(isA<CommercialIdentityFailure>()),
+        reason: value,
+      );
+    }
+
+    for (final value in <String>[
+      'https://172.15.255.255',
+      'https://172.32.0.0',
+      'https://[::ffff:172.15.255.255]',
+      'https://[::ffff:172.32.0.0]',
+      'https://[::ffff:8.8.8.8]',
+    ]) {
+      expect(
+        () => CommercialApiOrigin.parse(value, releaseMode: true),
+        returnsNormally,
+        reason: value,
+      );
+    }
+  });
+
   test('explicit debug-only path can use local HTTP', () {
     final origin = CommercialApiOrigin.parse(
       'http://127.0.0.1:5000',

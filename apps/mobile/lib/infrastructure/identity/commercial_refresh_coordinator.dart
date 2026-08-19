@@ -248,7 +248,6 @@ final class CommercialRefreshCoordinator {
       );
     }
 
-    _accessToken = result.accessToken;
     try {
       final context = await identityService.confirmAndBind(result);
       if (expectedEpoch != _sessionEpoch || _disposed) {
@@ -257,6 +256,7 @@ final class CommercialRefreshCoordinator {
           safeCode: 'SESSION_EPOCH_CHANGED',
         );
       }
+      _accessToken = result.accessToken;
       return context;
     } on CommercialIdentityFailure catch (failure) {
       _accessToken = null;
@@ -271,6 +271,9 @@ final class CommercialRefreshCoordinator {
           // A mismatch remains fail-closed even if family revocation is
           // unavailable or its outcome is ambiguous.
         }
+        await credentialStore.clearRefreshCredential();
+      } else if (failure.kind ==
+          CommercialIdentityFailureKind.identityBindingStorageFailure) {
         await credentialStore.clearRefreshCredential();
       } else if (failure.kind == CommercialIdentityFailureKind.sessionRevoked ||
           failure.kind == CommercialIdentityFailureKind.refreshReplayDetected ||

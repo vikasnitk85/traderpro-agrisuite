@@ -94,6 +94,10 @@ final class CommercialApiOrigin {
       return true;
     }
     if (address.type == InternetAddressType.IPv6) {
+      final mappedIpv4 = _mappedIpv4Octets(address.rawAddress);
+      if (mappedIpv4 != null) {
+        return _isLocalOrPrivateIpv4(mappedIpv4);
+      }
       final compact = normalized.replaceAll(':', '');
       return normalized == '::' ||
           normalized.startsWith('fc') ||
@@ -104,9 +108,26 @@ final class CommercialApiOrigin {
           normalized.startsWith('feb') ||
           compact == '0';
     }
-    final octets = normalized.split('.').map(int.parse).toList();
+    return _isLocalOrPrivateIpv4(address.rawAddress);
+  }
+
+  static List<int>? _mappedIpv4Octets(List<int> octets) {
+    if (octets.length != 16 ||
+        octets.take(10).any((octet) => octet != 0) ||
+        octets[10] != 0xff ||
+        octets[11] != 0xff) {
+      return null;
+    }
+    return octets.sublist(12);
+  }
+
+  static bool _isLocalOrPrivateIpv4(List<int> octets) {
+    if (octets.length != 4) {
+      return false;
+    }
     return octets[0] == 0 ||
         octets[0] == 10 ||
+        octets[0] == 127 ||
         (octets[0] == 100 && octets[1] >= 64 && octets[1] <= 127) ||
         (octets[0] == 169 && octets[1] == 254) ||
         (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31) ||

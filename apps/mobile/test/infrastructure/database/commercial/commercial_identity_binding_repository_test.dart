@@ -122,6 +122,58 @@ void main() {
     expect((await repository.readBinding())?.apiOrigin, binding.apiOrigin);
   });
 
+  test(
+    'SQLite snapshot failure is typed and leaves existing binding immutable',
+    () async {
+      await repository.bindOrMatch(binding, snapshot);
+      final originalBinding = await repository.readBinding();
+      final originalSnapshot = await repository.readSnapshot();
+      await database.customStatement('''
+        CREATE TRIGGER fail_identity_snapshot_update
+        BEFORE UPDATE ON commercial_identity_snapshot
+        BEGIN
+          SELECT RAISE(ABORT, 'synthetic snapshot write failure');
+        END
+      ''');
+
+      await expectLater(
+        repository.bindOrMatch(
+          _binding(firstBoundAtUtc: DateTime.utc(2030)),
+          CommercialIdentitySnapshot(
+            workspaceCode: 'MUST-NOT-COMMIT',
+            userDisplayName: 'Must not commit',
+            role: CommercialRole.owner,
+            deviceLabel: 'Must not commit',
+            lastConfirmedAtUtc: DateTime.utc(2030),
+          ),
+        ),
+        throwsA(
+          isA<CommercialIdentityFailure>()
+              .having(
+                (failure) => failure.kind,
+                'kind',
+                CommercialIdentityFailureKind.identityBindingStorageFailure,
+              )
+              .having(
+                (failure) => failure.safeCode,
+                'safeCode',
+                'IDENTITY_BINDING_STORAGE_FAILED',
+              ),
+        ),
+      );
+
+      final storedBinding = await repository.readBinding();
+      final storedSnapshot = await repository.readSnapshot();
+      expect(storedBinding?.fingerprint, originalBinding?.fingerprint);
+      expect(storedBinding?.firstBoundAtUtc, originalBinding?.firstBoundAtUtc);
+      expect(storedSnapshot?.workspaceCode, originalSnapshot?.workspaceCode);
+      expect(
+        storedSnapshot?.userDisplayName,
+        originalSnapshot?.userDisplayName,
+      );
+    },
+  );
+
   test('schema contains no secret-shaped identity columns', () async {
     const prohibited = <String>{
       'password',

@@ -17,6 +17,7 @@ enum CommercialIdentityFailureKind {
   accessExpiredOrInvalid,
   identityContextUnavailable,
   identityContextMismatch,
+  identityBindingStorageFailure,
   remoteLogoutAllUnconfirmed,
   accountDisabled,
   rateLimited,
